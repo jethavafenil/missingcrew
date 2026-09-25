@@ -1,0 +1,84 @@
+# P11.2 — CI pipeline. Runs on every PR and push to main:
+#   install → lint → typecheck → unit/component tests → build.
+# Merges are gated on success (enable branch protection on GitHub:
+# Settings → Branches → require the "CI" check).
+#
+# The RLS integration suite runs against a disposable, in-runner Supabase
+# stack (Docker) with all migrations applied — never a real project, so no
+# credentials are needed. `npm test` stays green without credentials because
+# credential-gated suites self-skip.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Inert env for the build step (Next reads public env at build time).
+  NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-placeholder
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_ci_placeholder
+
+jobs:
+  ci:
+    name: lint / typecheck / test / build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 25
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # ---- disposable Supabase for RLS integration tests ----
+      # Applies every migration in supabase/migrations to a fresh local stack
+      # inside the runner (Docker is preinstalled on ubuntu-latest).
+      # `supabase start` can emit docker pull-retry noise on stdout, so the
+      # key is read from `supabase status` afterwards (clean JSON only).
+      - name: Start Supabase stack & apply migrations
+        id: supabase
+        run: |
+          npx supabase start || { npx supabase status; exit 1; }
+          # Sanity: all migrations must apply cleanly to a fresh DB.
+          npx supabase db reset
+          npx supabase status -o json > supabase-status.json
+          echo "SUPABASE_URL=http://127.0.0.1:54321" >> "$GITHUB_ENV"
+          echo "SUPABASE_ANON_KEY=$(jq -r .ANON_KEY supabase-status.json)" >> "$GITHUB_ENV"
+
+      - name: Unit + component tests
+        run: npm run test:ci
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          if-no-files-found: ignore
+
+      # The app build never touches the DB, but pointing it at the disposable
+      # stack avoids env-var failures during static prerendering.
+      - name: Build
+        run: npm run build
+
+      - name: Stop Supabase
+        if: always() && steps.supabase.outcome == 'success'
+        run: npx supabase stop --no-backup
