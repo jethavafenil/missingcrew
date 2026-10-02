@@ -56,7 +56,7 @@ function AccountsContent() {
   // Derived from the query string (set by the signup redirect) — no effect needed.
   const successMessage =
     message === 'RegistrationSuccessful' && email
-      ? `Registration successful! You can now sign in as ${email}.`
+      ? `Registration successful! Please check ${email} for a verification link.`
       : ''
 
   const handleTabChange = (tab: 'signin' | 'signup') => {
