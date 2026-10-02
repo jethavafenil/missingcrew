@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await getAdminAuthClient().createUser({
       email,
       password,
-      email_confirm: false,
+      email_confirm: true,
       // user_metadata is present at INSERT time so the provisioning trigger
       // can read the role (GoTrue applies app_metadata only afterwards).
       user_metadata: { name: contactName, role: 'EMPLOYER' },
@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
+      console.error('Employer registration Supabase error:', { message: error.message, status: error.status, code: (error as any).code })
       const alreadyExists =
         error.message.toLowerCase().includes('already') || error.status === 422
       return NextResponse.json(
