@@ -65,3 +65,5 @@ production_data*.json
 
 # Test output (vitest junit)
 test-results/
+
+cred.txt

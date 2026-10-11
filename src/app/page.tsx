@@ -3,12 +3,11 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { departments } from '@/lib/departments'
-import { ProjectCardWrapper } from '@/components/projects/ProjectCardWrapper'
-import { CrewSlider } from '@/components/crew/CrewSlider'
-import { FallbackCrewSlider } from '@/components/crew/FallbackCrewSlider'
-import { slugifyName } from '@/lib/utils'
 import AnonymousRoleToggle from '@/components/AnonymousRoleToggle'
 import { getFeaturedCrew, getFeaturedProjects } from '@/lib/cache/public'
+import { getSession } from '@/lib/auth/server'
+import { redirect } from 'next/navigation'
+import { HomeDualFeed } from '@/components/home/HomeDualFeed'
 
 // No page-level revalidate: the root layout resolves the session per request,
 // so this route renders dynamically. Featured data is still cached via
@@ -35,6 +34,18 @@ interface Project {
 }
 
 export default async function Home() {
+  // If user is already signed in, redirect to their role-specific dashboard
+  const session = await getSession()
+  if (session?.user) {
+    if (session.user.role === 'ADMIN') {
+      redirect('/admin')
+    } else if (session.user.role === 'EMPLOYER') {
+      redirect('/employer-home')
+    } else {
+      redirect('/crew-home')
+    }
+  }
+
   // Load featured projects and crew
   let projects: Project[] = []
   let crew: any[] = []
@@ -223,35 +234,8 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Featured Projects */}
-      <section className="py-8 md:py-12 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 md:mb-8 gap-3">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Featured Projects Hiring Now</h2>
-            <Link href="/find-work"><Button variant="outline" className="border-indigo-600 text-indigo-600 hover:bg-indigo-50 whitespace-nowrap">Browse all</Button></Link>
-          </div>
-          {projects.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {projects.map((project) => (
-                <ProjectCardWrapper key={project.id} project={project as any} onApply={undefined} />
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-600">No projects available right now.</p>
-          )}
-        </div>
-      </section>
-
-      {/* Top Crew */}
-      <section className="py-8 md:py-12">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-8 md:mb-12">
-            <h2 className="text-2xl sm:text-2xl md:text-3xl font-bold text-gray-900 px-2">Standout Crew</h2>
-            <p className="text-sm md:text-base text-gray-600 px-4">Explore some of the most sought‑after professionals</p>
-          </div>
-          {crew.length > 0 ? <CrewSlider crew={crew as any} /> : <FallbackCrewSlider />}
-        </div>
-      </section>
+      {/* Side-by-Side Dual Feed: Recent Projects on Left, Standout Crew on Right */}
+      <HomeDualFeed projects={projects} crew={crew} />
 
       {/* How it works */}
       <section className="py-8 md:py-12 bg-white">
