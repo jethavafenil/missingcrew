@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { 
   Briefcase, 
   Users, 
@@ -13,7 +12,6 @@ import {
   BadgeCheck, 
   IndianRupee, 
   Plane, 
-  Clock,
   ChevronRight,
   Film
 } from 'lucide-react'
@@ -168,11 +166,18 @@ const FALLBACK_CREW: HomeCrewMember[] = [
 ]
 
 export function HomeDualFeed({ projects, crew }: HomeDualFeedProps) {
-  // Mobile tab state: 'projects' | 'crew' (on desktop both are rendered side-by-side)
+  // Mobile tab state: 'projects' | 'crew' (on desktop both are rendered side-by-side in balanced pairs)
   const [mobileTab, setMobileTab] = useState<'projects' | 'crew'>('projects')
 
   const displayProjects = projects && projects.length > 0 ? projects.slice(0, 4) : FALLBACK_PROJECTS
   const displayCrew = crew && crew.length > 0 ? crew.slice(0, 4) : FALLBACK_CREW
+
+  // Equalize count to 4 pairs so both sides have the exact same number of cards
+  const rowCount = Math.max(displayProjects.length, displayCrew.length, 4)
+  const pairedRows = Array.from({ length: rowCount }).map((_, index) => ({
+    project: displayProjects[index] || FALLBACK_PROJECTS[index % FALLBACK_PROJECTS.length],
+    member: displayCrew[index] || FALLBACK_CREW[index % FALLBACK_CREW.length],
+  }))
 
   const formatDate = (isoString?: string) => {
     if (!isoString) return ''
@@ -196,6 +201,235 @@ export function HomeDualFeed({ projects, crew }: HomeDualFeedProps) {
   const getRoleName = (roleItem: string | { role: string; count?: number }): string => {
     if (typeof roleItem === 'string') return roleItem
     return roleItem?.role || 'Crew'
+  }
+
+  // Render a single project card with flex layout for equal row height
+  const renderProjectCard = (project: HomeProject) => {
+    const startStr = formatDate(project.shootStartDate)
+    const endStr = formatDate(project.shootEndDate)
+    const dateText = startStr && endStr ? `${startStr} – ${endStr}` : startStr || 'Dates flexible'
+    const roles = (project.rolesNeeded || []).slice(0, 3)
+    const remainingRolesCount = Math.max(0, (project.rolesNeeded?.length || 0) - 3)
+
+    return (
+      <div
+        key={project.id}
+        className="group relative bg-white rounded-2xl p-5 border border-gray-200/80 shadow-xs hover:shadow-lg hover:border-indigo-300 transition-all duration-300 flex flex-col justify-between h-full"
+      >
+        <div className="flex-1 flex flex-col">
+          {/* Top Meta: Production & Type */}
+          <div className="flex items-center justify-between gap-2 mb-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <Avatar className="h-6 w-6 rounded-md bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200/50">
+                {project.employer?.user?.image ? (
+                  <AvatarImage src={project.employer.user.image} alt={project.employer.user.name} />
+                ) : null}
+                <AvatarFallback className="rounded-md">
+                  {project.employer?.user?.name?.slice(0, 1).toUpperCase() || 'P'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-xs font-medium text-gray-600 truncate">
+                {project.employer?.user?.name || 'Production House'}
+              </span>
+            </div>
+
+            <Badge 
+              variant="outline" 
+              className="text-[11px] font-semibold border-indigo-200 bg-indigo-50/60 text-indigo-700 shrink-0"
+            >
+              {project.projectType || 'Film Project'}
+            </Badge>
+          </div>
+
+          {/* Project Title */}
+          <Link 
+            href={`/projects/${project.id}`} 
+            className="block group-hover:text-indigo-600 transition-colors"
+          >
+            <h4 className="text-base sm:text-lg font-bold text-gray-900 line-clamp-1">
+              {project.projectName}
+            </h4>
+          </Link>
+
+          {/* Description snippet */}
+          <p className="mt-1.5 text-xs text-gray-500 line-clamp-2 leading-relaxed flex-1">
+            {project.description || 'Production seeking verified crew members for upcoming project shoot.'}
+          </p>
+
+          {/* Roles Needed Pills */}
+          <div className="mt-3 pt-2 flex flex-wrap gap-1.5 items-center">
+            <span className="text-[11px] font-semibold text-gray-400 mr-0.5">Roles:</span>
+            {roles.length > 0 ? (
+              roles.map((r, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-gray-100 text-gray-700 border border-gray-200/70"
+                >
+                  {getRoleName(r)}
+                </span>
+              ))
+            ) : (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-gray-50 text-gray-500 border border-gray-200/70">
+                Multiple Crew Positions
+              </span>
+            )}
+            {remainingRolesCount > 0 && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-100">
+                +{remainingRolesCount} more
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Details Footer */}
+        <div className="mt-4 pt-3.5 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500 shrink-0">
+          <div className="flex items-center gap-3">
+            {project.location && (
+              <span className="inline-flex items-center gap-1 font-medium text-gray-600">
+                <MapPin className="w-3.5 h-3.5 text-indigo-500" />
+                {project.location}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+              {dateText}
+            </span>
+          </div>
+
+          <Link
+            href={`/projects/${project.id}`}
+            className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 group-hover:text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100/80 px-3 py-1.5 rounded-lg transition-all"
+          >
+            Apply / Details
+            <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // Render a single crew card with flex layout for equal row height
+  const renderCrewCard = (member: HomeCrewMember) => {
+    const name = member.user?.name || 'Film Professional'
+    const profileSlug = slugifyName(name)
+    const locationText = member.city || member.location || 'India'
+    const roles = (member.primaryRoles || []).slice(0, 3)
+    const rateText = formatBudget(member.dailyBudgetMin, member.dailyBudgetMax)
+
+    return (
+      <div
+        key={member.id}
+        className="group relative bg-white rounded-2xl p-5 border border-gray-200/80 shadow-xs hover:shadow-lg hover:border-purple-300 transition-all duration-300 flex flex-col justify-between h-full"
+      >
+        <div className="flex-1 flex flex-col">
+          {/* Top Header: Avatar + Name + Availability */}
+          <div className="flex items-start justify-between gap-3 mb-2.5">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="relative shrink-0">
+                <Avatar className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl border border-purple-200/70 shadow-xs">
+                  {member.photo || member.user?.image ? (
+                    <AvatarImage 
+                      src={member.photo || member.user?.image || ''} 
+                      alt={name} 
+                      className="object-cover"
+                    />
+                  ) : null}
+                  <AvatarFallback className="rounded-xl bg-gradient-to-br from-purple-100 to-indigo-100 text-purple-800 font-bold text-base">
+                    {name.slice(0, 1).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                {/* Active availability badge indicator */}
+                <span 
+                  className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow-xs" 
+                  title="Available for projects" 
+                />
+              </div>
+
+              <div className="min-w-0">
+                <Link 
+                  href={`/crew/${profileSlug}`}
+                  className="font-bold text-gray-900 text-base group-hover:text-purple-600 transition-colors flex items-center gap-1.5"
+                >
+                  <span className="truncate">{name}</span>
+                  <BadgeCheck className="w-4 h-4 text-purple-600 shrink-0" />
+                </Link>
+                <p className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
+                  <span className="inline-flex items-center gap-0.5">
+                    <MapPin className="w-3 h-3 text-purple-500" />
+                    {locationText}
+                  </span>
+                  {member.availableToTravel && (
+                    <span className="inline-flex items-center gap-0.5 text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded text-[10px] font-medium border border-purple-100">
+                      <Plane className="w-2.5 h-2.5" />
+                      Can Travel
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* Experience / Status Badge */}
+            {member.yearsExperience ? (
+              <Badge 
+                variant="secondary" 
+                className="bg-purple-50 text-purple-700 border-purple-200 text-[11px] font-semibold shrink-0"
+              >
+                {member.yearsExperience}+ yrs exp
+              </Badge>
+            ) : (
+              <Badge 
+                variant="secondary" 
+                className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] font-semibold shrink-0"
+              >
+                Available
+              </Badge>
+            )}
+          </div>
+
+          {/* Subtitle / Bio snippet for visual balance with project card */}
+          <p className="mt-1.5 text-xs text-gray-500 line-clamp-2 leading-relaxed flex-1">
+            {roles.length > 0
+              ? `Specializing in ${roles.join(', ')} with verified production experience across film & media.`
+              : 'Verified crew professional ready for commercial, feature, and indie productions.'}
+          </p>
+
+          {/* Primary Roles Pills */}
+          <div className="mt-3 pt-2 flex flex-wrap gap-1.5 items-center">
+            <span className="text-[11px] font-semibold text-gray-400 mr-0.5">Skills:</span>
+            {roles.length > 0 ? (
+              roles.map((r, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-800 border border-purple-200/60"
+                >
+                  {r}
+                </span>
+              ))
+            ) : (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200/60">
+                Film Crew Professional
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Details Footer */}
+        <div className="mt-4 pt-3.5 border-t border-gray-100 flex items-center justify-between gap-2 text-xs shrink-0">
+          <div className="flex items-center gap-1 text-gray-600 font-medium">
+            <IndianRupee className="w-3.5 h-3.5 text-purple-600" />
+            <span className="text-gray-900 font-semibold">{rateText}</span>
+          </div>
+
+          <Link
+            href={`/crew/${profileSlug}`}
+            className="inline-flex items-center gap-1 text-xs font-bold text-purple-600 group-hover:text-purple-700 bg-purple-50/70 hover:bg-purple-100/80 px-3 py-1.5 rounded-lg transition-all"
+          >
+            View Profile
+            <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -229,7 +463,7 @@ export function HomeDualFeed({ projects, crew }: HomeDualFeedProps) {
               }`}
             >
               <Briefcase className="w-4 h-4" />
-              Recent Projects ({displayProjects.length})
+              Recent Projects ({projects.length > 0 ? projects.length : displayProjects.length})
             </button>
             <button
               type="button"
@@ -241,307 +475,194 @@ export function HomeDualFeed({ projects, crew }: HomeDualFeedProps) {
               }`}
             >
               <Users className="w-4 h-4" />
-              Standout Crew ({displayCrew.length})
+              Standout Crew ({crew.length > 0 ? crew.length : displayCrew.length})
             </button>
           </div>
         </div>
 
-        {/* 2-Column Desktop Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-start">
+        {/* ========================================================= */}
+        {/* DESKTOP VIEW: BALANCED 2-COLUMN GRID WITH ROW ALIGNMENT   */}
+        {/* Every row has 100% equal card height on both sides        */}
+        {/* ========================================================= */}
+        <div className="hidden lg:grid grid-cols-2 gap-x-8 lg:gap-x-10 gap-y-5 items-stretch">
           
-          {/* ========================================================= */}
-          {/* LEFT COLUMN: RECENT POSTED PROJECTS                       */}
-          {/* ========================================================= */}
-          <div className={`${mobileTab === 'projects' ? 'block' : 'hidden lg:block'} space-y-4`}>
-            {/* Column Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-gray-200/80">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-                  <Briefcase className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg md:text-xl font-bold text-gray-900 flex items-center gap-2">
-                    Recent Projects
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                      Hiring Now
-                    </span>
-                  </h3>
-                  <p className="text-xs text-gray-500">Active productions looking for crew</p>
-                </div>
+          {/* Row 0: Column Headers */}
+          <div className="pb-3 border-b border-gray-200/80 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+                <Briefcase className="w-5 h-5" />
               </div>
-              <Link 
-                href="/find-work" 
-                className="inline-flex items-center gap-1 text-xs md:text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors group"
-              >
-                Browse all
-                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-              </Link>
+              <div>
+                <h3 className="text-lg md:text-xl font-bold text-gray-900 flex items-center gap-2">
+                  Recent Projects
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    Hiring Now
+                  </span>
+                </h3>
+                <p className="text-xs text-gray-500">Active productions looking for crew</p>
+              </div>
             </div>
-
-            {/* Project Cards List */}
-            <div className="space-y-4">
-              {displayProjects.map((project) => {
-                const startStr = formatDate(project.shootStartDate)
-                const endStr = formatDate(project.shootEndDate)
-                const dateText = startStr && endStr ? `${startStr} – ${endStr}` : startStr || 'Dates flexible'
-                const roles = (project.rolesNeeded || []).slice(0, 3)
-                const remainingRolesCount = Math.max(0, (project.rolesNeeded?.length || 0) - 3)
-
-                return (
-                  <div
-                    key={project.id}
-                    className="group relative bg-white rounded-2xl p-5 border border-gray-200/80 shadow-xs hover:shadow-lg hover:border-indigo-300 transition-all duration-300 flex flex-col justify-between"
-                  >
-                    <div>
-                      {/* Top Meta: Production & Type */}
-                      <div className="flex items-center justify-between gap-2 mb-2.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Avatar className="h-6 w-6 rounded-md bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200/50">
-                            {project.employer?.user?.image ? (
-                              <AvatarImage src={project.employer.user.image} alt={project.employer.user.name} />
-                            ) : null}
-                            <AvatarFallback className="rounded-md">
-                              {project.employer?.user?.name?.slice(0, 1).toUpperCase() || 'P'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs font-medium text-gray-600 truncate">
-                            {project.employer?.user?.name || 'Production House'}
-                          </span>
-                        </div>
-
-                        <Badge 
-                          variant="outline" 
-                          className="text-[11px] font-semibold border-indigo-200 bg-indigo-50/60 text-indigo-700 shrink-0"
-                        >
-                          {project.projectType || 'Film Project'}
-                        </Badge>
-                      </div>
-
-                      {/* Project Title */}
-                      <Link 
-                        href={`/projects/${project.id}`} 
-                        className="block group-hover:text-indigo-600 transition-colors"
-                      >
-                        <h4 className="text-base sm:text-lg font-bold text-gray-900 line-clamp-1">
-                          {project.projectName}
-                        </h4>
-                      </Link>
-
-                      {/* Description snippet */}
-                      {project.description && (
-                        <p className="mt-1 text-xs text-gray-500 line-clamp-2 leading-relaxed">
-                          {project.description}
-                        </p>
-                      )}
-
-                      {/* Roles Needed Pills */}
-                      <div className="mt-3 flex flex-wrap gap-1.5 items-center">
-                        <span className="text-[11px] font-semibold text-gray-400 mr-0.5">Roles:</span>
-                        {roles.map((r, i) => (
-                          <span
-                            key={i}
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-gray-100 text-gray-700 border border-gray-200/70"
-                          >
-                            {getRoleName(r)}
-                          </span>
-                        ))}
-                        {remainingRolesCount > 0 && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-100">
-                            +{remainingRolesCount} more
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Bottom Details Footer */}
-                    <div className="mt-4 pt-3.5 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500">
-                      <div className="flex items-center gap-3">
-                        {project.location && (
-                          <span className="inline-flex items-center gap-1 font-medium text-gray-600">
-                            <MapPin className="w-3.5 h-3.5 text-indigo-500" />
-                            {project.location}
-                          </span>
-                        )}
-                        <span className="inline-flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-                          {dateText}
-                        </span>
-                      </div>
-
-                      <Link
-                        href={`/projects/${project.id}`}
-                        className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 group-hover:text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100/80 px-3 py-1.5 rounded-lg transition-all"
-                      >
-                        Apply / Details
-                        <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-                      </Link>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Bottom link to view more */}
-            <div className="pt-2 text-center">
-              <Link href="/find-work">
-                <Button 
-                  variant="outline" 
-                  className="w-full sm:w-auto border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-semibold text-xs sm:text-sm rounded-xl py-2 px-6"
-                >
-                  Explore All Open Projects ({projects.length > 0 ? projects.length : '20+'})
-                </Button>
-              </Link>
-            </div>
+            <Link 
+              href="/find-work" 
+              className="inline-flex items-center gap-1 text-xs md:text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors group"
+            >
+              Browse all
+              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+            </Link>
           </div>
 
-
-          {/* ========================================================= */}
-          {/* RIGHT COLUMN: STANDOUT CREW PROFILES                      */}
-          {/* ========================================================= */}
-          <div className={`${mobileTab === 'crew' ? 'block' : 'hidden lg:block'} space-y-4`}>
-            {/* Column Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-gray-200/80">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white shadow-md shadow-purple-500/20">
-                  <Film className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg md:text-xl font-bold text-gray-900 flex items-center gap-2">
-                    Standout Film Crew
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-                      Verified
-                    </span>
-                  </h3>
-                  <p className="text-xs text-gray-500">Top talent ready for production hire</p>
-                </div>
+          <div className="pb-3 border-b border-gray-200/80 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white shadow-md shadow-purple-500/20">
+                <Film className="w-5 h-5" />
               </div>
-              <Link 
-                href="/browse-crew" 
-                className="inline-flex items-center gap-1 text-xs md:text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors group"
-              >
-                Browse all
-                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-              </Link>
+              <div>
+                <h3 className="text-lg md:text-xl font-bold text-gray-900 flex items-center gap-2">
+                  Standout Film Crew
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                    Verified
+                  </span>
+                </h3>
+                <p className="text-xs text-gray-500">Top talent ready for production hire</p>
+              </div>
             </div>
-
-            {/* Crew Cards List */}
-            <div className="space-y-4">
-              {displayCrew.map((member) => {
-                const name = member.user?.name || 'Film Professional'
-                const profileSlug = slugifyName(name)
-                const locationText = member.city || member.location || 'India'
-                const roles = (member.primaryRoles || []).slice(0, 3)
-                const rateText = formatBudget(member.dailyBudgetMin, member.dailyBudgetMax)
-
-                return (
-                  <div
-                    key={member.id}
-                    className="group relative bg-white rounded-2xl p-5 border border-gray-200/80 shadow-xs hover:shadow-lg hover:border-purple-300 transition-all duration-300 flex flex-col justify-between"
-                  >
-                    <div>
-                      {/* Top Header: Avatar + Name + Availability */}
-                      <div className="flex items-start justify-between gap-3 mb-2.5">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="relative shrink-0">
-                            <Avatar className="h-12 w-12 rounded-xl border border-purple-200/70 shadow-xs">
-                              {member.photo || member.user?.image ? (
-                                <AvatarImage 
-                                  src={member.photo || member.user?.image || ''} 
-                                  alt={name} 
-                                  className="object-cover"
-                                />
-                              ) : null}
-                              <AvatarFallback className="rounded-xl bg-gradient-to-br from-purple-100 to-indigo-100 text-purple-800 font-bold text-base">
-                                {name.slice(0, 1).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            {/* Active availability badge indicator */}
-                            <span 
-                              className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-xs" 
-                              title="Available for projects" 
-                            />
-                          </div>
-
-                          <div className="min-w-0">
-                            <Link 
-                              href={`/crew/${profileSlug}`}
-                              className="font-bold text-gray-900 text-base group-hover:text-purple-600 transition-colors flex items-center gap-1.5"
-                            >
-                              <span className="truncate">{name}</span>
-                              <BadgeCheck className="w-4 h-4 text-purple-600 shrink-0" />
-                            </Link>
-                            <p className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
-                              <span className="inline-flex items-center gap-0.5">
-                                <MapPin className="w-3 h-3 text-purple-500" />
-                                {locationText}
-                              </span>
-                              {member.availableToTravel && (
-                                <span className="inline-flex items-center gap-0.5 text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded text-[10px] font-medium border border-purple-100">
-                                  <Plane className="w-2.5 h-2.5" />
-                                  Can Travel
-                                </span>
-                              )}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Experience Badge */}
-                        {member.yearsExperience && (
-                          <Badge 
-                            variant="secondary" 
-                            className="bg-purple-50 text-purple-700 border-purple-200 text-[11px] font-semibold shrink-0"
-                          >
-                            {member.yearsExperience}+ yrs exp
-                          </Badge>
-                        )}
-                      </div>
-
-                      {/* Primary Roles Pills */}
-                      <div className="mt-3 flex flex-wrap gap-1.5 items-center">
-                        {roles.map((r, i) => (
-                          <span
-                            key={i}
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-800 border border-purple-200/60"
-                          >
-                            {r}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Bottom Details Footer */}
-                    <div className="mt-4 pt-3.5 border-t border-gray-100 flex items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-1 text-gray-600 font-medium">
-                        <IndianRupee className="w-3.5 h-3.5 text-purple-600" />
-                        <span className="text-gray-900 font-semibold">{rateText}</span>
-                      </div>
-
-                      <Link
-                        href={`/crew/${profileSlug}`}
-                        className="inline-flex items-center gap-1 text-xs font-bold text-purple-600 group-hover:text-purple-700 bg-purple-50/70 hover:bg-purple-100/80 px-3 py-1.5 rounded-lg transition-all"
-                      >
-                        View Profile
-                        <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-                      </Link>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Bottom link to view more */}
-            <div className="pt-2 text-center">
-              <Link href="/browse-crew">
-                <Button 
-                  variant="outline" 
-                  className="w-full sm:w-auto border-purple-200 text-purple-700 hover:bg-purple-50 font-semibold text-xs sm:text-sm rounded-xl py-2 px-6"
-                >
-                  Explore All Film Crew ({crew.length > 0 ? crew.length : '1,200+'})
-                </Button>
-              </Link>
-            </div>
+            <Link 
+              href="/browse-crew" 
+              className="inline-flex items-center gap-1 text-xs md:text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors group"
+            >
+              Browse all
+              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+            </Link>
           </div>
 
+          {/* Rows 1..4: Synchronized Pairs (Height of Left = Height of Right) */}
+          {pairedRows.map(({ project, member }, index) => (
+            <React.Fragment key={index}>
+              <div className="h-full">
+                {renderProjectCard(project)}
+              </div>
+              <div className="h-full">
+                {renderCrewCard(member)}
+              </div>
+            </React.Fragment>
+          ))}
+
+          {/* Bottom Row: Perfectly Aligned Bottom Buttons */}
+          <div className="pt-3 text-center">
+            <Link href="/find-work">
+              <Button 
+                variant="outline" 
+                className="w-full sm:w-auto border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-semibold text-xs sm:text-sm rounded-xl py-2 px-6"
+              >
+                Explore All Open Projects ({projects.length > 0 ? projects.length : '20+'})
+              </Button>
+            </Link>
+          </div>
+
+          <div className="pt-3 text-center">
+            <Link href="/browse-crew">
+              <Button 
+                variant="outline" 
+                className="w-full sm:w-auto border-purple-200 text-purple-700 hover:bg-purple-50 font-semibold text-xs sm:text-sm rounded-xl py-2 px-6"
+              >
+                Explore All Film Crew ({crew.length > 0 ? crew.length : '1,200+'})
+              </Button>
+            </Link>
+          </div>
+
+        </div>
+
+        {/* ========================================================= */}
+        {/* MOBILE VIEW (< lg): TABBED VIEW FOR NARROW SCREENS        */}
+        {/* ========================================================= */}
+        <div className="block lg:hidden space-y-4">
+          {mobileTab === 'projects' ? (
+            <div className="space-y-4">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200/80">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+                    <Briefcase className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900">Recent Projects</h3>
+                    <p className="text-xs text-gray-500">Active productions looking for crew</p>
+                  </div>
+                </div>
+                <Link 
+                  href="/find-work" 
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600"
+                >
+                  Browse all
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              {/* Cards */}
+              <div className="space-y-4">
+                {displayProjects.map((p) => (
+                  <div key={p.id}>
+                    {renderProjectCard(p)}
+                  </div>
+                ))}
+              </div>
+
+              {/* Button */}
+              <div className="pt-2 text-center">
+                <Link href="/find-work">
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-semibold text-xs sm:text-sm rounded-xl py-2 px-6"
+                  >
+                    Explore All Open Projects ({projects.length > 0 ? projects.length : '20+'})
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-gray-200/80">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white shadow-md shadow-purple-500/20">
+                    <Film className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900">Standout Film Crew</h3>
+                    <p className="text-xs text-gray-500">Top talent ready for production hire</p>
+                  </div>
+                </div>
+                <Link 
+                  href="/browse-crew" 
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-purple-600"
+                >
+                  Browse all
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              {/* Cards */}
+              <div className="space-y-4">
+                {displayCrew.map((c) => (
+                  <div key={c.id}>
+                    {renderCrewCard(c)}
+                  </div>
+                ))}
+              </div>
+
+              {/* Button */}
+              <div className="pt-2 text-center">
+                <Link href="/browse-crew">
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-purple-200 text-purple-700 hover:bg-purple-50 font-semibold text-xs sm:text-sm rounded-xl py-2 px-6"
+                  >
+                    Explore All Film Crew ({crew.length > 0 ? crew.length : '1,200+'})
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Dual CTA Banner at bottom of the section */}
