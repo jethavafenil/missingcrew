@@ -9,6 +9,7 @@ export default function CrewSignupForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const role = searchParams.get('role') || 'crew'
+  const returnUrl = searchParams.get('returnUrl')
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -102,7 +103,8 @@ const handleSubmit = async (e: React.FormEvent) => {
     // GoTrue requires email verification before sign-in is possible, so send
     // the user to the sign-in tab with a success message.
     setError('')
-    router.push(`/accounts?tab=signin&role=crew&message=RegistrationSuccessful&email=${encodeURIComponent(formData.email)}`)
+    const returnUrlParam = returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : ''
+    router.push(`/accounts?tab=signin&role=crew&message=RegistrationSuccessful&email=${encodeURIComponent(formData.email)}${returnUrlParam}`)
     return
   } catch (err) {
     console.error('Crew signup failed:', err)

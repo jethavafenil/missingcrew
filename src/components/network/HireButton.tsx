@@ -63,9 +63,11 @@ export function HireButton({ crewUserId, primaryRole }: HireButtonProps) {
 
   const handleHireClick = async () => {
     try {
-      // If not logged in or not employer, route to employer signup/login with intent
+      // If not logged in or not employer, route to employer signup/login with intent and returnUrl
       if (!session?.user?.id || session.user.role !== 'EMPLOYER') {
-        router.push('/accounts?tab=signup&role=employer&intent=post-requirement')
+        const returnUrl = typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : ''
+        const returnParam = returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : ''
+        router.push(`/accounts?tab=signup&role=employer&intent=post-requirement${returnParam}`)
         return
       }
 

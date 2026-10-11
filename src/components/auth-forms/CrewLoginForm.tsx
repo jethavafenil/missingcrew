@@ -10,9 +10,11 @@ export default function CrewLoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const role = searchParams.get('role') || 'crew'
+  const returnUrl = searchParams.get('returnUrl')
   const [isLoading, setIsLoading] = useState(false)
+  const emailParam = searchParams.get('email') || ''
   const [formData, setFormData] = useState({
-    email: '',
+    email: emailParam,
     password: '',
   })
   const [error, setError] = useState('')
@@ -28,17 +30,21 @@ export default function CrewLoginForm() {
     setError('')
 
       try {
+        const callbackUrl = returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')
+          ? returnUrl
+          : '/crew-home'
+
         const result = await signInWithPassword({
           email: formData.email,
           password: formData.password,
           expectedRole: 'CREW',
-          callbackUrl: '/crew-home',
+          callbackUrl,
         })
 
         if (!result.ok) {
           setError(result.error || 'Failed to login. Please check your credentials.')
         } else {
-          router.push(result.url || '/crew-home')
+          router.push(result.url || callbackUrl)
         }
       } catch (err) {
         console.error('Crew login failed:', err)

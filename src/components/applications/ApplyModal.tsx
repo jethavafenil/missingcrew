@@ -84,6 +84,7 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
         toast.success('Application submitted successfully!')
         setTimeout(() => {
           onSuccess()
+          onClose()
         }, 1500)
       } else {
         const error = await response.json()
@@ -99,13 +100,41 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
 
   if (showSuccess) {
     return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-        <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-2xl animate-in zoom-in duration-300">
+      <div 
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
+        onClick={() => {
+          onSuccess()
+          onClose()
+        }}
+      >
+        <div 
+          className="bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-2xl animate-in zoom-in duration-300 relative"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => {
+              onSuccess()
+              onClose()
+            }}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 rounded-lg p-1.5 transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
           <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
             <CheckCircle2 className="w-10 h-10 text-green-600" />
           </div>
           <h3 className="text-2xl font-bold text-gray-900 mb-2">Application Submitted!</h3>
-          <p className="text-gray-600">Your application has been sent to the employer. Good luck!</p>
+          <p className="text-gray-600 mb-6">Your application has been sent to the employer. Good luck!</p>
+          <Button
+            onClick={() => {
+              onSuccess()
+              onClose()
+            }}
+            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium py-2.5 rounded-xl shadow-md transition-all"
+          >
+            Done
+          </Button>
         </div>
       </div>
     )

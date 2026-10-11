@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/server'
-import { applicationRepo, crewProfileRepo, notificationRepo, requesterFromSession } from '@/lib/repo'
+import { applicationRepo, crewProfileRepo, notificationRepo, projectRepo, requesterFromSession } from '@/lib/repo'
 import { sendEmail, createApplicationEmail } from '@/lib/email'
 import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimiter'
 import { z } from 'zod'
@@ -8,6 +8,21 @@ import { parseBody } from '@/lib/api/body'
 
 interface RouteContext {
   params: Promise<{ id: string }>
+}
+
+async function resolveProjectId(param: string): Promise<string> {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(param)
+  if (isUuid) return param
+
+  const direct = await projectRepo.findById(param)
+  if (direct) return direct.id
+
+  const name = decodeURIComponent(param).replace(/-/g, ' ').trim()
+  if (!name) return param
+
+  const matched = (await projectRepo.findFirstByProjectNameExact(name)) ??
+    (await projectRepo.findFirstByProjectNameContainsAll(name.split(/\s+/).filter(Boolean)))
+  return matched ? matched.id : param
 }
 
 
@@ -62,7 +77,7 @@ export async function POST(
       notes: z.string().max(5000).optional(),
     }))
     const { id } = await context.params
-    const projectId = id
+    const projectId = await resolveProjectId(id)
 
     const existingApplication = await applicationRepo.findUniqueByProjectAndCrew(projectId, crewProfile.id)
 
@@ -142,7 +157,7 @@ export async function GET(
     }
 
     const { id } = await context.params
-    const projectId = id
+    const projectId = await resolveProjectId(id)
 
     // Find the crew profile
     const crewProfile = await crewProfileRepo.findByUserId(session.user.id, requesterFromSession(session))

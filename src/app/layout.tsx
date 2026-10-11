@@ -34,6 +34,23 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const origSetAttr = Element.prototype.setAttribute;
+                  Element.prototype.setAttribute = function(name, val) {
+                    if (name === 'bis_skin_checked') return;
+                    return origSetAttr.apply(this, arguments);
+                  };
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning={true}

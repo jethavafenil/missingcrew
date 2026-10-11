@@ -6,18 +6,22 @@
 
 export const OAUTH_ROLE_COOKIE = 'oauth_signup_role'
 export const OAUTH_INTENT_COOKIE = 'oauth_signup_intent'
+export const OAUTH_RETURN_URL_COOKIE = 'oauth_return_url'
 const COOKIE_MAX_AGE = 60 * 10 // 10 minutes
 
 /**
- * Store OAuth state (role and intent) in cookies
+ * Store OAuth state (role, intent, and returnUrl) in cookies
  * Called from client-side before OAuth redirect
  */
-export function setOAuthState(role: string, intent?: string) {
+export function setOAuthState(role: string, intent?: string, returnUrl?: string) {
   if (typeof window !== 'undefined') {
     const expires = new Date(Date.now() + COOKIE_MAX_AGE * 1000).toUTCString()
     document.cookie = `${OAUTH_ROLE_COOKIE}=${role}; path=/; expires=${expires}; SameSite=Lax`
     if (intent) {
       document.cookie = `${OAUTH_INTENT_COOKIE}=${intent}; path=/; expires=${expires}; SameSite=Lax`
+    }
+    if (returnUrl) {
+      document.cookie = `${OAUTH_RETURN_URL_COOKIE}=${encodeURIComponent(returnUrl)}; path=/; expires=${expires}; SameSite=Lax`
     }
   }
 }
@@ -25,11 +29,11 @@ export function setOAuthState(role: string, intent?: string) {
 /**
  * Get OAuth state from cookies (client-side)
  */
-export function getOAuthStateClient(): { role?: string; intent?: string } {
+export function getOAuthStateClient(): { role?: string; intent?: string; returnUrl?: string } {
   if (typeof window === 'undefined') return {}
   
   const cookies = document.cookie.split(';')
-  const state: { role?: string; intent?: string } = {}
+  const state: { role?: string; intent?: string; returnUrl?: string } = {}
   
   for (const cookie of cookies) {
     const [name, value] = cookie.trim().split('=')
@@ -37,6 +41,8 @@ export function getOAuthStateClient(): { role?: string; intent?: string } {
       state.role = value
     } else if (name === OAUTH_INTENT_COOKIE) {
       state.intent = value
+    } else if (name === OAUTH_RETURN_URL_COOKIE && value) {
+      state.returnUrl = decodeURIComponent(value)
     }
   }
   
@@ -52,5 +58,7 @@ export function clearOAuthState() {
     // Set cookies with past expiry date to delete them
     document.cookie = `${OAUTH_ROLE_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
     document.cookie = `${OAUTH_INTENT_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
+    document.cookie = `${OAUTH_RETURN_URL_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
   }
 }
+

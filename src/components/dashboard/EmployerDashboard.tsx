@@ -659,7 +659,9 @@ export function EmployerDashboard({ user, userData }: EmployerDashboardProps) {
                                   {project.projectName}
                                 </h3>
 
-                                {project.applications.map(application => (
+                                {[...project.applications]
+                                  .sort((a, b) => new Date(a.appliedAt).getTime() - new Date(b.appliedAt).getTime())
+                                  .map(application => (
                                   <Card key={application.id} className="border-l-4 border-green-500 mb-4">
                                     <CardContent className="pt-6">
                                       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

@@ -57,7 +57,7 @@ export default function ProjectDetailsPage() {
 
         // Check if user has already applied to this project
         if (session?.user?.id) {
-          const checkResponse = await fetch(`/api/projects/${params.id}/apply`, {
+          const checkResponse = await fetch(`/api/projects/${data.project.id}/apply`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
@@ -367,8 +367,9 @@ export default function ProjectDetailsPage() {
                 <Button
                   onClick={() => {
                     if (!session) {
-                      // Redirect to accounts page with crew signin tab
-                      router.push('/accounts?tab=signin&role=crew')
+                      // Redirect to accounts page with crew signin tab, preserving returnUrl
+                      const returnUrl = typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : `/projects/${params.id}`
+                      router.push(`/accounts?tab=signin&role=crew&returnUrl=${encodeURIComponent(returnUrl)}`)
                     } else if (session.user.role === 'CREW') {
                       setShowApplyModal(true)
                     }

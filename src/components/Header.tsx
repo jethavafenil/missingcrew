@@ -39,8 +39,11 @@ export default function Header() {
   const pathname = usePathname();
   const isEmployerContext = pathname?.startsWith('/employer') || pathname === '/employer-home';
   const selectedRole = isEmployerContext ? 'employer' : 'crew';
-  const signInHref = `/accounts?tab=signin&role=${selectedRole}` as const;
-  const joinHref = `/accounts?tab=signup&role=${selectedRole}` as const;
+  const returnParam = pathname && pathname !== '/' && !pathname.startsWith('/accounts')
+    ? `&returnUrl=${encodeURIComponent(pathname)}`
+    : '';
+  const signInHref = `/accounts?tab=signin&role=${selectedRole}${returnParam}` as const;
+  const joinHref = `/accounts?tab=signup&role=${selectedRole}${returnParam}` as const;
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 shadow-sm backdrop-blur-md">

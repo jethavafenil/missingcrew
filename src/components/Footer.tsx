@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Film, Mail, MapPin, Phone, Facebook, Twitter, Instagram, Linkedin, Youtube } from 'lucide-react';
+import { Film, Mail, MapPin, Facebook, Instagram, Linkedin, Youtube } from 'lucide-react';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -23,17 +23,41 @@ export default function Footer() {
               Connecting talented film crew members with exciting projects worldwide. Your next opportunity is just a click away.
             </p>
             <div className="flex items-center gap-4">
-              <a href="#" className="w-9 h-9 bg-gray-800 hover:bg-indigo-600 rounded-lg flex items-center justify-center transition-all duration-200 group">
-                <Facebook className="h-4 w-4 text-gray-400 group-hover:text-white" />
-              </a>
-              <a href="#" className="w-9 h-9 bg-gray-800 hover:bg-indigo-600 rounded-lg flex items-center justify-center transition-all duration-200 group">
-                <Twitter className="h-4 w-4 text-gray-400 group-hover:text-white" />
-              </a>
-              <a href="#" className="w-9 h-9 bg-gray-800 hover:bg-indigo-600 rounded-lg flex items-center justify-center transition-all duration-200 group">
+              <a 
+                href="https://www.instagram.com/missingcrew" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                aria-label="Instagram"
+                className="w-9 h-9 bg-gray-800 hover:bg-gradient-to-br hover:from-purple-600 hover:to-pink-600 rounded-lg flex items-center justify-center transition-all duration-200 group"
+              >
                 <Instagram className="h-4 w-4 text-gray-400 group-hover:text-white" />
               </a>
-              <a href="#" className="w-9 h-9 bg-gray-800 hover:bg-indigo-600 rounded-lg flex items-center justify-center transition-all duration-200 group">
+              <a 
+                href="https://www.facebook.com/missingcrew" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                aria-label="Facebook"
+                className="w-9 h-9 bg-gray-800 hover:bg-blue-600 rounded-lg flex items-center justify-center transition-all duration-200 group"
+              >
+                <Facebook className="h-4 w-4 text-gray-400 group-hover:text-white" />
+              </a>
+              <a 
+                href="https://www.linkedin.com/company/missingcrew" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                aria-label="LinkedIn"
+                className="w-9 h-9 bg-gray-800 hover:bg-blue-700 rounded-lg flex items-center justify-center transition-all duration-200 group"
+              >
                 <Linkedin className="h-4 w-4 text-gray-400 group-hover:text-white" />
+              </a>
+              <a 
+                href="https://www.youtube.com/@missingcrew" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                aria-label="YouTube"
+                className="w-9 h-9 bg-gray-800 hover:bg-red-600 rounded-lg flex items-center justify-center transition-all duration-200 group"
+              >
+                <Youtube className="h-4 w-4 text-gray-400 group-hover:text-white" />
               </a>
             </div>
           </div>
@@ -108,12 +132,6 @@ export default function Footer() {
                 <Mail className="h-5 w-5 text-indigo-400 flex-shrink-0 mt-0.5" />
                 <a href="mailto:support@missingcrew.com" className="hover:text-indigo-400 transition-colors duration-200">
                   support@missingcrew.com
-                </a>
-              </li>
-              <li className="flex items-start gap-3 text-gray-400">
-                <Phone className="h-5 w-5 text-indigo-400 flex-shrink-0 mt-0.5" />
-                <a href="tel:+1234567890" className="hover:text-indigo-400 transition-colors duration-200">
-                  +1 (234) 567-890
                 </a>
               </li>
               <li className="flex items-start gap-3 text-gray-400">

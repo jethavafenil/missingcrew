@@ -90,8 +90,9 @@ export function ProjectCard({ project, onApply }: ProjectCardProps) {
     if (isApplying) return;
     setIsApplying(true);
     if (!session) {
-      // Redirect guests to sign in as crew before applying
-      router.push(`/accounts?tab=signin&role=crew`)
+      // Redirect guests to sign in as crew before applying, preserving current page
+      const returnUrl = typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : '/find-work'
+      router.push(`/accounts?tab=signin&role=crew&returnUrl=${encodeURIComponent(returnUrl)}`)
       setIsApplying(false)
       return
     }
@@ -452,8 +453,16 @@ export function ProjectCard({ project, onApply }: ProjectCardProps) {
             ),
             questions: project.questions
           }}
-          onClose={() => setShowApplyModal(false)}
-          onSuccess={onApply || (() => {})}
+          onClose={() => {
+            setShowApplyModal(false)
+            setIsApplying(false)
+          }}
+          onSuccess={() => {
+            setHasApplied(true)
+            setShowApplyModal(false)
+            setIsApplying(false)
+            onApply?.()
+          }}
         />
       )}
     </>

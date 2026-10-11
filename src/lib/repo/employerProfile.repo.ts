@@ -167,14 +167,16 @@ function mapProjectWithRelations(raw: Record<string, unknown>): ProjectWithEmplo
     employer: employerRaw ? toEmployerWithUser(employerRaw) : undefined,
   }
   if (appsRaw) {
-    out.applications = appsRaw.map((a) => {
-      const app = mapApplication(a)
-      const crewRaw = a.crew as Record<string, unknown> | null | undefined
-      return {
-        ...app,
-        crew: crewRaw ? toCrewWithUser(crewRaw) : undefined,
-      }
-    })
+    out.applications = appsRaw
+      .map((a) => {
+        const app = mapApplication(a)
+        const crewRaw = a.crew as Record<string, unknown> | null | undefined
+        return {
+          ...app,
+          crew: crewRaw ? toCrewWithUser(crewRaw) : undefined,
+        }
+      })
+      .sort((a, b) => new Date(a.appliedAt).getTime() - new Date(b.appliedAt).getTime())
   }
   return out
 }

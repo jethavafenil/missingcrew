@@ -67,10 +67,12 @@ export interface ApplicationFilters {
   status?: ApplicationStatus
   take?: number
   skip?: number
+  orderDirection?: 'asc' | 'desc'
 }
 
 export async function findManyWithCrew(filters: ApplicationFilters = {}): Promise<ApplicationWithCrewRow[]> {
-  let q = getServiceClient().from('applications').select(APP_WITH_CREW).order('applied_at', { ascending: false })
+  const ascending = filters.orderDirection ? filters.orderDirection === 'asc' : true
+  let q = getServiceClient().from('applications').select(APP_WITH_CREW).order('applied_at', { ascending })
   if (filters.projectId) q = q.eq('project_id', filters.projectId)
   if (filters.crewId) q = q.eq('crew_id', filters.crewId)
   if (filters.status) q = q.eq('status', filters.status)
@@ -84,7 +86,8 @@ export async function findManyWithCrew(filters: ApplicationFilters = {}): Promis
 }
 
 export async function findManyWithProjectAndCrew(filters: ApplicationFilters = {}): Promise<ApplicationWithProjectAndCrewRow[]> {
-  let q = getServiceClient().from('applications').select(APP_WITH_PROJECT_CREW).order('applied_at', { ascending: false })
+  const ascending = filters.orderDirection ? filters.orderDirection === 'asc' : (filters.projectId ? true : false)
+  let q = getServiceClient().from('applications').select(APP_WITH_PROJECT_CREW).order('applied_at', { ascending })
   if (filters.projectId) q = q.eq('project_id', filters.projectId)
   if (filters.crewId) q = q.eq('crew_id', filters.crewId)
   if (filters.status) q = q.eq('status', filters.status)

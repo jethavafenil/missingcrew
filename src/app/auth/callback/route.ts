@@ -9,7 +9,7 @@ import {
   SYSTEM_REQUESTER,
   type UserRole,
 } from '@/lib/repo'
-import { OAUTH_ROLE_COOKIE, OAUTH_INTENT_COOKIE } from '@/lib/oauthState'
+import { OAUTH_ROLE_COOKIE, OAUTH_INTENT_COOKIE, OAUTH_RETURN_URL_COOKIE } from '@/lib/oauthState'
 
 // GoTrue redirect target for Google OAuth callbacks and email-confirmation
 // links (PKCE ?code=..., or ?token_hash=...&type=... for email links).
@@ -23,6 +23,9 @@ export async function GET(request: NextRequest) {
   const linkType = searchParams.get('type')
   const oauthRole = parseRole(request.cookies.get(OAUTH_ROLE_COOKIE)?.value)
   const intent = request.cookies.get(OAUTH_INTENT_COOKIE)?.value
+  const rawReturnUrl = request.cookies.get(OAUTH_RETURN_URL_COOKIE)?.value
+  const returnUrl = rawReturnUrl ? decodeURIComponent(rawReturnUrl) : null
+  const isSafeReturnUrl = !!(returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//'))
 
   const redirectWithError = (path: string) =>
     clearStateCookies(NextResponse.redirect(`${origin}${path}`))
@@ -76,13 +79,15 @@ export async function GET(request: NextRequest) {
   }
 
   const redirectPath =
-    intent === 'post-requirement' && session.user.role === 'EMPLOYER'
-      ? '/employer/post-requirement'
-      : session.user.role === 'ADMIN'
-        ? '/admin'
-        : session.user.role === 'EMPLOYER'
-          ? '/employer-home'
-          : '/crew-home'
+    isSafeReturnUrl && returnUrl
+      ? returnUrl
+      : intent === 'post-requirement' && session.user.role === 'EMPLOYER'
+        ? '/employer/post-requirement'
+        : session.user.role === 'ADMIN'
+          ? '/admin'
+          : session.user.role === 'EMPLOYER'
+            ? '/employer-home'
+            : '/crew-home'
 
   return clearStateCookies(NextResponse.redirect(`${origin}${redirectPath}`))
 }
@@ -104,5 +109,6 @@ function parseRole(value: string | undefined): UserRole | null {
 function clearStateCookies(response: NextResponse) {
   response.cookies.delete(OAUTH_ROLE_COOKIE)
   response.cookies.delete(OAUTH_INTENT_COOKIE)
+  response.cookies.delete(OAUTH_RETURN_URL_COOKIE)
   return response
 }

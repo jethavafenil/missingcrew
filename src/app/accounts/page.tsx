@@ -18,6 +18,7 @@ function AccountsContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const intent = searchParams.get('intent') // e.g., 'post-requirement'
+  const returnUrl = searchParams.get('returnUrl')
   const message = searchParams.get('message')
   const email = searchParams.get('email')
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>(
@@ -28,13 +29,19 @@ function AccountsContent() {
   )
   const [isLoading, setIsLoading] = useState(false)
 
-  // Redirect logged-in users to their dashboard
+  // Redirect logged-in users to their destination or dashboard
   useEffect(() => {
     if (status === 'authenticated' && session?.user) {
       const userRole = session.user.role
       
       // Clear OAuth cookies after successful authentication
       clearOAuthState()
+
+      // Redirect back to original page if a safe relative returnUrl was provided
+      if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')) {
+        router.push(returnUrl)
+        return
+      }
       
       // Redirect based on role and intent
       if (intent === 'post-requirement' && userRole === 'EMPLOYER') {
@@ -51,32 +58,36 @@ function AccountsContent() {
         router.push('/')
       }
     }
-  }, [session, status, router, intent])
+  }, [session, status, router, intent, returnUrl])
 
   // Derived from the query string (set by the signup redirect) — no effect needed.
   const successMessage =
-    message === 'RegistrationSuccessful' && email
-      ? `Registration successful! Please check ${email} for a verification link.`
+    message === 'RegistrationSuccessful'
+      ? (email
+          ? `Registration successful! You can now sign in with ${email}.`
+          : 'Registration successful! You can now sign in with your credentials.')
       : ''
 
   const handleTabChange = (tab: 'signin' | 'signup') => {
     setActiveTab(tab)
     const intentParam = intent ? `&intent=${intent}` : ''
-    router.push(`/accounts?tab=${tab}&role=${role}${intentParam}`, { scroll: false })
+    const returnUrlParam = returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : ''
+    router.push(`/accounts?tab=${tab}&role=${role}${intentParam}${returnUrlParam}`, { scroll: false })
   }
 
   const handleRoleChange = (newRole: 'crew' | 'employer') => {
     setRole(newRole)
     const intentParam = intent ? `&intent=${intent}` : ''
-    router.push(`/accounts?tab=${activeTab}&role=${newRole}${intentParam}`, { scroll: false })
+    const returnUrlParam = returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : ''
+    router.push(`/accounts?tab=${activeTab}&role=${newRole}${intentParam}${returnUrlParam}`, { scroll: false })
   }
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
 
-    // Store role in cookies for retrieval during the OAuth callback
+    // Store role and returnUrl in cookies for retrieval during the OAuth callback
     const roleValue = role.toUpperCase() as 'CREW' | 'EMPLOYER'
-    setOAuthState(roleValue, intent || undefined)
+    setOAuthState(roleValue, intent || undefined, returnUrl || undefined)
 
     try {
       const supabase = createAuthClient()
@@ -109,7 +120,7 @@ function AccountsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50" suppressHydrationWarning>
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-indigo-800 via-purple-800 to-blue-700 text-white py-12 md:py-16">
         <div className="absolute inset-0">

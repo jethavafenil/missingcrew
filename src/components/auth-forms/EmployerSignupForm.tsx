@@ -10,6 +10,7 @@ export default function EmployerSignupForm() {
   const searchParams = useSearchParams()
   const role = searchParams.get('role') || 'employer'
   const intent = searchParams.get('intent') // Track user intent (e.g., 'post-requirement')
+  const returnUrl = searchParams.get('returnUrl')
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     companyName: '',
@@ -57,10 +58,11 @@ export default function EmployerSignupForm() {
         return
       }
 
-    // Show success message and redirect to signin with intent parameter
+    // Show success message and redirect to signin with intent and returnUrl parameters
     setError('')
     const intentParam = intent ? `&intent=${intent}` : ''
-    router.push(`/accounts?tab=signin&role=employer&message=RegistrationSuccessful&email=${encodeURIComponent(formData.email)}${intentParam}`)
+    const returnUrlParam = returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : ''
+    router.push(`/accounts?tab=signin&role=employer&message=RegistrationSuccessful&email=${encodeURIComponent(formData.email)}${intentParam}${returnUrlParam}`)
     return
     } catch (err) {
       console.error('Employer signup failed:', err)

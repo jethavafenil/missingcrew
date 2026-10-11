@@ -93,7 +93,7 @@ export default async function Home() {
   )).slice(0, 12)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50" suppressHydrationWarning>
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-br from-indigo-800 via-purple-800 to-blue-700 text-white">
         <div className="absolute inset-0">

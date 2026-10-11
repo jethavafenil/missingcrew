@@ -11,9 +11,11 @@ export default function EmployerLoginForm() {
   const searchParams = useSearchParams()
   const role = searchParams.get('role') || 'employer'
   const intent = searchParams.get('intent') // Track user intent (e.g., 'post-requirement')
+  const returnUrl = searchParams.get('returnUrl')
   const [isLoading, setIsLoading] = useState(false)
+  const emailParam = searchParams.get('email') || ''
   const [formData, setFormData] = useState({
-    email: '',
+    email: emailParam,
     password: '',
   })
   const [error, setError] = useState('')
@@ -29,10 +31,12 @@ export default function EmployerLoginForm() {
     setError('')
 
       try {
-        // Determine callback URL based on intent
-        const callbackUrl = intent === 'post-requirement'
-          ? '/employer/post-requirement'
-          : '/employer-home'
+        // Determine callback URL based on returnUrl or intent
+        const callbackUrl = returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')
+          ? returnUrl
+          : intent === 'post-requirement'
+            ? '/employer/post-requirement'
+            : '/employer-home'
 
         const result = await signInWithPassword({
           email: formData.email,

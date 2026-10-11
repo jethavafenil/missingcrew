@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ConnectionButton } from '@/components/network/ConnectionButton'
 import { HireButton } from '@/components/network/HireButton'
@@ -945,12 +946,12 @@ function ContactTab({ crew, canViewContacts }: { crew: CrewProfile; canViewConta
       {!canViewContacts && (
         <div className="mb-4 p-4 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-800 flex items-center justify-between gap-3">
           <span>Only logged-in employers can view contact details. Please sign in as an employer to reveal this information.</span>
-          <a
-            href="/accounts?tab=signin&role=employer"
+          <Link
+            href={`/accounts?tab=signin&role=employer&returnUrl=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : '')}`}
             className="inline-flex items-center px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
           >
             Sign in
-          </a>
+          </Link>
         </div>
       )}
 
