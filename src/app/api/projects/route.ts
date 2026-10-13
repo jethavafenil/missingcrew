@@ -52,7 +52,8 @@ export async function GET() {
         },
         _count: {
           applications: project._count?.applications || 0
-        }
+        },
+        createdAt: toIsoString(project.createdAt)
       };
     });
 

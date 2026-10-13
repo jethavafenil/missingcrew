@@ -25,8 +25,9 @@ interface Project {
 interface ProjectCardWrapperProps {
   project: Project
   onApply?: () => void
+  initialHasApplied?: boolean
 }
 
-export function ProjectCardWrapper({ project, onApply }: ProjectCardWrapperProps) {
-  return <ProjectCard project={project} onApply={onApply} />
+export function ProjectCardWrapper({ project, onApply, initialHasApplied }: ProjectCardWrapperProps) {
+  return <ProjectCard project={project} onApply={onApply} initialHasApplied={initialHasApplied} />
 }

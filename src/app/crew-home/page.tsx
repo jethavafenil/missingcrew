@@ -9,6 +9,8 @@ import { FallbackCrewSlider } from '@/components/crew/FallbackCrewSlider'
 import AnonymousRoleToggle from '@/components/AnonymousRoleToggle'
 import RoleRedirect from '@/components/auth/RoleRedirect'
 import { getFeaturedCrew, getFeaturedProjects } from '@/lib/cache/public'
+import { getSession } from '@/lib/auth/server'
+import { applicationRepo, crewProfileRepo, requesterFromSession } from '@/lib/repo'
 
 // No page-level revalidate: the root layout resolves the session per request,
 // so this route renders dynamically. Featured data is still cached via
@@ -32,17 +34,39 @@ interface Project {
   _count: {
     applications: number
   }
+  createdAt?: string
 }
 
 export default async function CrewHome() {
-  // Load featured projects and crew similar to home page
+  const session = await getSession()
+  let appliedProjectIdsSet = new Set<string>()
+
+  const isCrew = !!(session?.user?.id && session.user.role === 'CREW')
+  const requester = session ? requesterFromSession(session) : undefined
+
+  // Parallelize initial server queries for optimal load performance
+  const [dbProjects, dbCrew, crewProfile] = await Promise.all([
+    getFeaturedProjects().catch(() => []),
+    getFeaturedCrew().catch(() => []),
+    (isCrew && requester && session?.user?.id)
+      ? crewProfileRepo.findByUserId(session.user.id, requester).catch(() => null)
+      : Promise.resolve(null),
+  ])
+
+  if (crewProfile) {
+    try {
+      const ids = await applicationRepo.findAppliedProjectIdsForCrew(crewProfile.id)
+      appliedProjectIdsSet = new Set(ids)
+    } catch (e) {
+      console.error('Error loading applied projects in crew-home:', e)
+    }
+  }
+
+  // Load featured projects and crew
   let projects: Project[] = []
-  let crew: any[] = []  // TODO: Define proper type for crew profiles
+  let crew: any[] = dbCrew || []
 
   try {
-    // Fetch latest open projects (newest first)
-    const dbProjects = await getFeaturedProjects()
-
     type RawProject = {
       id: string;
       projectName: string;
@@ -85,11 +109,9 @@ export default async function CrewHome() {
         questions: (questions as string[]) || [],
         employer: { user: { name: String(project.employer?.user?.name ?? '') } },
         _count: { applications: Number(project._count?.applications ?? 0) },
+        createdAt: project.createdAt ? new Date(project.createdAt).toISOString() : '',
       } as Project
     })
-
-    const dbCrew = await getFeaturedCrew()
-    crew = dbCrew
   } catch (err) {
     console.error('Error loading crew-home data:', err)
   }
@@ -264,7 +286,12 @@ export default async function CrewHome() {
           {projects.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {projects.map((project) => (
-                <ProjectCardWrapper key={project.id} project={project as any} onApply={undefined} />
+                <ProjectCardWrapper
+                  key={project.id}
+                  project={project as any}
+                  initialHasApplied={appliedProjectIdsSet.has(project.id)}
+                  onApply={undefined}
+                />
               ))}
             </div>
           ) : (

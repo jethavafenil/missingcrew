@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/ToastProvider'
 import { X, Calendar, MapPin, Users, FileText, CheckCircle2, AlertCircle } from 'lucide-react'
+import { markProjectAppliedLocally } from '@/lib/crew/applied-projects'
 
 interface Project {
   id: string
@@ -80,15 +81,24 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
       })
 
       if (response.ok) {
+        markProjectAppliedLocally(project.id)
+        onSuccess()
         setShowSuccess(true)
         toast.success('Application submitted successfully!')
         setTimeout(() => {
-          onSuccess()
           onClose()
         }, 1500)
       } else {
         const error = await response.json()
-        toast.error(error.error || 'Failed to apply')
+        const errMsg = error.error || ''
+        if (errMsg.toLowerCase().includes('already applied')) {
+          markProjectAppliedLocally(project.id)
+          onSuccess()
+          toast.info('You have already applied to this project.')
+          onClose()
+          return
+        }
+        toast.error(errMsg || 'Failed to apply')
       }
     } catch (error) {
       console.error('Error applying:', error)

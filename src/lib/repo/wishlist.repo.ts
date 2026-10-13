@@ -118,4 +118,14 @@ export async function removeProject(userId: string, projectId: string, _req: Req
   throwOnError('wishlist.removeProject', error)
 }
 
+export async function findWishlistedProjectIds(userId: string): Promise<string[]> {
+  const { data, error } = await getServiceClient()
+    .from('wishlists')
+    .select('project_id')
+    .eq('user_id', userId)
+    .not('project_id', 'is', null)
+  throwOnError('wishlist.findWishlistedProjectIds', error)
+  return (data ?? []).map((row: any) => row.project_id).filter(Boolean)
+}
+
 export type { WishlistRow }

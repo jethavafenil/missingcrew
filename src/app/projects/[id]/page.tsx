@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { MapPin, Calendar, Users, CheckCircle, ArrowLeft, Building2, Film, AlertCircle, TrendingUp } from 'lucide-react'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { ApplyModal } from '@/components/applications/ApplyModal'
+import { useProjectStatus } from '@/lib/crew/applied-projects'
 
 interface Project {
   id: string
@@ -42,7 +43,7 @@ export default function ProjectDetailsPage() {
   const [project, setProject] = useState<Project | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [hasApplied, setHasApplied] = useState<boolean>(false)
+  const { hasApplied, setHasApplied } = useProjectStatus(project?.id || '')
   const [showApplyModal, setShowApplyModal] = useState(false)
 
   useEffect(() => {
@@ -403,7 +404,6 @@ export default function ProjectDetailsPage() {
             onClose={() => setShowApplyModal(false)}
             onSuccess={() => {
               setHasApplied(true)
-              setShowApplyModal(false)
             }}
           />
         )}

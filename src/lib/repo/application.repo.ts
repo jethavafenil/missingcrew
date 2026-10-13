@@ -189,4 +189,13 @@ export async function countByCrewIdSince(crewId: string, since: Date): Promise<n
   return count ?? 0
 }
 
+export async function findAppliedProjectIdsForCrew(crewId: string): Promise<string[]> {
+  const { data, error } = await getServiceClient()
+    .from('applications')
+    .select('project_id')
+    .eq('crew_id', crewId)
+  throwOnError('application.findAppliedProjectIdsForCrew', error)
+  return (data ?? []).map((row: any) => row.project_id).filter(Boolean)
+}
+
 export type { ApplicationRow, ApplicationWithCrewRow, ApplicationWithProjectAndCrewRow, ApplicationStatus }
