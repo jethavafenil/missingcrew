@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { getPasswordRequirements, isStrongPassword } from '@/lib/auth/password'
 
 export default function EmployerSignupForm() {
@@ -72,7 +73,7 @@ export default function EmployerSignupForm() {
     setError('')
     const intentParam = intent ? `&intent=${intent}` : ''
     const returnUrlParam = returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : ''
-    router.push(`/accounts?tab=signin&role=employer&message=RegistrationSuccessful&email=${encodeURIComponent(formData.email)}${intentParam}${returnUrlParam}`)
+    router.push(`/accounts?tab=signin&role=employer&message=${data.verificationRequired ? 'VerifyEmail' : 'RegistrationSuccessful'}&email=${encodeURIComponent(formData.email)}${intentParam}${returnUrlParam}`)
     return
     } catch (err) {
       console.error('Employer signup failed:', err)
@@ -135,10 +136,9 @@ export default function EmployerSignupForm() {
         <label htmlFor="password" className="block text-sm font-medium text-gray-700">
           Password
         </label>
-        <Input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           required
           value={formData.password}
           onChange={handleChange}
@@ -163,10 +163,9 @@ export default function EmployerSignupForm() {
         <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
           Confirm Password
         </label>
-        <Input
+        <PasswordInput
           id="confirmPassword"
           name="confirmPassword"
-          type="password"
           required
           value={formData.confirmPassword}
           onChange={handleChange}

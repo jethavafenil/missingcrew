@@ -70,7 +70,13 @@ function AccountsContent() {
       ? (email
           ? `Registration successful! You can now sign in with ${email}.`
           : 'Registration successful! You can now sign in with your credentials.')
-      : ''
+      : message === 'VerifyEmail'
+        ? (email
+            ? `Account created! We sent a verification link to ${email}. Please verify your email, then sign in.`
+            : 'Account created! Please verify your email using the link we sent, then sign in.')
+        : message === 'EmailVerifiedSuccessfully'
+          ? 'Email verified! You can now sign in.'
+          : ''
 
   const handleTabChange = (tab: 'signin' | 'signup') => {
     const intentParam = intent ? `&intent=${intent}` : ''

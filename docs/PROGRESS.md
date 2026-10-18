@@ -71,6 +71,24 @@ together with `docs/HANDOFF.md` (architecture) and
    verifying; delete them from Supabase Auth when convenient.
 7. Phone number change in profile does not reset `phoneVerified`.
 
+### Decisions
+- **One role per email (for now).** A person who wants to be both crew and employer uses two emails.
+  Dual-role accounts (one login, both profiles, role switcher) touch `users.role`, the JWT claim, RLS,
+  route guards and the signup trigger, so it is planned as its own feature *after* launch, not squeezed
+  into the current release.
+- **Email verification is built but OFF** (`REQUIRE_EMAIL_VERIFICATION=false`). To enable:
+  1. Provider with a verified sending domain (Resend / Brevo / SES / Google Workspace SMTP).
+  2. Supabase Dashboard → Authentication → Emails → SMTP Settings: enable custom SMTP.
+  3. Authentication → Emails → Templates → *Confirm signup* link:
+     `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup`
+  4. Authentication → URL Configuration: Site URL = live domain; add `<domain>/auth/callback` and
+     `http://localhost:3000/auth/callback` to Redirect URLs.
+  5. Authentication → Providers → Email: "Confirm email" ON.
+  6. Vercel/.env.local: `EMAIL_HOST/PORT/SECURE/USER/PASSWORD/FROM` (app notification emails) and finally
+     `REQUIRE_EMAIL_VERIFICATION=true`.
+  Code: register routes create unconfirmed users + send the link; sign-in shows "Resend verification
+  email"; `/api/auth/resend-verification` is rate limited and non-enumerating.
+
 ### Next up (from the roadmap)
 Footer cleanup (#9), preserve-redirect-after-login for more entry points (#8), free-trial auto-grant (#20),
 then Phase 2+ features. See `docs/client-25-tasks-audit-and-roadmap.md`.

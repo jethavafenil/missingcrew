@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { parseBody } from '@/lib/api/body'
 import { ApiError } from '@/lib/api/errors'
 import { containsLetter } from '@/lib/utils'
-import { getAdminAuthClient } from '@/lib/auth/admin'
+import { getAdminAuthClient, isEmailVerificationRequired, sendSignupConfirmation } from '@/lib/auth/admin'
 import { isStrongPassword, PASSWORD_MAX_LENGTH, PASSWORD_POLICY_MESSAGE } from '@/lib/auth/password'
 
 // Creates the GoTrue user; the on_auth_user_created trigger (migration 0001)
@@ -23,10 +23,14 @@ export async function POST(request: NextRequest) {
       password: z.string().max(PASSWORD_MAX_LENGTH).refine(isStrongPassword, PASSWORD_POLICY_MESSAGE),
     }))
 
+    const verificationRequired = isEmailVerificationRequired()
+
     const { data, error } = await getAdminAuthClient().createUser({
       email,
       password,
-      email_confirm: true,
+      // With REQUIRE_EMAIL_VERIFICATION the account starts unconfirmed and the
+      // user must click the emailed link before signing in.
+      email_confirm: !verificationRequired,
       // user_metadata is present at INSERT time so the provisioning trigger
       // can read the role (GoTrue applies app_metadata only afterwards).
       user_metadata: { name, role: 'CREW' },
@@ -38,15 +42,27 @@ export async function POST(request: NextRequest) {
       const alreadyExists =
         error.message.toLowerCase().includes('already') || error.status === 422
       return NextResponse.json(
-        { error: alreadyExists ? 'User with this email already exists' : 'Failed to create account. Please try again.' },
+        { error: alreadyExists ? 'An account with this email already exists. Please sign in, or use a different email address.' : 'Failed to create account. Please try again.' },
         { status: alreadyExists ? 409 : 500 },
       )
+    }
+
+    if (verificationRequired) {
+      try {
+        await sendSignupConfirmation(email, `${new URL(request.url).origin}/auth/callback`)
+      } catch (mailError) {
+        // Account exists; the user can request another link from the sign-in page.
+        console.error('Crew signup confirmation email failed:', mailError)
+      }
     }
 
     return NextResponse.json(
       {
         success: true,
-        message: 'User created successfully. Please check your email for verification.',
+        verificationRequired,
+        message: verificationRequired
+          ? 'Account created. Please check your email to verify your address.'
+          : 'User created successfully.',
         userId: data.user?.id,
       },
       { status: 201 },

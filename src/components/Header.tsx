@@ -168,7 +168,7 @@ export default function Header() {
                         </Link>
                         <button
                           onClick={() => {
-                            signOut('/crew-home')
+                            signOut('/')
                             setIsDropdownOpen(false)
                           }}
                           className="flex items-center gap-3 w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-all duration-200"

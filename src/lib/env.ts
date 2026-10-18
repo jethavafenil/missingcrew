@@ -43,6 +43,9 @@ const serverEnvSchema = z.object({
   MOCK_SMS: z.enum(['0', '1', 'false', 'true']).default('false'),
   MOCK_SMS_MASTER_CODE: optionalString,
   ADMIN_CREATION_SECRET: optionalString,
+  // Set to 'true' once Supabase Auth SMTP is configured: new email signups must
+  // then verify their address before they can sign in.
+  REQUIRE_EMAIL_VERIFICATION: z.enum(['true', 'false']).default('false'),
   SUPABASE_URL: optionalUrl,
   SUPABASE_ANON_KEY: optionalString,
   SUPABASE_SERVICE_ROLE_KEY: optionalString,
@@ -97,6 +100,7 @@ const parsed = serverEnvSchema.safeParse({
   MOCK_SMS: process.env.MOCK_SMS,
   MOCK_SMS_MASTER_CODE: process.env.MOCK_SMS_MASTER_CODE,
   ADMIN_CREATION_SECRET: process.env.ADMIN_CREATION_SECRET,
+  REQUIRE_EMAIL_VERIFICATION: process.env.REQUIRE_EMAIL_VERIFICATION || undefined,
   SUPABASE_URL: process.env.SUPABASE_URL,
   SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,

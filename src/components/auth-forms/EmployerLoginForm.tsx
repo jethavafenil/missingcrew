@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { signInWithPassword } from '@/lib/auth/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { isSafeReturnPath } from '@/lib/utils'
+import ResendVerification from './ResendVerification'
 
 export default function EmployerLoginForm() {
   const router = useRouter()
@@ -80,10 +82,9 @@ export default function EmployerLoginForm() {
         <label htmlFor="password" className="block text-sm font-medium text-gray-700">
           Password
         </label>
-        <Input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           required
           value={formData.password}
           onChange={handleChange}
@@ -96,6 +97,7 @@ export default function EmployerLoginForm() {
           <p className="text-sm text-red-600">{error}</p>
         </div>
       )}
+      {error.toLowerCase().includes('not verified') && <ResendVerification email={formData.email} />}
 
       <Button 
         type="submit" 

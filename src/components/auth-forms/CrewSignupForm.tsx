@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 
 export default function CrewSignupForm() {
   const router = useRouter()
@@ -104,7 +105,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     // the user to the sign-in tab with a success message.
     setError('')
     const returnUrlParam = returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : ''
-    router.push(`/accounts?tab=signin&role=crew&message=RegistrationSuccessful&email=${encodeURIComponent(formData.email)}${returnUrlParam}`)
+    router.push(`/accounts?tab=signin&role=crew&message=${data.verificationRequired ? 'VerifyEmail' : 'RegistrationSuccessful'}&email=${encodeURIComponent(formData.email)}${returnUrlParam}`)
     return
   } catch (err) {
     console.error('Crew signup failed:', err)
@@ -152,10 +153,9 @@ const handleSubmit = async (e: React.FormEvent) => {
         <label htmlFor="password" className="block text-sm font-medium text-gray-700">
           Password
         </label>
-        <Input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           required
           value={formData.password}
           onChange={handleChange}
@@ -180,10 +180,9 @@ const handleSubmit = async (e: React.FormEvent) => {
         <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
           Confirm Password
         </label>
-<Input
+<PasswordInput
   id="confirmPassword"
   name="confirmPassword"
-  type="password"
   required
   value={formData.confirmPassword}
   onChange={handleChange}
