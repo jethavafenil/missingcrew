@@ -1,7 +1,7 @@
 import { env } from '@/lib/env'
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/server'
-import { subscriptionRepo, userRepo, crewProfileRepo, requesterFromSession, type SubscriptionTier } from '@/lib/repo'
+import { subscriptionRepo, userRepo, crewProfileRepo, requesterFromSession } from '@/lib/repo'
 import { getPaymentProvider } from '@/lib/payments'
 
 
@@ -51,30 +51,22 @@ export async function POST(request: NextRequest) {
     // Get the subscription ID
     const subscriptionId = checkout.checkoutId
 
+    // Record the checkout as UNPAID (pending). It becomes ACTIVE, and the crew
+    // tier is upgraded, only when Razorpay's signed `subscription.activated`
+    // webhook confirms payment (api/razorpay/webhook). Granting access here
+    // would hand out paid tiers to anyone who merely starts a checkout.
+    const crewProfile = await crewProfileRepo.findByUserId(session.user.id, requester)
+    if (!crewProfile) {
+      throw new Error('Crew profile not found')
+    }
+
     await subscriptionRepo.create(session.user.id, {
       planId: plan.id,
+      status: 'UNPAID',
       razorpaySubscriptionId: subscriptionId,
       currentPeriodStart: new Date(),
       currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     }, requester)
-
-    // Update crew profile subscription tier based on plan name
-    let subscriptionTier: SubscriptionTier = 'FREE_TRIAL'
-    if (plan.name === 'Basic Profile') {
-      subscriptionTier = 'BASIC'
-    } else if (plan.name === 'Pro Profile') {
-      subscriptionTier = 'PRO'
-    }
-
-    // Prisma's update-by-unique threw (500) when no crew profile existed
-    const updatedCrew = await crewProfileRepo.updateByUserId(
-      session.user.id,
-      { subscriptionTier },
-      requester
-    )
-    if (!updatedCrew) {
-      throw new Error('Crew profile not found')
-    }
 
     return NextResponse.json({
       success: true,

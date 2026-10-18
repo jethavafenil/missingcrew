@@ -17,7 +17,16 @@ export async function GET(
       )
     }
 
-    return NextResponse.json({ project }, { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' } })
+    // Public route (CDN-cached): never expose the employer's email address.
+    const publicProject = {
+      ...project,
+      employer: project.employer && {
+        ...project.employer,
+        user: project.employer.user && { ...project.employer.user, email: undefined },
+      },
+    }
+
+    return NextResponse.json({ project: publicProject }, { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' } })
   } catch (error) {
     console.error('Error fetching project:', error)
     return NextResponse.json(

@@ -9,6 +9,7 @@ import {
   SYSTEM_REQUESTER,
   type UserRole,
 } from '@/lib/repo'
+import { isSafeReturnPath } from '@/lib/utils'
 import { OAUTH_ROLE_COOKIE, OAUTH_INTENT_COOKIE, OAUTH_RETURN_URL_COOKIE } from '@/lib/oauthState'
 
 // GoTrue redirect target for Google OAuth callbacks and email-confirmation
@@ -24,8 +25,13 @@ export async function GET(request: NextRequest) {
   const oauthRole = parseRole(request.cookies.get(OAUTH_ROLE_COOKIE)?.value)
   const intent = request.cookies.get(OAUTH_INTENT_COOKIE)?.value
   const rawReturnUrl = request.cookies.get(OAUTH_RETURN_URL_COOKIE)?.value
-  const returnUrl = rawReturnUrl ? decodeURIComponent(rawReturnUrl) : null
-  const isSafeReturnUrl = !!(returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//'))
+  let returnUrl: string | null = null
+  try {
+    returnUrl = rawReturnUrl ? decodeURIComponent(rawReturnUrl) : null
+  } catch {
+    returnUrl = null // malformed cookie: fall back to the role home
+  }
+  const isSafeReturnUrl = isSafeReturnPath(returnUrl)
 
   const redirectWithError = (path: string) =>
     clearStateCookies(NextResponse.redirect(`${origin}${path}`))

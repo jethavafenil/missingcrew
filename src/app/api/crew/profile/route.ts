@@ -18,7 +18,23 @@ export async function POST(request: NextRequest) {
 
     // Extract the actual profile data from the nested data object if it exists
     const rawProfileData = requestBody.data || requestBody
-    const { userId, name, phone, phoneVerified, step, completed, ...profileData } = rawProfileData
+    // Server-controlled fields are stripped from client input: subscription
+    // tier / trial dates are only changed by payment webhooks and referral
+    // logic, phone verification only by the OTP verify route, and ids /
+    // timestamps by the database. Without this a user could POST
+    // { subscriptionTier: 'PRO' } and upgrade themselves for free.
+    const {
+      userId, name, phone, step, completed,
+      phoneVerified: _clientPhoneVerified,
+      subscriptionTier: _clientTier,
+      trialEnds: _clientTrialEnds,
+      id: _clientId,
+      createdAt: _clientCreatedAt,
+      updatedAt: _clientUpdatedAt,
+      user: _clientUser,
+      ...profileData
+    } = rawProfileData
+    const phoneVerified = undefined as boolean | undefined
     // Keep track of which fields the client actually sent, to avoid overwriting existing data
     const providedKeys = new Set(Object.keys(profileData))
 
@@ -122,12 +138,15 @@ export async function POST(request: NextRequest) {
       const referrer = await userRepo.findByEmailIgnoreCaseWithCrew(referralEmail, requester)
 
       // Grant referrer 2 months free subscription
-      if (referrer?.crewProfile) {
+      // No self-referral, and never downgrade a referrer who already pays
+      // (the bonus only applies to trial accounts).
+      const referrerProfile = referrer?.crewProfile as { id: string; subscriptionTier?: string } | null | undefined
+      if (referrer && referrer.id !== session.user.id && referrerProfile && referrerProfile.subscriptionTier === 'FREE_TRIAL') {
         const twoMonthsFromNow = new Date()
         twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2)
 
         await crewProfileRepo.updateById(
-          (referrer.crewProfile as { id: string }).id,
+          referrerProfile.id,
           {
             trialEnds: twoMonthsFromNow,
             subscriptionTier: 'FREE_TRIAL'

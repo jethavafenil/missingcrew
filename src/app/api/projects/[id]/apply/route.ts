@@ -6,6 +6,10 @@ import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimiter'
 import { z } from 'zod'
 import { parseBody } from '@/lib/api/body'
 
+// Ids are TEXT (legacy cuids + new uuids); this charset also rules out
+// PostgREST filter metacharacters (, . ( ) etc).
+const SAFE_ID_RE = /^[A-Za-z0-9_-]{1,64}$/
+
 interface RouteContext {
   params: Promise<{ id: string }>
 }
@@ -79,6 +83,18 @@ export async function POST(
     const { id } = await context.params
     const projectId = await resolveProjectId(id)
 
+    // The project must exist and still be accepting applications.
+    const targetProject = SAFE_ID_RE.test(projectId) ? await projectRepo.findByIdRaw(projectId) : null
+    if (!targetProject) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+    }
+    if (targetProject.status !== 'OPEN') {
+      return NextResponse.json(
+        { error: 'This project is no longer accepting applications' },
+        { status: 400 }
+      )
+    }
+
     const existingApplication = await applicationRepo.findUniqueByProjectAndCrew(projectId, crewProfile.id)
 
     if (existingApplication) {
@@ -88,12 +104,25 @@ export async function POST(
       )
     }
 
-    const created = await applicationRepo.create({
-      projectId,
-      crewId: crewProfile.id,
-      crewNotes: notes,
-      answers: answers as Record<string, unknown> | string[]
-    }, requester)
+    let created
+    try {
+      created = await applicationRepo.create({
+        projectId,
+        crewId: crewProfile.id,
+        crewNotes: notes,
+        answers: answers as Record<string, unknown> | string[]
+      }, requester)
+    } catch (err) {
+      // Two concurrent requests can both pass the check above; the unique
+      // index (project_id, crew_id) is the real guard.
+      if (err instanceof Error && /duplicate key|23505/i.test(err.message)) {
+        return NextResponse.json(
+          { error: 'Already applied to this project' },
+          { status: 400 }
+        )
+      }
+      throw err
+    }
 
     // Re-read with the project/employer and crew/user relations the
     // notification + email steps below need (Prisma did this in one create).
@@ -135,7 +164,19 @@ export async function POST(
       console.error('Error sending email notification:', error)
     }
 
-    return NextResponse.json({ success: true, data: application })
+    // Return only the crew member's own application fields; the re-read above
+    // embeds the employer's and project's contact details, which must not be
+    // sent back to the applicant.
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: application.id,
+        projectId: application.projectId,
+        crewId: application.crewId,
+        status: application.status,
+        appliedAt: application.appliedAt,
+      },
+    })
 } catch (error) {
     console.error('Error applying to project:', error)
     return NextResponse.json(

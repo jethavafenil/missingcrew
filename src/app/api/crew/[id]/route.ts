@@ -51,11 +51,35 @@ export async function GET(
         )
       }
 
-      const applications = await applicationRepo.findManyWithProjectAndCrew({
+      // Applications are private: only the crew member who owns them (or an
+      // admin) may read them.
+      const session = await getSession()
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      if (session.user.role !== 'ADMIN' && session.user.id !== crew.userId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+
+      const rows = await applicationRepo.findManyWithProjectAndCrew({
         crewId: crew.id
       })
 
-      return NextResponse.json({ applications })
+      // Strip data the crew member must not see: the employer's private notes
+      // and the employer's contact email. The crew embed is dropped (it is the
+      // caller's own profile and unused by the client).
+      const applications = rows.map(({ employerNotes: _employerNotes, crew: _crew, ...app }) => ({
+        ...app,
+        project: app.project && {
+          ...app.project,
+          employer: app.project.employer && {
+            ...app.project.employer,
+            user: app.project.employer.user && { ...app.project.employer.user, email: undefined },
+          },
+        },
+      }))
+
+      return NextResponse.json({ applications }, { headers: { 'Cache-Control': 'private, no-store' } })
     }
 
     // Default behavior - fetch crew profile (supports id or slug)

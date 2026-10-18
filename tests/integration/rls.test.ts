@@ -86,7 +86,20 @@ RUN('RLS policies end-to-end (anon/authenticated clients)', () => {
     // Verify the row was not modified via crewA's own public read.
     const { data: check } = await crewB!.from('crew_profiles').select('city').eq('id', crewAProfileId!).maybeSingle()
     expect(check?.city).not.toBe('HackedCity')
-    if (error) expect(error.code).not.toBe('42501') // silent filter, not a raised error
+    // 0011 revoked direct table access: the update is rejected outright
+    // (permission denied) or filtered to zero rows — never applied.
+    if (error) expect(['42501', null, undefined]).toContain(error.code ?? null)
+  })
+
+  it('signed-in users cannot read the users table or escalate their role (0011)', async () => {
+    const read = await crewB!.from('users').select('email,phone,password').limit(1)
+    expect(read.error).toBeTruthy()
+    expect(read.error!.code).toBe('42501')
+    expect(read.data ?? []).toHaveLength(0)
+
+    const escalate = await crewB!.from('users').update({ role: 'ADMIN' }).neq('id', '').select('id')
+    expect(escalate.error).toBeTruthy()
+    expect(escalate.data ?? []).toHaveLength(0)
   })
 
   it('employer cannot read another user\'s subscription rows', async () => {
@@ -122,13 +135,15 @@ RUN('RLS policies end-to-end (anon/authenticated clients)', () => {
     expect(data ?? []).toHaveLength(0)
   })
 
-  it('anonymous users can read public projects/crew but not write', async () => {
+  it('anonymous users have no direct table access (reads or writes)', async () => {
     const anon = makeAnonClient()
-    // Reads succeed (empty is fine — RLS must not raise).
-    const projects = await anon.from('projects').select('id').limit(1)
-    expect(projects.error).toBeNull()
-    const crew = await anon.from('crew_profiles').select('id').limit(1)
-    expect(crew.error).toBeNull()
+    // Public pages are served by the server-side repo layer (service role);
+    // the public anon key must not be able to read application tables (0011).
+    for (const table of ['users', 'projects', 'crew_profiles', 'employer_profiles', 'applications']) {
+      const res = await anon.from(table).select('id').limit(1)
+      expect(res.error, `${table} must not be readable by anon`).toBeTruthy()
+      expect(res.error!.code).toBe('42501')
+    }
 
     // Writes are denied.
     const ins = await anon.from('crew_profiles').insert({
