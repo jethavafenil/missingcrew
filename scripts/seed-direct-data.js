@@ -1,7 +1,11 @@
 const { Client } = require('pg');
 const bcrypt = require('bcryptjs');
 
-const connectionString = 'postgresql://postgres:t4wgwfedE232@db.yrnccxmxpquetyvxnnwq.supabase.co:5432/postgres';
+const connectionString = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL;
+if (!connectionString) {
+  console.error('Set DATABASE_URL (or SUPABASE_DB_URL) to the database connection string. Never hard-code it in this file.');
+  process.exit(1);
+}
 
 async function seed() {
   const client = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
