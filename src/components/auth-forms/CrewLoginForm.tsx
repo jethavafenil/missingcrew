@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { signInWithPassword } from '@/lib/auth/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { isSafeReturnPath } from '@/lib/utils'
 
 export default function CrewLoginForm() {
   const router = useRouter()
@@ -30,7 +31,7 @@ export default function CrewLoginForm() {
     setError('')
 
       try {
-        const callbackUrl = returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')
+        const callbackUrl = isSafeReturnPath(returnUrl)
           ? returnUrl
           : '/crew-home'
 
@@ -55,7 +56,7 @@ export default function CrewLoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form method="post" onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label htmlFor="email" className="block text-sm font-medium text-gray-700">
           Email address

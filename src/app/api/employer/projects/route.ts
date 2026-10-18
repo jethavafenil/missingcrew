@@ -4,6 +4,8 @@ import { userRepo, employerProfileRepo, projectRepo, requesterFromSession, type 
 import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimiter'
 import { z } from 'zod'
 import { parseBody } from '@/lib/api/body'
+import { isBeforeToday } from '@/lib/utils'
+import { ApiError } from '@/lib/api/errors'
 import { revalidateTag } from 'next/cache'
 
 async function getOrCreateEmployerProfile(userId: string, requester: Requester) {
@@ -104,7 +106,9 @@ export async function POST(request: Request) {
       description: z.string().trim().min(1).max(20000),
       questions: z.union([z.array(z.unknown()), z.record(z.string(), z.unknown())]),
       contactPreference: z.union([z.array(z.unknown()), z.record(z.string(), z.unknown())]),
-    }).refine((value) => value.shootEndDate >= value.shootStartDate, { message: 'Shoot end date must be on or after start date', path: ['shootEndDate'] }));
+    })
+      .refine((value) => value.shootEndDate >= value.shootStartDate, { message: 'Shoot end date must be on or after start date', path: ['shootEndDate'] })
+      .refine((value) => !isBeforeToday(value.shootStartDate), { message: 'Shoot start date cannot be in the past', path: ['shootStartDate'] }));
     const {
       projectName,
       projectType,
@@ -158,6 +162,10 @@ export async function POST(request: Request) {
     revalidateTag('projects', 'max');
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
+    // Validation failures (400) carry a user-facing message; surface them.
+    if (error instanceof ApiError && error.status < 500) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+    }
     console.error('Error creating project:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },

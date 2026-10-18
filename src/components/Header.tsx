@@ -37,6 +37,11 @@ export default function Header() {
   }, [isDropdownOpen]);
 
   const pathname = usePathname();
+  const isEmployer = session?.user?.role === 'EMPLOYER';
+  const homeHref =
+    session?.user?.role === 'EMPLOYER' ? '/employer-home' :
+    session?.user?.role === 'ADMIN' ? '/admin' :
+    '/crew-home';
   const isEmployerContext = pathname?.startsWith('/employer') || pathname === '/employer-home';
   const selectedRole = isEmployerContext ? 'employer' : 'crew';
   const returnParam = pathname && pathname !== '/' && !pathname.startsWith('/accounts')
@@ -64,7 +69,7 @@ export default function Header() {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-1">
             <Link 
-              href={session?.user?.role === 'EMPLOYER' ? '/employer-home' : '/crew-home'} 
+              href={homeHref} 
               className="px-4 py-2 text-foreground hover:text-primary font-medium rounded-lg hover:bg-accent transition-all duration-200"
             >
               Home
@@ -76,13 +81,23 @@ export default function Header() {
               <Users className="h-4 w-4" />
               Browse Crew
             </Link>
-            <Link 
-              href="/find-work" 
-              className="px-4 py-2 text-foreground hover:text-primary font-medium rounded-lg hover:bg-accent transition-all duration-200 flex items-center gap-1"
-            >
-              <Search className="h-4 w-4" />
-              Find Work
-            </Link>
+            {isEmployer ? (
+              <Link 
+                href="/employer/post-requirement" 
+                className="px-4 py-2 text-foreground hover:text-primary font-medium rounded-lg hover:bg-accent transition-all duration-200 flex items-center gap-1"
+              >
+                <Briefcase className="h-4 w-4" />
+                Post a Job
+              </Link>
+            ) : (
+              <Link 
+                href="/find-work" 
+                className="px-4 py-2 text-foreground hover:text-primary font-medium rounded-lg hover:bg-accent transition-all duration-200 flex items-center gap-1"
+              >
+                <Search className="h-4 w-4" />
+                Find Work
+              </Link>
+            )}
           </nav>
 
           {/* Right Side Actions */}
@@ -205,7 +220,7 @@ export default function Header() {
           <div className="md:hidden py-4 border-t border-border animate-in slide-in-from-top duration-200">
             <nav className="flex flex-col space-y-2">
               <Link
-                href="/"
+                href={homeHref}
                 className="px-4 py-2 text-foreground hover:text-primary hover:bg-accent rounded-lg font-medium"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
@@ -219,14 +234,25 @@ export default function Header() {
                 <Users className="h-4 w-4" />
                 Browse Crew
               </Link>
-              <Link
-                href="/find-work"
-                className="flex items-center gap-2 px-4 py-2 text-foreground hover:text-primary hover:bg-accent rounded-lg font-medium"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <Search className="h-4 w-4" />
-                Find Work
-              </Link>
+              {isEmployer ? (
+                <Link
+                  href="/employer/post-requirement"
+                  className="flex items-center gap-2 px-4 py-2 text-foreground hover:text-primary hover:bg-accent rounded-lg font-medium"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <Briefcase className="h-4 w-4" />
+                  Post a Job
+                </Link>
+              ) : (
+                <Link
+                  href="/find-work"
+                  className="flex items-center gap-2 px-4 py-2 text-foreground hover:text-primary hover:bg-accent rounded-lg font-medium"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <Search className="h-4 w-4" />
+                  Find Work
+                </Link>
+              )}
               {!session && (
                 <>
                   <Link

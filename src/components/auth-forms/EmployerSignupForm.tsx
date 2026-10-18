@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { getPasswordRequirements, isStrongPassword } from '@/lib/auth/password'
 
 export default function EmployerSignupForm() {
   const router = useRouter()
@@ -21,6 +22,9 @@ export default function EmployerSignupForm() {
   })
   const [error, setError] = useState('')
 
+  const passwordRequirements = getPasswordRequirements(formData.password)
+  const showPasswordHelp = formData.password.length > 0 && !isStrongPassword(formData.password)
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
@@ -30,6 +34,12 @@ export default function EmployerSignupForm() {
     e.preventDefault()
     setIsLoading(true)
     setError('')
+
+    if (!isStrongPassword(formData.password)) {
+      setError('Please fix password errors before submitting')
+      setIsLoading(false)
+      return
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match')
@@ -73,7 +83,7 @@ export default function EmployerSignupForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form method="post" onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
           Company Name
@@ -98,6 +108,8 @@ export default function EmployerSignupForm() {
           name="contactName"
           type="text"
           required
+          placeholder="Your full name"
+          autoComplete="name"
           value={formData.contactName}
           onChange={handleChange}
           className="mt-1"
@@ -131,7 +143,20 @@ export default function EmployerSignupForm() {
           value={formData.password}
           onChange={handleChange}
           className="mt-1"
+          autoComplete="new-password"
         />
+        {showPasswordHelp && (
+          <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-sm text-red-600">Password must contain:</p>
+            <div className="text-xs text-red-600 mt-1">
+              <div className={passwordRequirements.length ? 'text-green-600' : ''}>• At least 8 characters</div>
+              <div className={passwordRequirements.uppercase ? 'text-green-600' : ''}>• At least one uppercase letter</div>
+              <div className={passwordRequirements.lowercase ? 'text-green-600' : ''}>• At least one lowercase letter</div>
+              <div className={passwordRequirements.number ? 'text-green-600' : ''}>• At least one number</div>
+              <div className={passwordRequirements.specialChar ? 'text-green-600' : ''}>• At least one special character (!@#$%^&*)</div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div>
@@ -146,6 +171,7 @@ export default function EmployerSignupForm() {
           value={formData.confirmPassword}
           onChange={handleChange}
           className="mt-1"
+          autoComplete="new-password"
         />
       </div>
 

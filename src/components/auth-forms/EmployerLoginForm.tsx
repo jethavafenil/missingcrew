@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { signInWithPassword } from '@/lib/auth/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { isSafeReturnPath } from '@/lib/utils'
 
 export default function EmployerLoginForm() {
   const router = useRouter()
@@ -32,7 +33,7 @@ export default function EmployerLoginForm() {
 
       try {
         // Determine callback URL based on returnUrl or intent
-        const callbackUrl = returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')
+        const callbackUrl = isSafeReturnPath(returnUrl)
           ? returnUrl
           : intent === 'post-requirement'
             ? '/employer/post-requirement'
@@ -59,7 +60,7 @@ export default function EmployerLoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form method="post" onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label htmlFor="email" className="block text-sm font-medium text-gray-700">
           Email address

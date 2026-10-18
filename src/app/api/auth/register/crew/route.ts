@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimiter'
 import { z } from 'zod'
 import { parseBody } from '@/lib/api/body'
+import { ApiError } from '@/lib/api/errors'
+import { containsLetter } from '@/lib/utils'
 import { getAdminAuthClient } from '@/lib/auth/admin'
+import { isStrongPassword, PASSWORD_MAX_LENGTH, PASSWORD_POLICY_MESSAGE } from '@/lib/auth/password'
 
 // Creates the GoTrue user; the on_auth_user_created trigger (migration 0001)
 // provisions the public.users row + placeholder crew profile, reading the
@@ -15,9 +18,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const { name, email, password } = await parseBody(request, z.object({
-      name: z.string().trim().min(1).max(100),
+      name: z.string().trim().min(1).max(100).refine(containsLetter, 'Name must contain letters, not just numbers'),
       email: z.email().max(254),
-      password: z.string().min(8).max(128),
+      password: z.string().max(PASSWORD_MAX_LENGTH).refine(isStrongPassword, PASSWORD_POLICY_MESSAGE),
     }))
 
     const { data, error } = await getAdminAuthClient().createUser({
@@ -49,6 +52,10 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     )
   } catch (error) {
+    // Validation failures (weak password, bad name/email) carry a user-facing message.
+    if (error instanceof ApiError && error.status < 500) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status })
+    }
     console.error('Crew registration error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

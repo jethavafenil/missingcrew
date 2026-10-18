@@ -10,7 +10,9 @@ export async function parseBody<T>(request: Request, schema: ZodType<T>): Promis
   }
   const parsed = schema.safeParse(body)
   if (!parsed.success) {
-    throw new ApiError(400, 'Invalid request', 'VALIDATION_ERROR', parsed.error.flatten())
+    // Surface the first rule that failed so forms can show an actionable message.
+    const firstIssue = parsed.error.issues[0]?.message
+    throw new ApiError(400, firstIssue || 'Invalid request', 'VALIDATION_ERROR', parsed.error.flatten())
   }
   return parsed.data
 }

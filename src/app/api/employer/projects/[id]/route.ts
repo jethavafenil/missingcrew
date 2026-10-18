@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/server'
 import { employerProfileRepo, projectRepo, requesterFromSession } from '@/lib/repo'
+import { isBeforeToday } from '@/lib/utils'
 
 // GET /api/employer/projects/[id] - Get a single project
 export async function GET(
@@ -109,6 +110,21 @@ export async function PUT(
         { error: 'Project not found or unauthorized' },
         { status: 404 }
       )
+    }
+
+    // Dates: end must not precede start, and a changed start date can't be moved
+    // into the past (unchanged dates stay editable for projects already running).
+    const newStart = new Date(shootStartDate)
+    const newEnd = new Date(shootEndDate)
+    if (Number.isNaN(newStart.getTime()) || Number.isNaN(newEnd.getTime())) {
+      return NextResponse.json({ error: 'Invalid shoot dates' }, { status: 400 })
+    }
+    if (newEnd < newStart) {
+      return NextResponse.json({ error: 'Shoot end date must be on or after start date' }, { status: 400 })
+    }
+    const startChanged = newStart.toISOString().slice(0, 10) !== new Date(existingProject.shootStartDate).toISOString().slice(0, 10)
+    if (startChanged && isBeforeToday(newStart)) {
+      return NextResponse.json({ error: 'Shoot start date cannot be in the past' }, { status: 400 })
     }
 
     // Update the project

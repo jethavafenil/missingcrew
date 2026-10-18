@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { ProjectCardWrapper } from '@/components/projects/ProjectCardWrapper'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -269,7 +270,15 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
   }
 
   // State for projects and applications
-  const [activeTab, setActiveTab] = useState('dashboard')
+  // Deep-linkable tab: /dashboard?tab=applications opens that tab.
+  const searchParams = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const isDashboardTab = (t: string | null): t is string =>
+    t === 'dashboard' || t === 'applications' || t === 'wishlist' || t === 'network'
+  const [activeTab, setActiveTab] = useState(isDashboardTab(tabParam) ? tabParam : 'dashboard')
+  useEffect(() => {
+    if (isDashboardTab(tabParam)) setActiveTab(tabParam)
+  }, [tabParam])
 
   // Use SWR for fetching projects and applications with automatic caching and revalidation
   const { data: projectsData, error: projectsError, isLoading: isLoadingProjects, mutate: mutateProjects } = useSWR<{ projects: Project[] }>(

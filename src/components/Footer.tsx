@@ -1,8 +1,47 @@
+'use client';
+
 import Link from 'next/link';
+import { useSession } from '@/lib/auth/session-context';
 import { Film, Mail, MapPin, Facebook, Instagram, Linkedin, Youtube } from 'lucide-react';
+
+type FooterLink = { href: string; label: string };
+
+const GUEST_LINKS: FooterLink[] = [
+  { href: '/find-work', label: 'Find Work' },
+  { href: '/browse-crew', label: 'Browse Crew' },
+  { href: '/accounts?tab=signup&role=crew', label: 'Create Profile' },
+  { href: '/accounts?tab=signin', label: 'Sign In' },
+];
+const CREW_LINKS: FooterLink[] = [
+  { href: '/find-work', label: 'Find Work' },
+  { href: '/browse-crew', label: 'Browse Crew' },
+  { href: '/dashboard', label: 'My Dashboard' },
+  { href: '/dashboard?tab=applications', label: 'My Applications' },
+  { href: '/crew/profile-setup', label: 'Edit Profile' },
+];
+const EMPLOYER_LINKS: FooterLink[] = [
+  { href: '/employer/post-requirement', label: 'Post a Job' },
+  { href: '/browse-crew', label: 'Browse Crew' },
+  { href: '/employer/dashboard', label: 'My Dashboard' },
+  { href: '/employer/wishlist', label: 'My Wishlist' },
+  { href: '/employer/edit-profile', label: 'Edit Profile' },
+];
+const ADMIN_LINKS: FooterLink[] = [
+  { href: '/admin', label: 'Admin Panel' },
+  { href: '/browse-crew', label: 'Browse Crew' },
+  { href: '/find-work', label: 'Find Work' },
+];
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const { data: session } = useSession();
+  const role = session?.user?.role;
+
+  const { heading, links } =
+    role === 'EMPLOYER' ? { heading: 'For Employers', links: EMPLOYER_LINKS } :
+    role === 'ADMIN' ? { heading: 'Admin', links: ADMIN_LINKS } :
+    role === 'CREW' ? { heading: 'For Crew', links: CREW_LINKS } :
+    { heading: 'For Crew', links: GUEST_LINKS };
 
   return (
     <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
@@ -64,32 +103,16 @@ export default function Footer() {
 
           {/* Product Links */}
           <div>
-            <h4 className="text-lg font-semibold mb-4 text-white">For Crew</h4>
+            <h4 className="text-lg font-semibold mb-4 text-white">{heading}</h4>
             <ul className="space-y-3">
-              <li>
-                <Link href="/find-work" className="text-gray-400 hover:text-indigo-400 transition-colors duration-200 flex items-center gap-2 group">
-                  <span className="w-1.5 h-1.5 bg-gray-600 group-hover:bg-indigo-400 rounded-full transition-colors duration-200"></span>
-                  Find Work
-                </Link>
-              </li>
-              <li>
-                <Link href="/browse-crew" className="text-gray-400 hover:text-indigo-400 transition-colors duration-200 flex items-center gap-2 group">
-                  <span className="w-1.5 h-1.5 bg-gray-600 group-hover:bg-indigo-400 rounded-full transition-colors duration-200"></span>
-                  Browse Crew
-                </Link>
-              </li>
-              <li>
-                <Link href="/dashboard" className="text-gray-400 hover:text-indigo-400 transition-colors duration-200 flex items-center gap-2 group">
-                  <span className="w-1.5 h-1.5 bg-gray-600 group-hover:bg-indigo-400 rounded-full transition-colors duration-200"></span>
-                  My Dashboard
-                </Link>
-              </li>
-              <li>
-                <Link href="/crew/profile-setup" className="text-gray-400 hover:text-indigo-400 transition-colors duration-200 flex items-center gap-2 group">
-                  <span className="w-1.5 h-1.5 bg-gray-600 group-hover:bg-indigo-400 rounded-full transition-colors duration-200"></span>
-                  Create Profile
-                </Link>
-              </li>
+              {links.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="text-gray-400 hover:text-indigo-400 transition-colors duration-200 flex items-center gap-2 group">
+                    <span className="w-1.5 h-1.5 bg-gray-600 group-hover:bg-indigo-400 rounded-full transition-colors duration-200"></span>
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -139,14 +162,16 @@ export default function Footer() {
                 <span>Mumbai, India</span>
               </li>
             </ul>
-            <div className="mt-6">
-              <Link 
-                href="/employer/dashboard" 
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-200"
-              >
-                For Employers
-              </Link>
-            </div>
+            {role !== 'EMPLOYER' && role !== 'CREW' && role !== 'ADMIN' && (
+              <div className="mt-6">
+                <Link 
+                  href="/accounts?tab=signup&role=employer&intent=post-requirement" 
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  For Employers
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 

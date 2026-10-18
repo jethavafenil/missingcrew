@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { createAuthClient } from '@/lib/auth/client'
 import type { AppSession } from '@/lib/auth/types'
 
@@ -11,6 +11,10 @@ interface SessionContextValue {
   status: SessionStatus
   refresh: () => Promise<void>
 }
+
+// Set while this tab is deliberately signing out, so the identity-change reload
+// below doesn't race the sign-out navigation.
+let signingOut = false
 
 const SessionContext = createContext<SessionContextValue>({
   data: null,
@@ -32,12 +36,30 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
     initialSession === undefined ? 'loading' : initialSession ? 'authenticated' : 'unauthenticated',
   )
   const [hydratedFromServer] = useState(initialSession !== undefined)
+  // Identity this tab last rendered for. Auth cookies are shared by every tab
+  // of a browser profile, so signing in/out as someone else in another tab
+  // leaves this tab showing (and acting as) the wrong user until it re-checks.
+  const renderedUserId = useRef<string | null>(initialSession?.user?.id ?? null)
+  const lastCheck = useRef(0)
 
   const refresh = useCallback(async () => {
+    lastCheck.current = Date.now()
     try {
       const res = await fetch('/api/auth/session', { cache: 'no-store' })
       if (!res.ok) throw new Error(`session fetch failed: ${res.status}`)
       const session: AppSession | null = await res.json()
+      const nextUserId = session?.user?.id ?? null
+      if (renderedUserId.current !== nextUserId && (renderedUserId.current !== null || nextUserId !== null)) {
+        const hadUser = renderedUserId.current !== null
+        renderedUserId.current = nextUserId
+        // The identity changed underneath this tab (other tab logged in as a
+        // different user, or logged out): reload so server-rendered content
+        // and cached client state are rebuilt for the current user.
+        if (hadUser && !signingOut) {
+          window.location.reload()
+          return
+        }
+      }
       setData(session)
       setStatus(session ? 'authenticated' : 'unauthenticated')
     } catch {
@@ -56,7 +78,18 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
     } = supabase.auth.onAuthStateChange(() => {
       void refresh()
     })
-    return () => subscription.unsubscribe()
+    // Re-validate when the tab becomes visible again (throttled), so a switch
+    // between tabs picks up a login/logout done in another tab.
+    const recheck = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastCheck.current > 3000) void refresh()
+    }
+    document.addEventListener('visibilitychange', recheck)
+    window.addEventListener('focus', recheck)
+    return () => {
+      subscription.unsubscribe()
+      document.removeEventListener('visibilitychange', recheck)
+      window.removeEventListener('focus', recheck)
+    }
   }, [refresh, hydratedFromServer])
 
   return (
@@ -72,6 +105,7 @@ export function useSession(): SessionContextValue {
 }
 
 export async function signOut(callbackUrl = '/') {
+  signingOut = true
   const supabase = createAuthClient()
   await supabase.auth.signOut()
   // Full navigation so every server component and the session context re-read

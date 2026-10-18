@@ -12,6 +12,7 @@ import CrewLoginForm from '@/components/auth-forms/CrewLoginForm'
 import EmployerLoginForm from '@/components/auth-forms/EmployerLoginForm'
 import { createAuthClient } from '@/lib/auth/client'
 import { setOAuthState, clearOAuthState } from '@/lib/oauthState'
+import { isSafeReturnPath } from '@/lib/utils'
 
 function AccountsContent() {
   const { data: session, status } = useSession()
@@ -21,12 +22,15 @@ function AccountsContent() {
   const returnUrl = searchParams.get('returnUrl')
   const message = searchParams.get('message')
   const email = searchParams.get('email')
-  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>(
-    (searchParams.get('tab') as 'signin' | 'signup') || 'signup'
-  )
-  const [role, setRole] = useState<'crew' | 'employer'>(
-    (searchParams.get('role') as 'crew' | 'employer') || (intent === 'post-requirement' ? 'employer' : 'crew')
-  )
+  // The URL is the single source of truth for the tab and role. (They used to
+  // be copied into local state once, so a redirect to ?tab=signin after signup
+  // changed the URL but left the filled-in signup form on screen.)
+  const activeTab: 'signin' | 'signup' = searchParams.get('tab') === 'signin' ? 'signin' : 'signup'
+  const roleParam = searchParams.get('role')
+  const role: 'crew' | 'employer' =
+    roleParam === 'employer' || roleParam === 'crew'
+      ? roleParam
+      : intent === 'post-requirement' ? 'employer' : 'crew'
   const [isLoading, setIsLoading] = useState(false)
 
   // Redirect logged-in users to their destination or dashboard
@@ -38,7 +42,7 @@ function AccountsContent() {
       clearOAuthState()
 
       // Redirect back to original page if a safe relative returnUrl was provided
-      if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')) {
+      if (isSafeReturnPath(returnUrl)) {
         router.push(returnUrl)
         return
       }
@@ -69,14 +73,12 @@ function AccountsContent() {
       : ''
 
   const handleTabChange = (tab: 'signin' | 'signup') => {
-    setActiveTab(tab)
     const intentParam = intent ? `&intent=${intent}` : ''
     const returnUrlParam = returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : ''
     router.push(`/accounts?tab=${tab}&role=${role}${intentParam}${returnUrlParam}`, { scroll: false })
   }
 
   const handleRoleChange = (newRole: 'crew' | 'employer') => {
-    setRole(newRole)
     const intentParam = intent ? `&intent=${intent}` : ''
     const returnUrlParam = returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : ''
     router.push(`/accounts?tab=${activeTab}&role=${newRole}${intentParam}${returnUrlParam}`, { scroll: false })

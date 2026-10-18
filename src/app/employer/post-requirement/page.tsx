@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Alert } from '@/components/ui/alert'
 import { departments } from '@/lib/departments'
 import { LocationAutocomplete } from '@/components/ui/location-autocomplete'
+import { todayInputValue } from '@/lib/utils'
 
 function PostRequirementClient() {
   const { data: session, status } = useSession()
@@ -363,6 +364,8 @@ function PostRequirementClient() {
                   id="shootStartDate"
                   value={formData.shootStartDate}
                   onChange={(e) => setFormData(prev => ({ ...prev, shootStartDate: e.target.value }))}
+                  // New projects can't start in the past (editing keeps existing dates valid)
+                  min={projectId ? undefined : todayInputValue()}
                   className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
                   required
                 />
@@ -376,6 +379,7 @@ function PostRequirementClient() {
                   id="shootEndDate"
                   value={formData.shootEndDate}
                   onChange={(e) => setFormData(prev => ({ ...prev, shootEndDate: e.target.value }))}
+                  min={formData.shootStartDate || (projectId ? undefined : todayInputValue())}
                   className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
                   required
                 />
