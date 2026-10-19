@@ -7,8 +7,12 @@ interface Project {
   projectName: string
   projectType: string
   rolesNeeded: Array<string | { role: string, count?: number }>
-  shootStartDate: string
-  shootEndDate: string
+  shootStartDate: string | null
+  shootEndDate: string | null
+  budgetMin?: number | null
+  budgetMax?: number | null
+  budgetFixed?: boolean | null
+  productionHouse?: string | null
   location: string
   description: string
   questions: string[]

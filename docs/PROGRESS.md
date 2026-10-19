@@ -10,6 +10,26 @@ together with `docs/HANDOFF.md` (architecture) and
 
 ---
 
+## 2026-10-19 — Phase 2 (Post a Project) — built, NOT yet committed/deployed
+
+| Item | What changed |
+|---|---|
+| Project type | One shared list (`src/lib/projectTypes.ts`): Ads, Web Series, Feature Films, Documentary, Music Video, TV Show, Short Film, Corporate Video. Used by the post form, project filters, crew filters. |
+| Crew profession | Existing searchable multi-select kept (required, at least one). |
+| Shoot dates | Now **optional** (migration `0013` drops NOT NULL; applied to the test DB). Every place that showed dates is null-safe: cards, project page, apply modal, dashboards, wishlist, find-work filter/sort ("Dates flexible"; dateless projects sort last and don't match date filters). |
+| Budget | New per-day **min-max** or **Fixed** budget (`budget_min/max/fixed`). Shown on project cards and the project page; fixed stores the same amount in min and max. |
+| Production house | New optional field (`production_house`), shown on the project page; groundwork for Verified Production Credits. |
+| Screening questions | Every new project is pre-filled with "Have you done this type of project before?" and "Have you worked with the required equipment/software?" (editable/removable). Blank questions are dropped server-side. |
+| Validation | One shared schema (`src/lib/projects/schema.ts`) now validates both create and edit (edit was unvalidated before). Clear messages for bad budget range, dates, roles, contact methods. Past start dates are blocked on create, and on edit only when the start date is changed. |
+| Mobile | Form checked at 375px: no horizontal overflow, full-width inputs, stacked budget/date fields. |
+
+Verified: `tsc`, 86 unit tests, build, and a 29-check end-to-end run (create with/without dates, fixed/range budget, all validation
+paths, public + owner reads and SSR pages with null dates, apply to a dateless project, edit set/clear, ownership + auth guards).
+Test data cleaned up.
+
+Open: city keyword matching needs a LocationIQ key (`NEXT_PUBLIC_LOCATIONIQ_API_KEY` is not set locally or on Vercel, so the
+location autocomplete only works as plain text). AI title/description deferred by decision.
+
 ## 2026-10-19 — Phase 1 (quick wins) — built, NOT yet committed/deployed
 
 | Task | What changed |

@@ -10,14 +10,19 @@ import { CheckCircle, MapPin, Calendar, Film, Users, User, Check, ExternalLink, 
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { useProjectStatus } from '@/lib/crew/applied-projects'
+import { formatBudget, formatShootRange } from '@/lib/projects/format'
 
 interface Project {
   id: string
   projectName: string
   projectType: string
   rolesNeeded: Array<string | { role: string, count?: number }>
-  shootStartDate: string
-  shootEndDate: string
+  shootStartDate: string | null
+  shootEndDate: string | null
+  budgetMin?: number | null
+  budgetMax?: number | null
+  budgetFixed?: boolean | null
+  productionHouse?: string | null
   location: string
   description: string
   questions: string[]
@@ -127,13 +132,7 @@ export function ProjectCard({
     return date.toLocaleDateString('en-US', options)
   }
 
-  const formatDateRange = () => {
-    const startDate = new Date(project.shootStartDate)
-    const endDate = new Date(project.shootEndDate)
-    const options = { month: 'short', day: 'numeric', year: 'numeric' } as const
-
-    return `${startDate.toLocaleDateString('en-US', options)} - ${endDate.toLocaleDateString('en-US', options)}`
-  }
+  const formatDateRange = () => formatShootRange(project.shootStartDate, project.shootEndDate)
 
   const formatPostedDate = (dateString?: string) => {
     if (!dateString) return null
@@ -309,6 +308,11 @@ export function ProjectCard({
                 <Calendar className="w-3.5 h-3.5 mr-1.5 flex-shrink-0 text-purple-600" />
                 <span className="truncate font-semibold text-xs">{formatDateRange()}</span>
               </div>
+              {formatBudget(project) && (
+                <div className="flex items-center text-emerald-800 min-w-0 px-2.5 py-1 rounded-lg border border-emerald-200 bg-emerald-50/80 shadow-2xs">
+                  <span className="truncate font-semibold text-xs">{formatBudget(project)}</span>
+                </div>
+              )}
               {formatPostedDate(project.createdAt) && (
                 <div className="flex items-center text-gray-700 dark:text-gray-300 min-w-0 px-2.5 py-1 rounded-lg backdrop-blur-md border shadow-2xs" style={{
                   background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.5) 100%)',

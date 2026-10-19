@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { LocationAutocomplete } from '@/components/ui/location-autocomplete'
 import { departments } from '@/lib/departments'
+import { PROJECT_TYPES } from '@/lib/projectTypes'
 
 interface ProjectFiltersProps {
   filters: {
@@ -16,7 +17,6 @@ interface ProjectFiltersProps {
   showAdvanced?: boolean
 }
 
-const PROJECT_TYPES = ['Ads', 'Web Series', 'Feature Films', 'Documentary', 'Music Video', 'TV Show']
 
 export function ProjectFilters({ filters, onFiltersChange, compact = false, showAdvanced: showAdvancedProp = false }: ProjectFiltersProps) {
   const [showAdvanced, setShowAdvanced] = useState(showAdvancedProp)

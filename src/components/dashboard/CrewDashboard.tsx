@@ -125,8 +125,8 @@ interface Project {
   projectName: string
   projectType: string
   rolesNeeded: string[]
-  shootStartDate: string
-  shootEndDate: string
+  shootStartDate: string | null
+  shootEndDate: string | null
   location: string
   description: string
   questions: string[]

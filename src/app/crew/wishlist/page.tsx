@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Heart, MapPin, Calendar, Film, Users, Briefcase, RefreshCw, Search, ArrowLeft, Trash2 } from 'lucide-react'
+import { formatShootRange } from '@/lib/projects/format'
 
 interface WishlistProject {
   id: string
@@ -18,8 +19,8 @@ interface WishlistProject {
     projectType: string
     location: string
     description: string
-    shootStartDate: string
-    shootEndDate: string
+    shootStartDate: string | null
+    shootEndDate: string | null
     rolesNeeded: Array<string | { role: string, count?: number }>
     employer: {
       user: {
@@ -166,7 +167,7 @@ export default function CrewWishlistPage() {
                   {/* Dates */}
                   <div className="flex items-center text-sm text-gray-600 mb-3">
                     <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                    {formatDate(wishlist.project.shootStartDate)} - {formatDate(wishlist.project.shootEndDate)}
+                    {formatShootRange(wishlist.project.shootStartDate, wishlist.project.shootEndDate)}
                   </div>
 
                   {/* Description */}

@@ -9,14 +9,19 @@ import { ProjectFilters } from '@/components/projects/ProjectFilters'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Filter, SlidersHorizontal, Grid3x3, LayoutGrid, X } from 'lucide-react'
+import { shootTimestamp } from '@/lib/projects/format'
 
 interface Project {
   id: string
   projectName: string
   projectType: string
   rolesNeeded: string[]
-  shootStartDate: string
-  shootEndDate: string
+  shootStartDate: string | null
+  shootEndDate: string | null
+  budgetMin?: number | null
+  budgetMax?: number | null
+  budgetFixed?: boolean | null
+  productionHouse?: string | null
   location: string
   description: string
   questions: string[]
@@ -97,7 +102,10 @@ function FindWorkContent() {
     if (filters.dateRange) {
       const now = new Date()
       filtered = filtered.filter(project => {
-        const startDate = new Date(project.shootStartDate)
+        // Projects without dates yet don't match a date filter.
+        const startTs = shootTimestamp(project.shootStartDate)
+        if (startTs === null) return false
+        const startDate = new Date(startTs)
         
         switch (filters.dateRange) {
           case 'this_week':
@@ -118,14 +126,22 @@ function FindWorkContent() {
       })
     }
 
-    // Apply sorting
+    // Apply sorting (projects without dates go last)
+    const byStart = (dir: 1 | -1) => (a: Project, b: Project) => {
+      const ta = shootTimestamp(a.shootStartDate)
+      const tb = shootTimestamp(b.shootStartDate)
+      if (ta === null && tb === null) return 0
+      if (ta === null) return 1
+      if (tb === null) return -1
+      return (ta - tb) * dir
+    }
     if (sortBy === 'start-date') {
-      filtered.sort((a, b) => new Date(a.shootStartDate).getTime() - new Date(b.shootStartDate).getTime())
+      filtered.sort(byStart(1))
     } else if (sortBy === 'applications') {
       filtered.sort((a, b) => a._count.applications - b._count.applications)
     } else {
       // newest (default)
-      filtered.sort((a, b) => new Date(b.shootStartDate).getTime() - new Date(a.shootStartDate).getTime())
+      filtered.sort(byStart(-1))
     }
 
     setFilteredProjects(filtered)

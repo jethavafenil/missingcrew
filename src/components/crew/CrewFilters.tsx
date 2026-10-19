@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { departments } from '@/lib/departments'
 import { LocationAutocomplete } from '@/components/ui/location-autocomplete'
+import { PROJECT_TYPES } from '@/lib/projectTypes'
 
 interface CrewFiltersProps {
   filters: {
@@ -32,7 +33,6 @@ interface CrewFiltersProps {
 }
 
 const LANGUAGES = ['Hindi', 'English', 'Tamil', 'Telugu', 'Malayalam', 'Bengali', 'Marathi']
-const PROJECT_TYPES = ['Ads', 'Web Series', 'Feature Films', 'Documentary', 'Music Video', 'TV Show']
 const EXPERIENCE_LEVELS = ['0-1 years', '1-3 years', '3-5 years', '5-10 years', '10+ years']
 
 export function CrewFilters({ filters, onFiltersChange, compact = false, showAdvanced: showAdvancedProp = false }: CrewFiltersProps) {

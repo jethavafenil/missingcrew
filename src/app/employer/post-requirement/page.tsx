@@ -8,6 +8,7 @@ import { Alert } from '@/components/ui/alert'
 import { departments } from '@/lib/departments'
 import { LocationAutocomplete } from '@/components/ui/location-autocomplete'
 import { todayInputValue } from '@/lib/utils'
+import { PROJECT_TYPES, DEFAULT_SCREENING_QUESTIONS } from '@/lib/projectTypes'
 
 function PostRequirementClient() {
   const { data: session, status } = useSession()
@@ -27,8 +28,12 @@ function PostRequirementClient() {
     shootStartDate: '',
     shootEndDate: '',
     location: '',
+    budgetMin: '',
+    budgetMax: '',
+    budgetFixed: false,
+    productionHouse: '',
     description: '',
-    questions: ['', ''],
+    questions: [...DEFAULT_SCREENING_QUESTIONS] as string[],
     contactPreference: [] as string[]
   })
 
@@ -60,9 +65,10 @@ function PostRequirementClient() {
         const { project } = await response.json()
         
         // Format dates for input fields (YYYY-MM-DD)
-        const formatDate = (dateString: string) => {
+        const formatDate = (dateString?: string | null) => {
+          if (!dateString) return ''
           const date = new Date(dateString)
-          return date.toISOString().split('T')[0]
+          return Number.isNaN(date.getTime()) ? '' : date.toISOString().split('T')[0]
         }
 
         setFormData({
@@ -72,8 +78,12 @@ function PostRequirementClient() {
           shootStartDate: formatDate(project.shootStartDate),
           shootEndDate: formatDate(project.shootEndDate),
           location: project.location || '',
+          budgetMin: project.budgetMin != null ? String(project.budgetMin) : '',
+          budgetMax: project.budgetMax != null ? String(project.budgetMax) : '',
+          budgetFixed: !!project.budgetFixed,
+          productionHouse: project.productionHouse || '',
           description: project.description || '',
-          questions: Array.isArray(project.questions) ? project.questions : ['', ''],
+          questions: Array.isArray(project.questions) ? project.questions : [],
           contactPreference: Array.isArray(project.contactPreference) ? project.contactPreference : []
         })
       } catch (error) {
@@ -152,7 +162,12 @@ function PostRequirementClient() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          // Blank optional fields are sent as empty so the server treats them as "not set".
+          budgetMax: formData.budgetFixed ? formData.budgetMin : formData.budgetMax,
+          questions: formData.questions.map(q => q.trim()).filter(Boolean),
+        }),
       })
 
       if (response.ok) {
@@ -267,6 +282,23 @@ function PostRequirementClient() {
                   ))}
                 </select>
               </div>
+
+              {/* Production House */}
+              <div>
+                <label htmlFor="productionHouse" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Production House
+                  <span className="text-gray-400 font-normal ml-1">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  id="productionHouse"
+                  value={formData.productionHouse}
+                  onChange={(e) => setFormData(prev => ({ ...prev, productionHouse: e.target.value }))}
+                  maxLength={150}
+                  className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                  placeholder="e.g., ABC Studios"
+                />
+              </div>
             </div>
 
             {/* Section: Crew Requirements */}
@@ -357,7 +389,8 @@ function PostRequirementClient() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="shootStartDate" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Shoot Start Date *
+                  Shoot Start Date
+                  <span className="text-gray-400 font-normal ml-1">(Optional)</span>
                 </label>
                 <input
                   type="date"
@@ -367,12 +400,12 @@ function PostRequirementClient() {
                   // New projects can't start in the past (editing keeps existing dates valid)
                   min={projectId ? undefined : todayInputValue()}
                   className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
-                  required
                 />
               </div>
               <div>
                 <label htmlFor="shootEndDate" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Shoot End Date *
+                  Shoot End Date
+                  <span className="text-gray-400 font-normal ml-1">(Optional)</span>
                 </label>
                 <input
                   type="date"
@@ -381,9 +414,67 @@ function PostRequirementClient() {
                   onChange={(e) => setFormData(prev => ({ ...prev, shootEndDate: e.target.value }))}
                   min={formData.shootStartDate || (projectId ? undefined : todayInputValue())}
                   className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
-                  required
                 />
               </div>
+            </div>
+
+            {/* Budget */}
+            <div>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Budget per day (₹)
+                  <span className="text-gray-400 font-normal ml-1">(Optional)</span>
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={formData.budgetFixed}
+                    onChange={(e) => setFormData(prev => ({ ...prev, budgetFixed: e.target.checked }))}
+                    className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                  />
+                  Fixed budget
+                </label>
+              </div>
+              {formData.budgetFixed ? (
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  step={100}
+                  aria-label="Fixed budget per day"
+                  value={formData.budgetMin}
+                  onChange={(e) => setFormData(prev => ({ ...prev, budgetMin: e.target.value }))}
+                  className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                  placeholder="Fixed amount, e.g. 15000"
+                  required
+                />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step={100}
+                    aria-label="Minimum budget per day"
+                    value={formData.budgetMin}
+                    onChange={(e) => setFormData(prev => ({ ...prev, budgetMin: e.target.value }))}
+                    className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                    placeholder="Minimum, e.g. 10000"
+                  />
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={Number(formData.budgetMin) || 0}
+                    step={100}
+                    aria-label="Maximum budget per day"
+                    value={formData.budgetMax}
+                    onChange={(e) => setFormData(prev => ({ ...prev, budgetMax: e.target.value }))}
+                    className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                    placeholder="Maximum, e.g. 20000"
+                  />
+                </div>
+              )}
+              <p className="mt-2 text-xs text-gray-500">Crew see this on your project. Leave blank if you prefer to discuss it.</p>
             </div>
 
             {/* Location */}
@@ -434,14 +525,14 @@ function PostRequirementClient() {
                 <span className="text-gray-400 font-normal ml-1">(Optional)</span>
               </label>
               <p className="text-xs text-gray-500 mb-3">
-                Ask specific questions to help evaluate applicants (e.g., &apos;What relevant experience do you have?&apos;, &apos;Why are you interested in this project?&apos;)
+                We added two common questions for you. Edit or remove them, or add your own.
               </p>
               
               {formData.questions.map((question, index) => (
                 <div key={index} className="mb-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-sm font-medium text-gray-700">Question {index + 1}</span>
-                    {formData.questions.length > 2 && (
+                    {formData.questions.length > 0 && (
                       <button
                         type="button"
                         onClick={() => {
@@ -594,7 +685,6 @@ function PostRequirementClient() {
   )
 }
 
-const PROJECT_TYPES = ['Ads', 'Web Series', 'Feature Films', 'Documentary', 'Music Video', 'TV Show']
 
 export default function PostRequirement() {
   return (

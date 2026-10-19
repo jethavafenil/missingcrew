@@ -12,14 +12,19 @@ import { MapPin, Calendar, Users, CheckCircle, ArrowLeft, Building2, Film, Alert
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { ApplyModal } from '@/components/applications/ApplyModal'
 import { useProjectStatus } from '@/lib/crew/applied-projects'
+import { formatBudget, formatShootDate } from '@/lib/projects/format'
 
 interface Project {
   id: string
   projectName: string
   projectType: string
   rolesNeeded: Array<string | { role: string, count?: number }>
-  shootStartDate: string
-  shootEndDate: string
+  shootStartDate: string | null
+  shootEndDate: string | null
+  budgetMin?: number | null
+  budgetMax?: number | null
+  budgetFixed?: boolean | null
+  productionHouse?: string | null
   location: string
   description: string
   questions: Array<string | { question: string }>
@@ -92,7 +97,8 @@ export default function ProjectDetailsPage() {
     })
   }
 
-  const calculateDaysUntilStart = (startDate: string) => {
+  const calculateDaysUntilStart = (startDate: string | null) => {
+    if (!startDate) return null
     const start = new Date(startDate)
     const today = new Date()
     const diffTime = start.getTime() - today.getTime()
@@ -100,7 +106,8 @@ export default function ProjectDetailsPage() {
     return diffDays
   }
 
-  const calculateDuration = (startDate: string, endDate: string) => {
+  const calculateDuration = (startDate: string | null, endDate: string | null) => {
+    if (!startDate || !endDate) return null
     const start = new Date(startDate)
     const end = new Date(endDate)
     const diffTime = end.getTime() - start.getTime()
@@ -194,7 +201,7 @@ export default function ProjectDetailsPage() {
                   </span>
                 </div>
               </div>
-              {daysUntilStart > 0 && daysUntilStart <= 30 && (
+              {daysUntilStart !== null && daysUntilStart > 0 && daysUntilStart <= 30 && (
                 <div className="bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20">
                   <p className="text-xs text-indigo-100">Starts in</p>
                   <p className="text-2xl font-bold text-white">{daysUntilStart}</p>
@@ -219,7 +226,7 @@ export default function ProjectDetailsPage() {
                   <Calendar className="h-4 w-4 text-purple-600" />
                   <p className="text-xs font-medium text-purple-600">Duration</p>
                 </div>
-                <p className="text-sm font-semibold text-gray-900">{projectDuration} days</p>
+                <p className="text-sm font-semibold text-gray-900">{projectDuration !== null ? `${projectDuration} days` : 'Flexible'}</p>
               </div>
               <div className="bg-gradient-to-br from-pink-50 to-pink-100/50 p-4 rounded-xl border border-pink-200">
                 <div className="flex items-center gap-2 mb-1">
@@ -271,6 +278,24 @@ export default function ProjectDetailsPage() {
 
               {/* Sidebar */}
               <div className="space-y-6">
+                {/* Budget & production */}
+                {(formatBudget(project) || project.productionHouse) && (
+                  <div className="bg-gradient-to-br from-emerald-50 to-green-50 p-5 rounded-xl border border-emerald-200">
+                    {formatBudget(project) && (
+                      <div>
+                        <p className="text-xs text-emerald-700 mb-1">Budget</p>
+                        <p className="text-sm font-semibold text-gray-900">{formatBudget(project)}</p>
+                      </div>
+                    )}
+                    {project.productionHouse && (
+                      <div className={formatBudget(project) ? 'border-t border-emerald-200 mt-3 pt-3' : ''}>
+                        <p className="text-xs text-emerald-700 mb-1">Production house</p>
+                        <p className="text-sm font-semibold text-gray-900">{project.productionHouse}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Timeline */}
                 <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-5 rounded-xl border border-gray-200">
                   <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -280,11 +305,11 @@ export default function ProjectDetailsPage() {
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Start Date</p>
-                      <p className="text-sm font-semibold text-gray-900">{formatDate(project.shootStartDate)}</p>
+                      <p className="text-sm font-semibold text-gray-900">{formatShootDate(project.shootStartDate)}</p>
                     </div>
                     <div className="border-t border-gray-300 pt-3">
                       <p className="text-xs text-gray-500 mb-1">End Date</p>
-                      <p className="text-sm font-semibold text-gray-900">{formatDate(project.shootEndDate)}</p>
+                      <p className="text-sm font-semibold text-gray-900">{formatShootDate(project.shootEndDate)}</p>
                     </div>
                   </div>
                 </div>

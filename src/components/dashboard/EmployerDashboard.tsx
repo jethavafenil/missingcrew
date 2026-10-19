@@ -14,6 +14,7 @@ import { CrewSlider } from '@/components/crew/CrewSlider'
 import { NetworkCrewSlider } from '@/components/network/NetworkCrewSlider'
 import { slugifyName } from '@/lib/utils'
 import { swrFetcher } from '@/lib/swr'
+import { formatShootRange } from '@/lib/projects/format'
 
 interface EmployerUserData {
   email: string
@@ -38,8 +39,8 @@ interface Project {
   projectName: string
   projectType: string
   rolesNeeded: string[]
-  shootStartDate: string
-  shootEndDate: string
+  shootStartDate: string | null
+  shootEndDate: string | null
   location: string
   description: string
   questions: string[]
@@ -590,7 +591,7 @@ export function EmployerDashboard({ user, userData }: EmployerDashboardProps) {
                                     </div>
                                     <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                                       <Calendar className="h-3 w-3 mr-1" />
-                                      {formatDate(project.shootStartDate)} to {formatDate(project.shootEndDate)}
+                                      {formatShootRange(project.shootStartDate, project.shootEndDate)}
                                     </div>
                                   </div>
 

@@ -5,14 +5,15 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/ToastProvider'
 import { X, Calendar, MapPin, Users, FileText, CheckCircle2, AlertCircle } from 'lucide-react'
 import { markProjectAppliedLocally } from '@/lib/crew/applied-projects'
+import { formatShootRange } from '@/lib/projects/format'
 
 interface Project {
   id: string
   projectName: string
   description: string
   location: string
-  shootStartDate: string
-  shootEndDate: string
+  shootStartDate: string | null
+  shootEndDate: string | null
   rolesNeeded: string[]
   questions: string[]
 }
@@ -199,7 +200,7 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
                 <div>
                   <p className="text-xs text-gray-500 font-medium">Shoot Dates</p>
                   <p className="text-sm text-gray-900">
-                    {new Date(project.shootStartDate).toLocaleDateString()} - {new Date(project.shootEndDate).toLocaleDateString()}
+                    {formatShootRange(project.shootStartDate, project.shootEndDate)}
                   </p>
                 </div>
               </div>
