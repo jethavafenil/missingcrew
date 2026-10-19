@@ -55,6 +55,8 @@ interface CrewProfile {
   referredBy: string | null
   contactWhatsApp: string | null
   subscriptionTier: string
+  trialEnds?: string | null
+  hasProBadge?: boolean
   createdAt: string
   skills?: string[]
   specializations?: string[]
@@ -434,12 +436,16 @@ export default function CrewProfilePage() {
                       <Briefcase className="h-4 w-4 text-indigo-600" />
                       <span className="text-sm font-medium">{crew.yearsExperience || 'Experience not specified'}</span>
                     </span>
-                    {crew.dailyBudgetMin && crew.dailyBudgetMax && (
+                    {((crew.dailyBudgetMin && crew.dailyBudgetMax) || crew.budgetFlexible) && (
                       <span className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg">
                         <DollarSign className="h-4 w-4 text-indigo-600" />
                         <span className="text-sm font-medium">
-                          ₹{crew.dailyBudgetMin} - ₹{crew.dailyBudgetMax}/day
-                          {crew.budgetFlexible && <span className="ml-1 text-green-600">(Flexible)</span>}
+                          {crew.dailyBudgetMin && crew.dailyBudgetMax && `₹${crew.dailyBudgetMin} - ₹${crew.dailyBudgetMax} per day`}
+                          {crew.budgetFlexible && (
+                            <span className="ml-1.5 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                              Negotiable
+                            </span>
+                          )}
                         </span>
                       </span>
                     )}
@@ -460,7 +466,7 @@ export default function CrewProfilePage() {
                       Portfolio
                     </span>
                   )}
-                  {crew.subscriptionTier === 'PRO' && (
+                  {(crew.hasProBadge ?? crew.subscriptionTier === 'PRO') && (
                     <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md">
                       <Award className="h-4 w-4" />
                       PRO Member
@@ -668,12 +674,16 @@ function OverviewTab({ crew }: { crew: CrewProfile }) {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Budget & Availability</h3>
         <div className="space-y-4">
           <div>
-            <span className="font-medium text-gray-700">Daily Budget Range:</span>
+            <span className="font-medium text-gray-700">Budget (per day):</span>
             <p className="mt-1 text-gray-600">
               {crew.dailyBudgetMin && crew.dailyBudgetMax
-                ? `₹${crew.dailyBudgetMin} - ₹${crew.dailyBudgetMax}`
+                ? `₹${crew.dailyBudgetMin} - ₹${crew.dailyBudgetMax} per day`
                 : 'Not specified'}
-              {crew.budgetFlexible && ' (Flexible)'}
+              {crew.budgetFlexible && (
+                <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                  Negotiable
+                </span>
+              )}
             </p>
           </div>
 

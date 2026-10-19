@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { crewProfileRepo, applicationRepo } from '@/lib/repo'
 import { getPublicCrewProfile } from '@/lib/cache/public'
 import { getSession } from '@/lib/auth/server'
+import { hasProBadge } from '@/lib/subscription/access'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -101,12 +102,15 @@ export async function GET(
       session?.user?.role === 'EMPLOYER' ||
       (session?.user?.id != null && session.user.id === crew.userId)
 
+    const proBadge = hasProBadge(crew)
+
     if (canViewContacts) {
-      return NextResponse.json({ crew }, { headers: { 'Cache-Control': 'private, max-age=60' } })
+      return NextResponse.json({ crew: { ...crew, hasProBadge: proBadge } }, { headers: { 'Cache-Control': 'private, max-age=60' } })
     }
 
     const publicCrew = {
       ...crew,
+      hasProBadge: proBadge,
       contactWhatsApp: null,
       user: crew.user ? { ...crew.user, email: undefined, phone: undefined } : undefined,
     }

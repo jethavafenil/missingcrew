@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/server'
 import { applicationRepo, crewProfileRepo, notificationRepo, projectRepo, requesterFromSession } from '@/lib/repo'
-import { sendEmail, createApplicationEmail } from '@/lib/email'
+import { sendEmail, createApplicationEmail, createApplicationsMilestoneEmail } from '@/lib/email'
 import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimiter'
 import { z } from 'zod'
 import { parseBody } from '@/lib/api/body'
+import { monthlyApplicationLimit } from '@/lib/subscription/access'
 
 // Ids are TEXT (legacy cuids + new uuids); this charset also rules out
 // PostgREST filter metacharacters (, . ( ) etc).
 const SAFE_ID_RE = /^[A-Za-z0-9_-]{1,64}$/
+
+// Producers get a nudge email once their project reaches this many applications.
+const APPLICATION_MILESTONE = 5
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -55,13 +59,8 @@ export async function POST(
       )
     }
 
-    // Check application limits based on subscription tier
-    let maxApplications = 10 // Default for FREE_TRIAL
-    if (crewProfile.subscriptionTier === 'BASIC') {
-      maxApplications = 10
-    } else if (crewProfile.subscriptionTier === 'PRO') {
-      maxApplications = Infinity // Unlimited for Pro
-    }
+    // Trial / PRO crew apply without limit; everyone else gets the monthly cap.
+    const maxApplications = monthlyApplicationLimit(crewProfile)
 
     // Check if user has reached their application limit
     const applicationCount = await applicationRepo.countByCrewIdSince(
@@ -162,6 +161,26 @@ export async function POST(
       });
     } catch (error) {
       console.error('Error sending email notification:', error)
+    }
+
+    // Milestone (#23, email 2): exactly once, when the project reaches 5 applications.
+    try {
+      const totalApplications = await applicationRepo.countByProjectId(projectId)
+      if (totalApplications === APPLICATION_MILESTONE) {
+        const employerUser = application.project!.employer!.user!
+        const employerName = employerUser.name || 'there'
+        await notificationRepo.create({
+          userId: application.project!.employer!.userId,
+          type: 'APPLICATION_RECEIVED',
+          title: `${APPLICATION_MILESTONE} applications received`,
+          message: `${application.project!.projectName} now has ${APPLICATION_MILESTONE} applications. Review and shortlist your favourites.`,
+          data: { projectId, milestone: APPLICATION_MILESTONE },
+        }, requester)
+        const { subject, html } = createApplicationsMilestoneEmail(employerName, application.project!.projectName, APPLICATION_MILESTONE)
+        await sendEmail({ to: employerUser.email, subject, html })
+      }
+    } catch (error) {
+      console.error('Application milestone notification failed:', error)
     }
 
     // Return only the crew member's own application fields; the re-read above

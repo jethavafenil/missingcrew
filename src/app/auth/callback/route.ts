@@ -10,6 +10,7 @@ import {
   type UserRole,
 } from '@/lib/repo'
 import { isSafeReturnPath } from '@/lib/utils'
+import { trialEndsFromNow } from '@/lib/subscription/access'
 import { OAUTH_ROLE_COOKIE, OAUTH_INTENT_COOKIE, OAUTH_RETURN_URL_COOKIE } from '@/lib/oauthState'
 
 // GoTrue redirect target for Google OAuth callbacks and email-confirmation
@@ -78,6 +79,7 @@ export async function GET(request: NextRequest) {
           projectTypes: [],
           languages: [],
           portfolioLinks: [],
+          trialEnds: trialEndsFromNow(),
         },
         SYSTEM_REQUESTER,
       )

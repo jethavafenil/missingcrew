@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getPublicCrew } from '@/lib/cache/public'
 import { toIsoString } from '@/lib/utils'
+import { hasProBadge } from '@/lib/subscription/access'
 
 interface CrewProfile {
   id: string
@@ -28,6 +29,8 @@ interface CrewProfile {
   }>
   contactWhatsApp: string | null
   subscriptionTier: string
+  hasProBadge: boolean
+  budgetFlexible: boolean
   createdAt: string
   user: {
     name: string
@@ -64,6 +67,8 @@ export async function GET() {
       pastProjects?: unknown
       contactWhatsApp?: string | null
       subscriptionTier?: string | null
+      trialEnds?: Date | string | null
+      budgetFlexible?: boolean | null
       createdAt?: Date | string | null
     }
 
@@ -145,6 +150,8 @@ export async function GET() {
         pastProjects: pastProjects || [],
         contactWhatsApp: '',
         subscriptionTier: profile.subscriptionTier || '',
+        hasProBadge: hasProBadge(profile),
+        budgetFlexible: !!profile.budgetFlexible,
         createdAt: toIsoString(profile.createdAt) ?? new Date().toISOString()
       }
     })

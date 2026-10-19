@@ -7,6 +7,7 @@ import { Button } from '../ui/button'
 import { slugifyName } from '@/lib/utils'
 import { Badge } from '../ui/badge'
 import { Globe, Mail, Phone, MapPin, Calendar, IndianRupee, Languages, Film, Plane, Check, Star, ExternalLink, Heart, ChevronLeft, ChevronRight } from 'lucide-react'
+import { hasProBadge } from '@/lib/subscription/access'
 
 interface PastProject {
   title?: string
@@ -43,6 +44,8 @@ interface CrewCardProps {
     pastProjects: PastProject[]
     contactWhatsApp: string | null
     subscriptionTier: string
+    trialEnds?: string | Date | null
+    hasProBadge?: boolean
     createdAt: string
   }
 }
@@ -423,7 +426,7 @@ export function CrewCard({ crew }: CrewCardProps) {
                 </div>
               )}
             </div>
-            {crew.subscriptionTier === 'PRO' && (
+            {(crew.hasProBadge ?? hasProBadge(crew)) && (
               <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center shadow-lg" style={{
                 background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
                 boxShadow: '0 4px 12px rgba(251, 191, 36, 0.5)'

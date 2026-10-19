@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/server'
 import { userRepo, crewProfileRepo, requesterFromSession } from '@/lib/repo'
 import { revalidateTag } from 'next/cache'
+import { trialEndsFromNow } from '@/lib/subscription/access'
 
 
 export async function POST(request: NextRequest) {
@@ -140,9 +141,11 @@ export async function POST(request: NextRequest) {
       // Grant referrer 2 months free subscription
       // No self-referral, and never downgrade a referrer who already pays
       // (the bonus only applies to trial accounts).
-      const referrerProfile = referrer?.crewProfile as { id: string; subscriptionTier?: string } | null | undefined
+      const referrerProfile = referrer?.crewProfile as { id: string; subscriptionTier?: string; trialEnds?: Date | string | null } | null | undefined
       if (referrer && referrer.id !== session.user.id && referrerProfile && referrerProfile.subscriptionTier === 'FREE_TRIAL') {
-        const twoMonthsFromNow = new Date()
+        // Extend from whichever is later: the current trial end or today.
+        const currentEnd = referrerProfile.trialEnds ? new Date(referrerProfile.trialEnds) : new Date(0)
+        const twoMonthsFromNow = new Date(Math.max(currentEnd.getTime(), Date.now()))
         twoMonthsFromNow.setMonth(twoMonthsFromNow.getMonth() + 2)
 
         await crewProfileRepo.updateById(
@@ -180,11 +183,9 @@ export async function POST(request: NextRequest) {
       }
 
 
-      // New user gets standard 30-day trial (referrer gets the bonus)
+      // Profiles that somehow have no trial yet get the standard trial (referrer gets the bonus)
       if (!existingProfile.trialEnds) {
-        const thirtyDaysFromNow = new Date()
-        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
-        updateData.trialEnds = thirtyDaysFromNow
+        updateData.trialEnds = trialEndsFromNow()
       }
 
       crewProfile = await crewProfileRepo.updateById(
@@ -207,10 +208,8 @@ export async function POST(request: NextRequest) {
       }
 
 
-      // All new users get standard 30-day trial (referrer gets the bonus)
-      const thirtyDaysFromNow = new Date()
-      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
-      createDataWithArrays.trialEnds = thirtyDaysFromNow
+      // All new users get the standard trial (referrer gets the bonus)
+      createDataWithArrays.trialEnds = trialEndsFromNow()
 
       crewProfile = await crewProfileRepo.create(
         {
