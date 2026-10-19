@@ -24,6 +24,7 @@ import {
   MessageSquare
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import { buildProfileShareMessage } from '@/lib/shareMessages'
 const CrewNetworkSection = dynamic(() => import('@/components/network/CrewNetworkSection').then(m => m.CrewNetworkSection), { ssr: false })
 
 interface CrewProfile {
@@ -494,6 +495,7 @@ export default function CrewProfilePage() {
                   url={typeof window !== 'undefined' ? window.location.href : `https://missingcrew.vercel.app/crew/${params.id}`}
                   title={`Check out ${crew.user.name}'s profile on MissingCrew`}
                   description={`${crew.primaryRoles.join(', ')} - ${crew.yearsExperience || 'Experienced'} professional`}
+                  message={buildProfileShareMessage({ name: crew.user.name, role: crew.primaryRoles?.[0], city: crew.city })}
                 />
               </div>
               {/* Availability Status */}

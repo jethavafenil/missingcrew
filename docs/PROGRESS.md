@@ -10,6 +10,17 @@ together with `docs/HANDOFF.md` (architecture) and
 
 ---
 
+## 2026-10-20 — Tags, premade share message, email verification ON
+
+- **Custom project tags** (migration `0014`, applied): the type hashtag is automatic; producers may add up to 3 free-text tags
+  (normalised to CamelCase letters/digits, de-duplicated) with clickable suggestions from `src/lib/projectTags.ts` (starter
+  list — the client will supply the final one). Shown on cards and the project page.
+- **Premade messages** (`src/lib/shareMessages.ts`): profile share text is pre-filled (editable in the share dialog; native
+  share sheet on phones). `buildHireMessage` is ready for the Hire Now flow (Phase 5).
+- **Email verification is ON in live** (`REQUIRE_EMAIL_VERIFICATION=true`). Checked with a throwaway signup: account created
+  unconfirmed, sign-in blocked until the emailed link is clicked (test account deleted).
+- Decision: project type stays a fixed list; custom tags are optional extras.
+
 ## 2026-10-19 — Phase 2 (Post a Project) — built, NOT yet committed/deployed
 
 | Item | What changed |

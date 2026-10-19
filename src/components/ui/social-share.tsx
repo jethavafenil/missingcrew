@@ -10,6 +10,8 @@ export interface SocialShareProps {
   url: string;
   title?: string;
   description?: string;
+  // Premade text, shown in an editable box in the dialog and used for every channel.
+  message?: string;
   buttonLabel?: string;
 }
 
@@ -44,12 +46,14 @@ function WhatsAppIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-export function SocialShare({ url, title, description, buttonLabel = "Share" }: SocialShareProps) {
+export function SocialShare({ url, title, description, message, buttonLabel = "Share" }: SocialShareProps) {
   const { success, error } = useToast();
   const [open, setOpen] = useState(false);
+  const [editedMessage, setEditedMessage] = useState<string | null>(null);
+  const activeMessage = message ? (editedMessage ?? message) : null;
 
-  const shareText = useMemo(() => title || "Check this out", [title]);
-  const shareDesc = description || "";
+  const shareText = useMemo(() => activeMessage || title || "Check this out", [activeMessage, title]);
+  const shareDesc = activeMessage ? "" : (description || "");
 
   const encodedUrl = encodeURIComponent(url);
   const encodedTitle = encodeURIComponent(shareText);
@@ -105,7 +109,8 @@ export function SocialShare({ url, title, description, buttonLabel = "Share" }: 
   const tryWebShare = useCallback(async () => {
     try {
       if (navigator.share) {
-        await navigator.share({ title: shareText, text: shareDesc || undefined, url });
+        // With a premade message, put it in `text` (share sheets show text, often ignore title).
+        await navigator.share(activeMessage ? { text: activeMessage, url } : { title: shareText, text: shareDesc || undefined, url });
         success("Shared successfully");
         return true;
       }
@@ -113,7 +118,7 @@ export function SocialShare({ url, title, description, buttonLabel = "Share" }: 
       // Silently fall back to dialog on user-cancel or errors
     }
     return false;
-  }, [shareText, shareDesc, url, success]);
+  }, [shareText, shareDesc, activeMessage, url, success]);
 
   const onClickMain = useCallback(async () => {
     const usedWebShare = await tryWebShare();
@@ -141,6 +146,21 @@ export function SocialShare({ url, title, description, buttonLabel = "Share" }: 
         <DialogHeader>
           <DialogTitle>Share this profile</DialogTitle>
         </DialogHeader>
+        {message && (
+          <div>
+            <label htmlFor="share-message" className="mb-1 block text-xs font-medium text-gray-600">
+              Message (you can edit it)
+            </label>
+            <textarea
+              id="share-message"
+              value={activeMessage ?? ""}
+              onChange={(e) => setEditedMessage(e.target.value)}
+              rows={3}
+              maxLength={300}
+              className="w-full rounded-md border border-gray-300 p-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           {shareTargets.map((t) => {
             const Icon = t.icon;
