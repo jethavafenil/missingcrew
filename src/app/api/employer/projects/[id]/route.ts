@@ -116,6 +116,7 @@ export async function PUT(
       budgetMax: input.budgetMax,
       budgetFixed: input.budgetFixed,
       productionHouse: input.productionHouse,
+      tags: input.tags,
       description: input.description,
       questions: input.questions,
       contactPreference: input.contactPreference,

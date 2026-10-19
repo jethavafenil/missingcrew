@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MAX_PROJECT_TAGS, normalizeTags } from '@/lib/projectTags'
 
 // Shared validation for creating/editing a project (POST and PUT routes).
 // Dates and budget are optional; blank form fields ('') count as "not set".
@@ -22,6 +23,12 @@ export const projectInputSchema = z
     budgetMax: optionalAmount,
     budgetFixed: z.boolean().optional().default(false),
     productionHouse: z.preprocess(blankToUndefined, z.string().trim().max(150).optional()),
+    // Up to 3 custom hashtags; normalised (CamelCase, letters/digits) and de-duplicated.
+    tags: z
+      .array(z.string())
+      .default([])
+      .transform(normalizeTags)
+      .pipe(z.array(z.string()).max(MAX_PROJECT_TAGS, `You can add up to ${MAX_PROJECT_TAGS} tags`)),
     description: z.string().trim().min(1, 'Description is required').max(20000),
     // Blank questions are dropped so crew never see empty prompts.
     questions: z

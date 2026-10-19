@@ -13,6 +13,7 @@ interface Project {
   budgetMax?: number | null
   budgetFixed?: boolean | null
   productionHouse?: string | null
+  tags?: string[]
   location: string
   description: string
   questions: string[]

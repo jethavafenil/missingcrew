@@ -25,6 +25,7 @@ interface Project {
   budgetMax?: number | null
   budgetFixed?: boolean | null
   productionHouse?: string | null
+  tags?: string[]
   location: string
   description: string
   questions: Array<string | { question: string }>
@@ -181,11 +182,16 @@ export default function ProjectDetailsPage() {
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
                   <Film className="h-6 w-6 text-white" />
                   <Badge className="bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm">
                     {project.projectType}
                   </Badge>
+                  {(project.tags ?? []).map((tag) => (
+                    <span key={tag} className="inline-flex items-center rounded-md bg-white/15 px-2.5 py-0.5 text-xs font-semibold text-white">
+                      #{tag}
+                    </span>
+                  ))}
                 </div>
                 <h1 className="text-3xl font-bold text-white mb-2">
                   {project.projectName}

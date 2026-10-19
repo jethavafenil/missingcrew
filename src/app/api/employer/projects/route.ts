@@ -125,6 +125,7 @@ export async function POST(request: Request) {
       budgetMax: body.budgetMax,
       budgetFixed: body.budgetFixed,
       productionHouse: body.productionHouse,
+      tags: body.tags,
       description,
       questions: body.questions,
       contactPreference: body.contactPreference,

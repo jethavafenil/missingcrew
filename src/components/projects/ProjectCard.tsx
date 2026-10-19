@@ -11,6 +11,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { useProjectStatus } from '@/lib/crew/applied-projects'
 import { formatBudget, formatShootRange } from '@/lib/projects/format'
+import { displayHashtags } from '@/lib/projectTags'
 
 interface Project {
   id: string
@@ -23,6 +24,7 @@ interface Project {
   budgetMax?: number | null
   budgetFixed?: boolean | null
   productionHouse?: string | null
+  tags?: string[]
   location: string
   description: string
   questions: string[]
@@ -151,19 +153,6 @@ export function ProjectCard({
     }
   }
 
-  const getProjectHashtags = (type?: string): string[] => {
-    if (!type) return ['#FilmProject']
-    const parts = type.split(/[,/]+/).map(p => p.trim()).filter(Boolean)
-    if (parts.length > 1) {
-      return parts.map(p => {
-        const tag = p.split(/[\s\-_]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('')
-        return `#${tag}`
-      })
-    }
-    const tag = type.split(/[\s\-_]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('')
-    return [`#${tag || 'FilmProject'}`]
-  }
-
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't navigate if clicking on the Apply button or its children
     if ((e.target as HTMLElement).closest('button')) {
@@ -247,7 +236,7 @@ export function ProjectCard({
 
                 {/* Hashtags */}
                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                  {getProjectHashtags(project.projectType).map((tag, idx) => (
+                  {displayHashtags(project.projectType, project.tags).map((tag, idx) => (
                     <span
                       key={idx}
                       className="inline-flex items-center text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-md bg-indigo-50/90 text-indigo-700 border border-indigo-200/80 shadow-2xs hover:bg-indigo-100 transition-colors"

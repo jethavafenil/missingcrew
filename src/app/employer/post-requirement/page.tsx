@@ -9,6 +9,7 @@ import { departments } from '@/lib/departments'
 import { LocationAutocomplete } from '@/components/ui/location-autocomplete'
 import { todayInputValue } from '@/lib/utils'
 import { PROJECT_TYPES, DEFAULT_SCREENING_QUESTIONS } from '@/lib/projectTypes'
+import { MAX_PROJECT_TAGS, SUGGESTED_TAGS, normalizeTag } from '@/lib/projectTags'
 
 function PostRequirementClient() {
   const { data: session, status } = useSession()
@@ -32,6 +33,7 @@ function PostRequirementClient() {
     budgetMax: '',
     budgetFixed: false,
     productionHouse: '',
+    tags: [] as string[],
     description: '',
     questions: [...DEFAULT_SCREENING_QUESTIONS] as string[],
     contactPreference: [] as string[]
@@ -82,6 +84,7 @@ function PostRequirementClient() {
           budgetMax: project.budgetMax != null ? String(project.budgetMax) : '',
           budgetFixed: !!project.budgetFixed,
           productionHouse: project.productionHouse || '',
+          tags: Array.isArray(project.tags) ? project.tags : [],
           description: project.description || '',
           questions: Array.isArray(project.questions) ? project.questions : [],
           contactPreference: Array.isArray(project.contactPreference) ? project.contactPreference : []
@@ -146,10 +149,35 @@ function PostRequirementClient() {
     }))
   }
 
+  // Extra hashtags: free text (normalised), up to MAX_PROJECT_TAGS; suggestions are just hints.
+  const [tagInput, setTagInput] = useState('')
+  const addTag = (raw: string) => {
+    const tag = normalizeTag(raw)
+    if (!tag) return
+    setFormData(prev => {
+      if (prev.tags.length >= MAX_PROJECT_TAGS) return prev
+      if (prev.tags.some(t => t.toLowerCase() === tag.toLowerCase())) return prev
+      return { ...prev, tags: [...prev.tags, tag] }
+    })
+    setTagInput('')
+  }
+  const removeTag = (tag: string) => setFormData(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tag) }))
+  const tagSuggestions = SUGGESTED_TAGS
+    .filter(t => !formData.tags.some(x => x.toLowerCase() === normalizeTag(t).toLowerCase()))
+    .filter(t => !tagInput.trim() || t.toLowerCase().includes(tagInput.trim().replace(/^#/, '').toLowerCase()))
+    .slice(0, 8)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
+
+    // A tag typed but not yet confirmed with Enter still counts.
+    const pendingTag = normalizeTag(tagInput)
+    const tags = pendingTag && formData.tags.length < MAX_PROJECT_TAGS
+      && !formData.tags.some(t => t.toLowerCase() === pendingTag.toLowerCase())
+      ? [...formData.tags, pendingTag]
+      : formData.tags
 
     try {
       const url = projectId 
@@ -167,6 +195,7 @@ function PostRequirementClient() {
           // Blank optional fields are sent as empty so the server treats them as "not set".
           budgetMax: formData.budgetFixed ? formData.budgetMin : formData.budgetMax,
           questions: formData.questions.map(q => q.trim()).filter(Boolean),
+          tags,
         }),
       })
 
@@ -298,6 +327,60 @@ function PostRequirementClient() {
                   className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
                   placeholder="e.g., ABC Studios"
                 />
+              </div>
+
+              {/* Extra hashtags */}
+              <div>
+                <label htmlFor="tagInput" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Extra tags
+                  <span className="text-gray-400 font-normal ml-1">(Optional, up to {MAX_PROJECT_TAGS})</span>
+                </label>
+                {formData.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {formData.tags.map(tag => (
+                      <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-sm font-medium text-indigo-700">
+                        #{tag}
+                        <button type="button" onClick={() => removeTag(tag)} aria-label={`Remove tag ${tag}`} className="ml-1 text-indigo-500 hover:text-indigo-800">
+                          &times;
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {formData.tags.length < MAX_PROJECT_TAGS && (
+                  <>
+                    <input
+                      type="text"
+                      id="tagInput"
+                      value={tagInput}
+                      maxLength={40}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ',') {
+                          e.preventDefault()
+                          addTag(tagInput)
+                        }
+                      }}
+                      className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                      placeholder="Type a tag and press Enter, e.g. Thriller"
+                    />
+                    {tagSuggestions.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {tagSuggestions.map(t => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => addTag(t)}
+                            className="rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:border-indigo-400 hover:text-indigo-700"
+                          >
+                            + {t}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+                <p className="mt-2 text-xs text-gray-500">Your project type is added as a hashtag automatically.</p>
               </div>
             </div>
 

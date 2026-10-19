@@ -105,6 +105,7 @@ export interface ProjectRow {
   budgetMax: number | null
   budgetFixed: boolean
   productionHouse: string | null
+  tags: string[]
   description: string
   questions: Record<string, unknown> | string[]
   contactPreference: Record<string, unknown> | string[]
@@ -357,6 +358,7 @@ export function mapProject(r: RawRow): ProjectRow {
     budgetMax: r.budget_max == null ? null : Number(r.budget_max),
     budgetFixed: r.budget_fixed === true,
     productionHouse: (r.production_house as string | null) ?? null,
+    tags: asStringList(r.tags),
     description: r.description as string,
     questions: asJsonObj(r.questions),
     contactPreference: asJsonObj(r.contact_preference),

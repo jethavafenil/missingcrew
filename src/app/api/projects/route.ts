@@ -45,6 +45,7 @@ export async function GET() {
         budgetMax: project.budgetMax ?? null,
         budgetFixed: project.budgetFixed ?? false,
         productionHouse: project.productionHouse ?? null,
+        tags: project.tags ?? [],
         location: project.location || '',
         description: project.description || '',
         questions: questions || [],
