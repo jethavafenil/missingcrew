@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/server'
-import { userRepo, employerProfileRepo, projectRepo, requesterFromSession, type Requester } from '@/lib/repo';
+import { userRepo, employerProfileRepo, projectRepo, notificationRepo, requesterFromSession, type Requester } from '@/lib/repo';
 import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimiter'
 import { z } from 'zod'
 import { parseBody } from '@/lib/api/body'
 import { isBeforeToday } from '@/lib/utils'
 import { ApiError } from '@/lib/api/errors'
+import { sendEmail, createProjectLiveEmail } from '@/lib/email'
 import { revalidateTag } from 'next/cache'
 
 async function getOrCreateEmployerProfile(userId: string, requester: Requester) {
@@ -157,6 +158,24 @@ export async function POST(request: Request) {
     // Mark employer profile as completed when first project is posted
     if (!employerProfile.completed) {
       await employerProfileRepo.updateByUserId(session.user.id, { completed: true }, requester);
+    }
+
+    // Milestone (#23, email 1): confirm the project is live and explain next steps.
+    try {
+      const employerName = employerProfile.companyName || session.user.name || 'there';
+      await notificationRepo.create({
+        userId: session.user.id,
+        type: 'PROJECT_POSTED',
+        title: 'Your project is live',
+        message: `${projectName} is now visible to crew members.`,
+        data: { projectId: project.id },
+      }, requester);
+      if (session.user.email) {
+        const { subject, html } = createProjectLiveEmail(employerName, projectName);
+        await sendEmail({ to: session.user.email, subject, html });
+      }
+    } catch (mailError) {
+      console.error('Project-live notification failed:', mailError);
     }
 
     revalidateTag('projects', 'max');

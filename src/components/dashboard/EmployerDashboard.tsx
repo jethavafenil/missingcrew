@@ -56,6 +56,7 @@ interface Project {
       city?: string
     }
     appliedAt: string
+    status?: 'PENDING' | 'SHORTLISTED' | 'REJECTED' | 'HIRED'
     answers: string[]
   }>
 }
@@ -112,6 +113,34 @@ export function EmployerDashboard({ user, userData }: EmployerDashboardProps) {
   }
 
   // State for projects and applications
+  // Shortlist / reject / reset an applicant (shortlisting notifies the crew member).
+  const [updatingApplicationId, setUpdatingApplicationId] = useState<string | null>(null)
+  const [applicationActionError, setApplicationActionError] = useState<string | null>(null)
+  const updateApplicationStatus = async (
+    projectId: string,
+    applicationId: string,
+    status: 'PENDING' | 'SHORTLISTED' | 'REJECTED',
+  ) => {
+    setUpdatingApplicationId(applicationId)
+    setApplicationActionError(null)
+    try {
+      const res = await fetch(`/api/employer/projects/${projectId}/applications/${applicationId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || 'Could not update the application. Please try again.')
+      }
+      await mutateProjects()
+    } catch (err) {
+      setApplicationActionError(err instanceof Error ? err.message : 'Could not update the application.')
+    } finally {
+      setUpdatingApplicationId(null)
+    }
+  }
+
   const [activeTab, setActiveTab] = useState('dashboard')
 
   // Use SWR for fetching projects with automatic caching and revalidation
@@ -650,6 +679,9 @@ export function EmployerDashboard({ user, userData }: EmployerDashboardProps) {
                       </div>
                     ) : (
                       <div className="space-y-6">
+                        {applicationActionError && (
+                          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{applicationActionError}</div>
+                        )}
                         {projects.filter(project => project.applications.length > 0).length > 0 ? (
                           projects
                             .filter(project => project.applications.length > 0)
@@ -670,9 +702,23 @@ export function EmployerDashboard({ user, userData }: EmployerDashboardProps) {
                                             <h4 className="font-medium text-gray-900 dark:text-white">
                                               {application.crew.user.name}
                                             </h4>
-                                            <Badge variant="success" className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900 dark:text-green-200">
+                                            <Badge
+                                              variant="success"
+                                              className={
+                                                application.status === 'SHORTLISTED'
+                                                  ? 'bg-indigo-100 text-indigo-800 hover:bg-indigo-100'
+                                                  : application.status === 'REJECTED'
+                                                    ? 'bg-red-100 text-red-800 hover:bg-red-100'
+                                                    : application.status === 'HIRED'
+                                                      ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100'
+                                                      : 'bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900 dark:text-green-200'
+                                              }
+                                            >
                                               <Check className="h-3 w-3 mr-1" />
-                                              Applied
+                                              {application.status === 'SHORTLISTED' ? 'Shortlisted'
+                                                : application.status === 'REJECTED' ? 'Rejected'
+                                                : application.status === 'HIRED' ? 'Hired'
+                                                : 'Applied'}
                                             </Badge>
                                           </div>
 
@@ -719,6 +765,39 @@ export function EmployerDashboard({ user, userData }: EmployerDashboardProps) {
                                             <MessageSquare className="h-3 w-3 mr-1" />
                                             Message
                                           </button>
+                                          {application.status !== 'HIRED' && (
+                                            <div className="flex flex-wrap gap-2 md:pt-1">
+                                              {application.status !== 'SHORTLISTED' && (
+                                                <Button
+                                                  size="sm"
+                                                  disabled={updatingApplicationId === application.id}
+                                                  onClick={() => updateApplicationStatus(project.id, application.id, 'SHORTLISTED')}
+                                                >
+                                                  Shortlist
+                                                </Button>
+                                              )}
+                                              {application.status !== 'REJECTED' && (
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  disabled={updatingApplicationId === application.id}
+                                                  onClick={() => updateApplicationStatus(project.id, application.id, 'REJECTED')}
+                                                >
+                                                  Reject
+                                                </Button>
+                                              )}
+                                              {(application.status === 'SHORTLISTED' || application.status === 'REJECTED') && (
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  disabled={updatingApplicationId === application.id}
+                                                  onClick={() => updateApplicationStatus(project.id, application.id, 'PENDING')}
+                                                >
+                                                  Undo
+                                                </Button>
+                                              )}
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
 

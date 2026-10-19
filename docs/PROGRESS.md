@@ -10,6 +10,22 @@ together with `docs/HANDOFF.md` (architecture) and
 
 ---
 
+## 2026-10-19 — Phase 1 (quick wins) — built, NOT yet committed/deployed
+
+| Task | What changed |
+|---|---|
+| #20 2-month free trial | Migration `0012` (applied to the test DB): new crew profiles get `trial_ends = signup + 60 days` (email + OAuth). During an active trial crew can apply to **unlimited** projects; afterwards the free cap is 10/month. Rules live in `src/lib/subscription/access.ts` (tested). Referral bonus now *extends* the trial. |
+| #3 PRO badge | Badge shows for PRO members **and everyone on an active trial** (`hasProBadge`, exposed by `/api/crew` and `/api/crew/[id]`). Disappears when the trial ends unless PRO. |
+| #6 Budget per day | Profile shows "₹X - ₹Y per day" and a green **Negotiable** pill (`budgetFlexible`). Crew card budget removal is Phase 4. |
+| #22 Shortlist | **New:** `PUT /api/employer/projects/[id]/applications/[appId]` (employer-only, ownership-checked; PENDING/SHORTLISTED/REJECTED). Employer dashboard now has Shortlist / Reject / Undo + real status badges (there was no way to shortlist before). Shortlisting notifies the crew in-app (bell) and by email, once per transition. Crew dashboard shows "Shortlisted"; rejected applicants still see "Applied" (intentionally gentle). |
+| #23 Milestone emails | Producer gets an in-app notification + email when a project is posted, and again when it reaches exactly 5 applications. |
+| #9 Footer | Social URLs moved to `src/lib/site-config.ts` (**client must supply the real links**; they are still guesses). |
+| Emails | All templates HTML-escape names/titles; links use `NEXT_PUBLIC_SITE_URL` instead of a hard-coded domain. |
+
+Verified: `tsc`, 80 unit tests, production build, plus a 21-check end-to-end run against the local server and test DB
+(trial, post, past-date block, 5 applications → one milestone, shortlist + dedupe, 401/403/404 guards). The test cleaned up
+all of its temporary users/projects. Decisions taken: PRO badge during trial; post-trial free cap stays 10/month.
+
 ## 2026-10-18 — Security hardening + signup/session UX fixes
 
 ### Ground rules we are following

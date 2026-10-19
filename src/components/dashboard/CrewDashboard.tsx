@@ -291,7 +291,7 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
     }
   )
 
-  const { data: applicationsData, error: applicationsError, isLoading: isLoadingApplications, mutate: mutateApplications } = useSWR<{ applications: Array<{ project: Project, appliedAt: string }> }>(
+  const { data: applicationsData, error: applicationsError, isLoading: isLoadingApplications, mutate: mutateApplications } = useSWR<{ applications: Array<{ project: Project, appliedAt: string, status?: string }> }>(
     userData?.crewProfile?.id ? `/api/crew/${userData.crewProfile.id}?applications` : null,
     fetcher,
     {
@@ -341,7 +341,8 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
   const projects = projectsData?.projects || []
   const appliedProjects = applicationsData?.applications.map(app => ({
     project: app.project,
-    applicationDate: app.appliedAt
+    applicationDate: app.appliedAt,
+    status: app.status ?? 'PENDING',
   })) || []
   const wishlists = wishlistData?.wishlists?.filter((w: any) => w.project !== null) || []
   const receivedRequests = networkRequestsData?.receivedRequests || []
@@ -1027,9 +1028,16 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
                                   </p>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <Badge variant="success" className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900 dark:text-green-200">
+                                  <Badge
+                                    variant="success"
+                                    className={
+                                      app.status === 'SHORTLISTED' ? 'bg-indigo-100 text-indigo-800 hover:bg-indigo-100'
+                                      : app.status === 'HIRED' ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100'
+                                      : 'bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900 dark:text-green-200'
+                                    }
+                                  >
                                     <CheckCircle className="h-3 w-3 mr-1" />
-                                    Applied
+                                    {app.status === 'SHORTLISTED' ? 'Shortlisted' : app.status === 'HIRED' ? 'Hired' : 'Applied'}
                                   </Badge>
 <Link
   href={`/projects/${slugifyName(app.project.projectName)}`}

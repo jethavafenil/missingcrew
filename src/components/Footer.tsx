@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useSession } from '@/lib/auth/session-context';
+import { SOCIAL_LINKS, SUPPORT_EMAIL } from '@/lib/site-config';
 import { Film, Mail, MapPin, Facebook, Instagram, Linkedin, Youtube } from 'lucide-react';
 
 type FooterLink = { href: string; label: string };
@@ -63,7 +64,7 @@ export default function Footer() {
             </p>
             <div className="flex items-center gap-4">
               <a 
-                href="https://www.instagram.com/missingcrew" 
+                href={SOCIAL_LINKS.instagram} 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 aria-label="Instagram"
@@ -72,7 +73,7 @@ export default function Footer() {
                 <Instagram className="h-4 w-4 text-gray-400 group-hover:text-white" />
               </a>
               <a 
-                href="https://www.facebook.com/missingcrew" 
+                href={SOCIAL_LINKS.facebook} 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 aria-label="Facebook"
@@ -81,7 +82,7 @@ export default function Footer() {
                 <Facebook className="h-4 w-4 text-gray-400 group-hover:text-white" />
               </a>
               <a 
-                href="https://www.linkedin.com/company/missingcrew" 
+                href={SOCIAL_LINKS.linkedin} 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 aria-label="LinkedIn"
@@ -90,7 +91,7 @@ export default function Footer() {
                 <Linkedin className="h-4 w-4 text-gray-400 group-hover:text-white" />
               </a>
               <a 
-                href="https://www.youtube.com/@missingcrew" 
+                href={SOCIAL_LINKS.youtube} 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 aria-label="YouTube"
@@ -153,8 +154,8 @@ export default function Footer() {
             <ul className="space-y-3">
               <li className="flex items-start gap-3 text-gray-400">
                 <Mail className="h-5 w-5 text-indigo-400 flex-shrink-0 mt-0.5" />
-                <a href="mailto:support@missingcrew.com" className="hover:text-indigo-400 transition-colors duration-200">
-                  support@missingcrew.com
+                <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-indigo-400 transition-colors duration-200">
+                  {SUPPORT_EMAIL}
                 </a>
               </li>
               <li className="flex items-start gap-3 text-gray-400">
