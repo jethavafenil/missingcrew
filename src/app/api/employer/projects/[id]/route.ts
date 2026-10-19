@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/server'
 import { employerProfileRepo, projectRepo, requesterFromSession } from '@/lib/repo'
 import { isBeforeToday } from '@/lib/utils'
+import { projectInputSchema } from '@/lib/projects/schema'
+import { parseBody } from '@/lib/api/body'
+import { ApiError } from '@/lib/api/errors'
 
 // GET /api/employer/projects/[id] - Get a single project
 export async function GET(
@@ -43,8 +46,8 @@ export async function GET(
       ...project,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
-      shootStartDate: project.shootStartDate.toISOString(),
-      shootEndDate: project.shootEndDate.toISOString()
+      shootStartDate: project.shootStartDate ? project.shootStartDate.toISOString() : null,
+      shootEndDate: project.shootEndDate ? project.shootEndDate.toISOString() : null
     }
 
     return NextResponse.json({ project: formattedProject })
@@ -69,26 +72,7 @@ export async function PUT(
     }
 
     const { id } = await params
-    const body = await request.json()
-    const {
-      projectName,
-      projectType,
-      rolesNeeded,
-      shootStartDate,
-      shootEndDate,
-      location,
-      budgetPerRole,
-      description,
-      questions,
-      contactPreference
-    } = body
-
-    if (!projectName || !projectType || !rolesNeeded || !shootStartDate || !shootEndDate || !location || !description || !questions || !contactPreference) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
-    }
+    const input = await parseBody(request, projectInputSchema)
 
     const requester = requesterFromSession(session)
 
@@ -112,37 +96,37 @@ export async function PUT(
       )
     }
 
-    // Dates: end must not precede start, and a changed start date can't be moved
-    // into the past (unchanged dates stay editable for projects already running).
-    const newStart = new Date(shootStartDate)
-    const newEnd = new Date(shootEndDate)
-    if (Number.isNaN(newStart.getTime()) || Number.isNaN(newEnd.getTime())) {
-      return NextResponse.json({ error: 'Invalid shoot dates' }, { status: 400 })
-    }
-    if (newEnd < newStart) {
-      return NextResponse.json({ error: 'Shoot end date must be on or after start date' }, { status: 400 })
-    }
-    const startChanged = newStart.toISOString().slice(0, 10) !== new Date(existingProject.shootStartDate).toISOString().slice(0, 10)
-    if (startChanged && isBeforeToday(newStart)) {
+    // A changed start date can't be moved into the past (unchanged dates stay
+    // editable for projects that are already running).
+    const dayKey = (d: Date | null) => (d ? new Date(d).toISOString().slice(0, 10) : null)
+    const startChanged = dayKey(input.shootStartDate) !== dayKey(existingProject.shootStartDate)
+    if (startChanged && input.shootStartDate && isBeforeToday(input.shootStartDate)) {
       return NextResponse.json({ error: 'Shoot start date cannot be in the past' }, { status: 400 })
     }
 
     // Update the project
     const project = await projectRepo.update(id, {
-      projectName,
-      projectType,
-      rolesNeeded,
-      shootStartDate: new Date(shootStartDate),
-      shootEndDate: new Date(shootEndDate),
-      location,
-      budgetPerRole: budgetPerRole ? parseFloat(budgetPerRole) : undefined,
-      description,
-      questions,
-      contactPreference
+      projectName: input.projectName,
+      projectType: input.projectType,
+      rolesNeeded: input.rolesNeeded,
+      shootStartDate: input.shootStartDate,
+      shootEndDate: input.shootEndDate,
+      location: input.location,
+      budgetMin: input.budgetMin,
+      budgetMax: input.budgetMax,
+      budgetFixed: input.budgetFixed,
+      productionHouse: input.productionHouse,
+      description: input.description,
+      questions: input.questions,
+      contactPreference: input.contactPreference,
     }, requester)
 
     return NextResponse.json({ project }, { status: 200 })
   } catch (error) {
+    // Validation failures (400) carry a user-facing message; surface them.
+    if (error instanceof ApiError && error.status < 500) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status })
+    }
     console.error('Error updating project:', error)
     return NextResponse.json(
       { error: 'Internal Server Error' },

@@ -97,10 +97,14 @@ export interface ProjectRow {
   projectName: string
   projectType: string
   rolesNeeded: string[]
-  shootStartDate: Date
-  shootEndDate: Date
+  shootStartDate: Date | null
+  shootEndDate: Date | null
   location: string
   budgetPerRole: unknown | null
+  budgetMin: number | null
+  budgetMax: number | null
+  budgetFixed: boolean
+  productionHouse: string | null
   description: string
   questions: Record<string, unknown> | string[]
   contactPreference: Record<string, unknown> | string[]
@@ -345,10 +349,14 @@ export function mapProject(r: RawRow): ProjectRow {
     projectName: r.project_name as string,
     projectType: r.project_type as string,
     rolesNeeded: asStringList(r.roles_needed),
-    shootStartDate: asDate(r.shoot_start_date)!,
-    shootEndDate: asDate(r.shoot_end_date)!,
+    shootStartDate: asDate(r.shoot_start_date),
+    shootEndDate: asDate(r.shoot_end_date),
     location: r.location as string,
     budgetPerRole: r.budget_per_role ?? null,
+    budgetMin: r.budget_min == null ? null : Number(r.budget_min),
+    budgetMax: r.budget_max == null ? null : Number(r.budget_max),
+    budgetFixed: r.budget_fixed === true,
+    productionHouse: (r.production_house as string | null) ?? null,
     description: r.description as string,
     questions: asJsonObj(r.questions),
     contactPreference: asJsonObj(r.contact_preference),
