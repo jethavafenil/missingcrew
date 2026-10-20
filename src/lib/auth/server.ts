@@ -78,7 +78,7 @@ export async function requireRole(
 }
 
 export function roleHome(role: UserRole): string {
-  if (role === 'EMPLOYER') return '/employer/dashboard'
+  if (role === 'EMPLOYER') return '/browse-crew'
   if (role === 'ADMIN') return '/admin'
-  return '/crew-home'
+  return '/find-work'
 }

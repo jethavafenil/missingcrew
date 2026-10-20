@@ -11,6 +11,7 @@ import RoleRedirect from '@/components/auth/RoleRedirect'
 import { getFeaturedCrew, getFeaturedProjects } from '@/lib/cache/public'
 import { getSession } from '@/lib/auth/server'
 import { applicationRepo, crewProfileRepo, requesterFromSession } from '@/lib/repo'
+import { redirectIfWrongRole } from '@/lib/auth/role-guard'
 
 // No page-level revalidate: the root layout resolves the session per request,
 // so this route renders dynamically. Featured data is still cached via
@@ -38,6 +39,7 @@ interface Project {
 }
 
 export default async function CrewHome() {
+  await redirectIfWrongRole('CREW')
   const session = await getSession()
   let appliedProjectIdsSet = new Set<string>()
 

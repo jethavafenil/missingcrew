@@ -5,6 +5,8 @@ import Image from 'next/image'
 import AnonymousRoleToggle from '@/components/AnonymousRoleToggle'
 import RoleRedirect from '@/components/auth/RoleRedirect'
 import { crewProfileRepo } from '@/lib/repo'
+import { redirectIfWrongRole } from '@/lib/auth/role-guard'
+import { getSession } from '@/lib/auth/server'
 
 interface CrewMember {
   id: string
@@ -106,6 +108,12 @@ async function getFeaturedCrew(): Promise<CrewMember[]> {
 }
 
 export default async function EmployerHome() {
+  await redirectIfWrongRole('EMPLOYER')
+  const session = await getSession()
+  // A signed-in producer posts directly; guests are taken through signup first.
+  const postHref = session?.user?.role === 'EMPLOYER'
+    ? '/employer/post-requirement'
+    : '/accounts?tab=signup&role=employer&intent=post-requirement'
   const [crewModule, { CrewSlider }, { FallbackCrewSlider }] = await Promise.all([
     getFeaturedCrew(),
     import('@/components/crew/CrewSlider'),
@@ -141,7 +149,7 @@ export default async function EmployerHome() {
               Post a requirement in minutes, get matched with top professionals, and manage applications seamlessly.
             </p>
             <div className="flex flex-col sm:flex-row gap-2 md:gap-3 justify-center px-4">
-              <Link href="/accounts?tab=signup&role=employer&intent=post-requirement" className="w-full sm:w-auto">
+              <Link href={postHref} className="w-full sm:w-auto">
                 <Button size="default" className="bg-white text-indigo-700 hover:bg-indigo-100 px-5 md:px-6 border border-white/30 w-full sm:w-auto">Post a Requirement</Button>
               </Link>
               <Link href="/browse-crew" className="w-full sm:w-auto">
@@ -365,7 +373,7 @@ export default async function EmployerHome() {
             ))}
           </div>
           <div className="text-center mt-10 md:mt-12 px-4">
-            <Link href="/accounts?tab=signup&role=employer&intent=post-requirement" className="inline-block w-full sm:w-auto">
+            <Link href={postHref} className="inline-block w-full sm:w-auto">
               <Button size="lg" className="px-6 md:px-8 w-full sm:w-auto">Post Your First Requirement</Button>
             </Link>
           </div>

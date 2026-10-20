@@ -13,6 +13,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    if (session.user.role !== 'CREW') {
+      return NextResponse.json({ error: 'Subscriptions are only available to crew members' }, { status: 403 })
+    }
+
     const { planId } = await request.json()
 
     const requester = requesterFromSession(session)

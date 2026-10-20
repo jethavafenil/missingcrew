@@ -10,6 +10,9 @@ import { z } from 'zod'
 export async function POST(request: NextRequest) {
   try {
     const { session } = await requireAuth()
+    if (session.user.role !== 'CREW') {
+      return NextResponse.json({ error: 'Subscriptions are only available to crew members' }, { status: 403 })
+    }
     const { sessionId } = await parseBody(request, z.object({ sessionId: z.string().min(8).max(255) }))
 
     const stripe = getStripe()

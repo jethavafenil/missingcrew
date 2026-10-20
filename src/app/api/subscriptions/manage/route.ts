@@ -11,6 +11,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    if (session.user.role !== 'CREW') {
+      return NextResponse.json({ error: 'Subscriptions are only available to crew members' }, { status: 403 })
+    }
+
     const requester = requesterFromSession(session)
 
     // Get user's current subscription
@@ -41,6 +45,10 @@ export async function POST(request: NextRequest) {
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (session.user.role !== 'CREW') {
+      return NextResponse.json({ error: 'Subscriptions are only available to crew members' }, { status: 403 })
     }
 
     const { action, planId } = await request.json()
