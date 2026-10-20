@@ -10,6 +10,24 @@ together with `docs/HANDOFF.md` (architecture) and
 
 ---
 
+## 2026-10-20 — Crew vs Producer separation (client feedback) — built, NOT yet committed
+
+Client feedback: producers saw projects / Find Work / a subscription, and crew and producers felt like the same experience.
+Findings: a correctly-registered producer already had the EMPLOYER role and could post projects, but role separation was only
+partial (client-side) and the default signup form was Crew, so producers often registered as crew by mistake.
+
+- **Explicit account type switch** ("I'm Crew" / "I'm Hiring") at the very top of the signup/sign-in page (also on phones).
+- **Server-side role guards** (`src/lib/auth/role-guard.ts`): producers are redirected away from Find Work, crew-home,
+  subscription pages and crew profile setup/wishlist; crew are redirected away from `/employer/*` and employer-home.
+  Guests and admins are not affected.
+- **No subscriptions for producers**: Stripe checkout, subscription create/manage and verify-session return 403 for non-crew.
+  Producers post unlimited projects (no limit exists in the code).
+- **Landing after sign-in/signup**: crew -> Find Work (projects), producers -> Browse Crew (crew profiles + Post a Job).
+- Employer-home "Post a Requirement" now goes straight to the post form for signed-in producers.
+- Crew subscription card now shows the real trial benefits (unlimited applications, PRO badge, trial end date) instead of the
+  Basic plan's "10 gigs/month".
+- Verified with a 24-check role test (producer/crew/guest) plus re-runs of the earlier 58 end-to-end checks.
+
 ## 2026-10-20 — Tags, premade share message, email verification ON
 
 - **Custom project tags** (migration `0014`, applied): the type hashtag is automatic; producers may add up to 3 free-text tags

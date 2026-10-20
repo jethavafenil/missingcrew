@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
 import { CheckCircle, Star, Zap, AlertTriangle, ArrowRight } from 'lucide-react'
+import { isTrialActive } from '@/lib/subscription/access'
 
 interface CrewSubscriptionCardProps {
   subscriptionTier: 'FREE_TRIAL' | 'BASIC' | 'PRO'
@@ -86,7 +87,22 @@ export function CrewSubscriptionCard({ subscriptionTier, trialEnds }: CrewSubscr
     }
   }
 
+  const trialActive = isTrialActive({ subscriptionTier, trialEnds })
+  const trialEndLabel = trialEnds
+    ? new Date(trialEnds).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null
+
   const getFeatures = () => {
+    // During the free trial crew get everything unlimited (the plan API describes paid plans).
+    if (trialActive) {
+      return [
+        'Unlimited job applications',
+        'PRO badge on your profile',
+        'Appear in crew search',
+        'Show availability status',
+        trialEndLabel ? `Free trial ends on ${trialEndLabel}` : 'Free trial period',
+      ]
+    }
     if (planDetails) {
       return planDetails.features
     }
@@ -113,7 +129,7 @@ export function CrewSubscriptionCard({ subscriptionTier, trialEnds }: CrewSubscr
       case 'FREE_TRIAL':
         return [
           'Limited access to features',
-          'Apply to 3 gigs/month',
+          'Apply to 10 gigs/month after the trial',
           'Basic profile visibility',
           'Trial period access'
         ]

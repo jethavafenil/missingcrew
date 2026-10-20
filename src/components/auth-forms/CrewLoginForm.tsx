@@ -35,7 +35,7 @@ export default function CrewLoginForm() {
       try {
         const callbackUrl = isSafeReturnPath(returnUrl)
           ? returnUrl
-          : '/crew-home'
+          : '/find-work'
 
         const result = await signInWithPassword({
           email: formData.email,

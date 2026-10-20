@@ -39,7 +39,7 @@ export default function EmployerLoginForm() {
           ? returnUrl
           : intent === 'post-requirement'
             ? '/employer/post-requirement'
-            : '/employer-home'
+            : '/browse-crew'
 
         const result = await signInWithPassword({
           email: formData.email,

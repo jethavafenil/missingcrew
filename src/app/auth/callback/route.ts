@@ -94,8 +94,8 @@ export async function GET(request: NextRequest) {
         : session.user.role === 'ADMIN'
           ? '/admin'
           : session.user.role === 'EMPLOYER'
-            ? '/employer-home'
-            : '/crew-home'
+            ? '/browse-crew'
+            : '/find-work'
 
   return clearStateCookies(NextResponse.redirect(`${origin}${redirectPath}`))
 }

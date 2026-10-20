@@ -55,9 +55,9 @@ function AccountsContent() {
       } else if (userRole === 'ADMIN') {
         router.push('/admin')
       } else if (userRole === 'CREW') {
-        router.push('/crew-home')
+        router.push('/find-work')
       } else if (userRole === 'EMPLOYER') {
-        router.push('/employer-home')
+        router.push('/browse-crew')
       } else {
         router.push('/')
       }
@@ -167,6 +167,33 @@ function AccountsContent() {
       <section className="py-12 md:py-16">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto">
+
+            {/* Who are you? Crew and producers have different experiences, so choose first. */}
+            <div
+              role="group"
+              aria-label="Account type"
+              className="mx-auto mb-8 grid max-w-md grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1"
+            >
+              {([
+                { value: 'crew', label: "I'm Crew", hint: 'Looking for work', icon: '🎬' },
+                { value: 'employer', label: "I'm Hiring", hint: 'Producer / Client', icon: '💼' },
+              ] as const).map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={role === option.value}
+                  onClick={() => role !== option.value && handleRoleChange(option.value)}
+                  className={`rounded-lg px-3 py-3 text-center transition-all ${
+                    role === option.value
+                      ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-200'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <span className="block text-sm font-bold">{option.icon} {option.label}</span>
+                  <span className="block text-xs opacity-80">{option.hint}</span>
+                </button>
+              ))}
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Left Column - Benefits Only (no role selection) */}
