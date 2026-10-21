@@ -13,6 +13,7 @@ import EmployerLoginForm from '@/components/auth-forms/EmployerLoginForm'
 import { createAuthClient } from '@/lib/auth/client'
 import { setOAuthState, clearOAuthState } from '@/lib/oauthState'
 import { isSafeReturnPath } from '@/lib/utils'
+import { isSignInVerifying } from '@/lib/auth/auth-flags'
 
 function AccountsContent() {
   const { data: session, status } = useSession()
@@ -36,6 +37,8 @@ function AccountsContent() {
   // Redirect logged-in users to their destination or dashboard
   useEffect(() => {
     if (status === 'authenticated' && session?.user) {
+      // A password sign-in on the wrong login tab is verified and reversed by the form; don't redirect meanwhile.
+      if (isSignInVerifying()) return
       const userRole = session.user.role
       
       // Clear OAuth cookies after successful authentication

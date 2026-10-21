@@ -22,6 +22,7 @@ export default function EmployerLoginForm() {
     password: '',
   })
   const [error, setError] = useState('')
+  const [wrongRole, setWrongRole] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -32,6 +33,7 @@ export default function EmployerLoginForm() {
     e.preventDefault()
     setIsLoading(true)
     setError('')
+    setWrongRole(false)
 
       try {
         // Determine callback URL based on returnUrl or intent
@@ -50,6 +52,7 @@ export default function EmployerLoginForm() {
 
         if (!result.ok) {
           setError(result.error || 'Failed to login. Please check your credentials.')
+          setWrongRole(!!result.wrongRole)
         } else {
           router.push(result.url || callbackUrl)
         }
@@ -98,6 +101,20 @@ export default function EmployerLoginForm() {
         </div>
       )}
       {error.toLowerCase().includes('not verified') && <ResendVerification email={formData.email} />}
+      {wrongRole && (
+        <button
+          type="button"
+          onClick={() => {
+            const params = new URLSearchParams(searchParams.toString())
+            params.set('tab', 'signin')
+            params.set('role', 'crew')
+            router.push(`/accounts?${params.toString()}`)
+          }}
+          className="mb-4 w-full rounded-md border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+        >
+          Go to Crew login
+        </button>
+      )}
 
       <Button 
         type="submit" 

@@ -21,6 +21,7 @@ export default function CrewLoginForm() {
     password: '',
   })
   const [error, setError] = useState('')
+  const [wrongRole, setWrongRole] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -31,6 +32,7 @@ export default function CrewLoginForm() {
     e.preventDefault()
     setIsLoading(true)
     setError('')
+    setWrongRole(false)
 
       try {
         const callbackUrl = isSafeReturnPath(returnUrl)
@@ -46,6 +48,7 @@ export default function CrewLoginForm() {
 
         if (!result.ok) {
           setError(result.error || 'Failed to login. Please check your credentials.')
+          setWrongRole(!!result.wrongRole)
         } else {
           router.push(result.url || callbackUrl)
         }
@@ -94,6 +97,20 @@ export default function CrewLoginForm() {
         </div>
       )}
       {error.toLowerCase().includes('not verified') && <ResendVerification email={formData.email} />}
+      {wrongRole && (
+        <button
+          type="button"
+          onClick={() => {
+            const params = new URLSearchParams(searchParams.toString())
+            params.set('tab', 'signin')
+            params.set('role', 'employer')
+            router.push(`/accounts?${params.toString()}`)
+          }}
+          className="mb-4 w-full rounded-md border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+        >
+          Go to Producer login
+        </button>
+      )}
 
       <Button 
         type="submit" 

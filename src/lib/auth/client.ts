@@ -1,6 +1,7 @@
 import { createSupabaseBrowserClient as createAuthClient } from '@/lib/supabase/client'
 import type { UserRole } from '@/lib/repo/types'
 import type { AppSession, SessionUser } from '@/lib/auth/types'
+import { setSignInVerifying } from '@/lib/auth/auth-flags'
 
 export { createAuthClient }
 export type { AppSession, SessionUser }
@@ -16,6 +17,8 @@ export interface CredentialsSignInResult {
   ok: boolean
   error?: string
   url?: string
+  // Set when the credentials are valid but belong to the other kind of account.
+  wrongRole?: UserRole
 }
 
 function friendlyAuthError(message: string): string {
@@ -37,21 +40,34 @@ export async function signInWithPassword({
   callbackUrl,
 }: CredentialsSignInInput): Promise<CredentialsSignInResult> {
   const supabase = createAuthClient()
-
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) return { ok: false, error: friendlyAuthError(error.message) }
-  if (!data.session) {
-    return { ok: false, error: 'Email not verified. Please check your email for a verification link.' }
-  }
-
-  if (expectedRole) {
-    const res = await fetch('/api/auth/session', { cache: 'no-store' })
-    const session: AppSession | null = res.ok ? await res.json() : null
-    if (session?.user && session.user.role !== expectedRole) {
-      await supabase.auth.signOut()
-      return { ok: false, error: 'Invalid role' }
+  setSignInVerifying(true)
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) return { ok: false, error: friendlyAuthError(error.message) }
+    if (!data.session) {
+      return { ok: false, error: 'Email not verified. Please check your email for a verification link.' }
     }
-  }
 
-  return { ok: true, url: callbackUrl }
+    if (expectedRole) {
+      const res = await fetch('/api/auth/session', { cache: 'no-store' })
+      const session: AppSession | null = res.ok ? await res.json() : null
+      if (session?.user && session.user.role !== expectedRole && session.user.role !== 'ADMIN') {
+        await supabase.auth.signOut()
+        const actual = session.user.role
+        return {
+          ok: false,
+          wrongRole: actual,
+          error:
+            actual === 'EMPLOYER'
+              ? 'This email belongs to a Producer / Client account. Please sign in using the Producer login.'
+              : 'This email belongs to a Crew account. Please sign in using the Crew login.',
+        }
+      }
+    }
+
+    return { ok: true, url: callbackUrl }
+  } finally {
+    // Give the auth-state listeners a moment to settle before pages react again.
+    setTimeout(() => setSignInVerifying(false), 1500)
+  }
 }

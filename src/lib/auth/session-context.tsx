@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { createAuthClient } from '@/lib/auth/client'
 import type { AppSession } from '@/lib/auth/types'
+import { isSignInVerifying } from '@/lib/auth/auth-flags'
 
 type SessionStatus = 'loading' | 'authenticated' | 'unauthenticated'
 
@@ -41,8 +42,12 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
   // leaves this tab showing (and acting as) the wrong user until it re-checks.
   const renderedUserId = useRef<string | null>(initialSession?.user?.id ?? null)
   const lastCheck = useRef(0)
+  // When this tab itself last signed in/out. An identity change right after that is our own doing, not another tab's.
+  const lastOwnAuthEvent = useRef(0)
 
-  const refresh = useCallback(async () => {
+  // `reloadOnChange` is only set by the focus/visibility re-check: an identity change seen then was
+  // made in ANOTHER tab. Auth events from this tab (sign-in, sign-out, wrong-role check) never reload.
+  const refresh = useCallback(async (reloadOnChange = false) => {
     lastCheck.current = Date.now()
     try {
       const res = await fetch('/api/auth/session', { cache: 'no-store' })
@@ -55,7 +60,8 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
         // The identity changed underneath this tab (other tab logged in as a
         // different user, or logged out): reload so server-rendered content
         // and cached client state are rebuilt for the current user.
-        if (hadUser && !signingOut) {
+        const ownRecently = Date.now() - lastOwnAuthEvent.current < 10_000
+        if (reloadOnChange && hadUser && !signingOut && !ownRecently && !isSignInVerifying()) {
           window.location.reload()
           return
         }
@@ -76,12 +82,13 @@ export function SessionProvider({ children, initialSession }: SessionProviderPro
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(() => {
-      void refresh()
+      lastOwnAuthEvent.current = Date.now()
+      void refresh(false)
     })
     // Re-validate when the tab becomes visible again (throttled), so a switch
     // between tabs picks up a login/logout done in another tab.
     const recheck = () => {
-      if (document.visibilityState === 'visible' && Date.now() - lastCheck.current > 3000) void refresh()
+      if (document.visibilityState === 'visible' && Date.now() - lastCheck.current > 3000) void refresh(true)
     }
     document.addEventListener('visibilitychange', recheck)
     window.addEventListener('focus', recheck)
