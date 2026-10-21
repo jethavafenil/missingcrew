@@ -12,6 +12,7 @@ export const RATE_LIMITS = {
   contact: { points: 3, duration: 600, blockDuration: 600 },
   applicationApply: { points: 10, duration: 600 },
   projectPost: { points: 10, duration: 3600 },
+  hireRequest: { points: 30, duration: 3600 },
   connectionRequest: { points: 20, duration: 3600 },
   otpSend: { points: 3, duration: 900, blockDuration: 1800 },
   otpVerify: { points: 5, duration: 600, blockDuration: 1800 },

@@ -149,3 +149,28 @@ export function createApplicationsMilestoneEmail(employerName: string, projectNa
     { label: 'Review applicants', href: `${siteUrl()}/employer/dashboard` })
   return { subject, html }
 }
+
+// Hire flow: the crew member is asked to join a project.
+export function createHireRequestEmail(crewName: string, producerName: string, projectName: string, role: string | null, message: string) {
+  const subject = `${producerName} wants to hire you for ${projectName}`
+  const html = layout('You have a new hire request', `
+      <p>Hi ${escapeHtml(crewName)},</p>
+      <p><strong>${escapeHtml(producerName)}</strong> would like to hire you${role ? ` as <strong>${escapeHtml(role)}</strong>` : ''} for <strong>${escapeHtml(projectName)}</strong>.</p>
+      <blockquote style="margin: 16px 0; padding: 12px 16px; background-color: #f3f4f6; border-left: 4px solid #2563eb; white-space: pre-wrap;">${escapeHtml(message)}</blockquote>
+      <p>Open your dashboard to accept or decline the request.</p>`,
+    { label: 'Review hire request', href: `${siteUrl()}/dashboard?tab=requests` })
+  return { subject, html }
+}
+
+// Hire flow: the producer hears the crew member's answer.
+export function createHireResponseEmail(producerName: string, crewName: string, projectName: string, accepted: boolean) {
+  const subject = accepted
+    ? `${crewName} accepted your hire request for ${projectName}`
+    : `${crewName} declined your hire request for ${projectName}`
+  const html = layout(accepted ? 'Hire request accepted' : 'Hire request declined', `
+      <p>Hi ${escapeHtml(producerName)},</p>
+      <p><strong>${escapeHtml(crewName)}</strong> has <strong>${accepted ? 'accepted' : 'declined'}</strong> your hire request for <strong>${escapeHtml(projectName)}</strong>.</p>
+      ${accepted ? '<p>They are now confirmed on the project and the credit will appear on their profile.</p>' : '<p>You can browse more crew members and send another request.</p>'}`,
+    { label: accepted ? 'Open dashboard' : 'Browse crew', href: `${siteUrl()}${accepted ? '/employer/dashboard' : '/browse-crew'}` })
+  return { subject, html }
+}

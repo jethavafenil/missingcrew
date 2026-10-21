@@ -16,6 +16,7 @@ export * as subscriptionRepo from '@/lib/repo/subscription.repo'
 export * as notificationRepo from '@/lib/repo/notification.repo'
 export * as wishlistRepo from '@/lib/repo/wishlist.repo'
 export * as connectionRepo from '@/lib/repo/connection.repo'
+export * as hireRequestRepo from '@/lib/repo/hireRequest.repo'
 
 export { assertUser, assertAdmin, currentUserId, requesterFromSession, SYSTEM_REQUESTER, type RequiresRequester, type RequiresAdmin } from '@/lib/repo/scope'
 export type {
@@ -43,6 +44,9 @@ export type {
   NotificationRow,
   WishlistRow,
   ConnectionRow,
+  HireRequestRow,
+  HireRequestStatus,
+  HireRequestWithRelations,
 } from '@/lib/repo/types'
 export {
   getAnonClient,

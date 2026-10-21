@@ -10,6 +10,8 @@ export type NotificationType =
   | 'APPLICATION_RECEIVED'
   | 'APPLICATION_STATUS_CHANGED'
   | 'PROJECT_POSTED'
+  | 'HIRE_REQUEST'
+  | 'HIRE_RESPONSE'
   | 'SUBSCRIPTION_EXPIRING'
   | 'MESSAGE_RECEIVED'
   | 'CONNECTION_REQUEST'
@@ -459,3 +461,46 @@ function many<T>(v: unknown): T[] {
 }
 
 export { asDate, asBool, first, many }
+
+// ---- Hire requests (producer asks crew to join a project; crew accepts/declines)
+export type HireRequestStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED'
+
+export interface HireRequestRow {
+  id: string
+  employerId: string
+  crewId: string
+  projectId: string
+  role: string | null
+  message: string
+  status: HireRequestStatus
+  createdAt: Date
+  respondedAt: Date | null
+}
+
+export interface HireRequestWithRelations extends HireRequestRow {
+  project?: {
+    id: string
+    projectName: string
+    projectType: string
+    location: string
+    shootStartDate: Date | null
+    shootEndDate: Date | null
+    productionHouse: string | null
+  }
+  employer?: { id: string; userId: string; companyName: string; user?: { id: string; name: string | null; email: string } }
+  crew?: { id: string; userId: string; photo: string | null; primaryRoles: string[]; user?: { id: string; name: string | null; email: string } }
+}
+
+export function mapHireRequest(r: RawRow): HireRequestRow {
+  return {
+    id: r.id as string,
+    employerId: r.employer_id as string,
+    crewId: r.crew_id as string,
+    projectId: r.project_id as string,
+    role: (r.role as string | null) ?? null,
+    message: r.message as string,
+    status: r.status as HireRequestStatus,
+    createdAt: asDate(r.created_at)!,
+    respondedAt: asDate(r.responded_at),
+  }
+}

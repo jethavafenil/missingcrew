@@ -14,7 +14,11 @@ const SHORT: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year
 export function formatShootRange(start: DateLike, end: DateLike): string {
   const s = parse(start)
   const e = parse(end)
-  if (s && e) return `${s.toLocaleDateString('en-US', SHORT)} - ${e.toLocaleDateString('en-US', SHORT)}`
+  if (s && e) {
+    const a = s.toLocaleDateString('en-US', SHORT)
+    const b = e.toLocaleDateString('en-US', SHORT)
+    return a === b ? a : `${a} - ${b}`
+  }
   if (s) return `Starts ${s.toLocaleDateString('en-US', SHORT)}`
   if (e) return `Until ${e.toLocaleDateString('en-US', SHORT)}`
   return 'Dates flexible'
