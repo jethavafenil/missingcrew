@@ -17,6 +17,7 @@ import { NetworkList } from '@/components/network/NetworkList'
 import { CrewSubscriptionCard } from '@/components/subscription/CrewSubscriptionCard'
 import { slugifyName } from '@/lib/utils'
 import { swrFetcher } from '@/lib/swr'
+import { HireRequestsPanel } from '@/components/hire/HireRequestsPanel'
 
 // Utility function to format date
 function formatDate(dateString: string | undefined): string {
@@ -274,7 +275,7 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
   const searchParams = useSearchParams()
   const tabParam = searchParams.get('tab')
   const isDashboardTab = (t: string | null): t is string =>
-    t === 'dashboard' || t === 'applications' || t === 'wishlist' || t === 'network'
+    t === 'dashboard' || t === 'applications' || t === 'wishlist' || t === 'network' || t === 'requests'
   const [activeTab, setActiveTab] = useState(isDashboardTab(tabParam) ? tabParam : 'dashboard')
   useEffect(() => {
     if (isDashboardTab(tabParam)) setActiveTab(tabParam)
@@ -337,6 +338,10 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
       refreshInterval: 10000, // Refresh every 10 seconds
     }
   )
+
+  // Pending hire requests (shared SWR key with the Requests tab) drive the tab badge.
+  const { data: hireData } = useSWR<{ requests: Array<{ status: string }> }>('/api/hire-requests', fetcher, { revalidateOnFocus: true })
+  const pendingHireCount = (hireData?.requests ?? []).filter((r) => r.status === 'PENDING').length
 
   const projects = projectsData?.projects || []
   const appliedProjects = applicationsData?.applications.map(app => ({
@@ -749,7 +754,7 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
           <div className="lg:col-span-2 space-y-6">
             {/* Tabs Navigation */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-<TabsList className="grid grid-cols-4 bg-gray-100 dark:bg-gray-800">
+<TabsList className="grid grid-cols-2 sm:grid-cols-5 h-auto bg-gray-100 dark:bg-gray-800">
                 <TabsTrigger value="dashboard" className="data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-900">
                   <FileText className="h-4 w-4 mr-2" />
                   Dashboard
@@ -766,7 +771,26 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
                   <UserPlus className="h-4 w-4 mr-2" />
                   Network ({totalNetworkCount})
                 </TabsTrigger>
+                <TabsTrigger value="requests" className="data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-900">
+                  <Briefcase className="h-4 w-4 mr-2" />
+                  Hire requests{pendingHireCount > 0 ? ` (${pendingHireCount})` : ''}
+                </TabsTrigger>
               </TabsList>
+
+              {/* Hire requests Tab */}
+              <TabsContent value="requests" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center">
+                      <Briefcase className="h-5 w-5 mr-2 text-indigo-600" />
+                      Hire requests
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <HireRequestsPanel viewer="CREW" />
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
               {/* Dashboard Tab */}
               <TabsContent value="dashboard" className="space-y-6">

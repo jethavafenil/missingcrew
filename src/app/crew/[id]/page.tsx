@@ -489,7 +489,7 @@ export default function CrewProfilePage() {
                   />
                 )}
                 {/* Hire shows for everyone (HireButton handles routing for non-employers/non-logged-in) */}
-                <HireButton crewUserId={crew.user.id} primaryRole={crew.primaryRoles?.[0]} />
+                <HireButton crewUserId={crew.user.id} crewId={crew.id} crewName={crew.user.name} crewRoles={crew.primaryRoles ?? []} />
                 {/* Social Share button */}
                 <SocialShare 
                   url={typeof window !== 'undefined' ? window.location.href : `https://missingcrew.vercel.app/crew/${params.id}`}

@@ -15,6 +15,7 @@ import { NetworkCrewSlider } from '@/components/network/NetworkCrewSlider'
 import { slugifyName } from '@/lib/utils'
 import { swrFetcher } from '@/lib/swr'
 import { formatShootRange } from '@/lib/projects/format'
+import { HireRequestsPanel } from '@/components/hire/HireRequestsPanel'
 
 interface EmployerUserData {
   email: string
@@ -863,6 +864,11 @@ export function EmployerDashboard({ user, userData }: EmployerDashboardProps) {
                     </Link>
                   </CardHeader>
                   <CardContent>
+                    <div className="mb-8">
+                      <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Hire requests you sent</h4>
+                      <HireRequestsPanel viewer="EMPLOYER" />
+                    </div>
+                    <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Your network</h4>
                     {isConnectionsLoading ? (
                       <div className="flex flex-col items-center justify-center py-12">
                         <RefreshCw className="h-12 w-12 animate-spin text-indigo-600 mb-4" />

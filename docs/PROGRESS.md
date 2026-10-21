@@ -10,6 +10,32 @@ together with `docs/HANDOFF.md` (architecture) and
 
 ---
 
+## 2026-10-21 — Producer side, step 1: Hire Now -> crew approval — built, NOT yet committed
+
+Before: "Hire Now" on a crew profile only sent a *connection* request. There was no real hiring flow.
+
+- **Migration `0015`** (applied to the test DB): `hire_requests` (producer, crew, project, role, message, status
+  PENDING/ACCEPTED/DECLINED/CANCELLED; unique per project+crew; server-only access) and notification kinds
+  `HIRE_REQUEST` / `HIRE_RESPONSE`.
+- **API** (`/api/hire-requests`): producer creates a request for one of *their open projects* (ownership checked, rate
+  limited, 1000-char message, duplicates/declines/accepted handled; a cancelled request can be re-sent); crew accepts or
+  declines; producer can cancel. Lists never expose the other side's email.
+- **Accepting** turns the crew member's application for that project into **HIRED** (created if they never applied) — this is
+  the single source of truth that credits, "current engagement", the hired-projects count and reviews will read.
+- **Hire Now dialog** (producers): choose project and role, premade editable message (`buildHireMessage`), mobile-friendly.
+  If the producer has no open project it asks them to post one. Status of earlier requests shows under the button.
+- **Crew dashboard**: new "Hire requests" tab with a pending badge (deep link `/dashboard?tab=requests`) with Accept/Decline.
+  **Producer dashboard**: "Hire requests you sent" (status + cancel) at the top of the Hire Now tab.
+- Crew gets a bell notification + email; producer gets a bell notification + email on the answer. Emails are sent after the
+  response so the UI doesn't wait for SMTP.
+- Verified: 30-check API test (all rules/authorization), real browser run of the full flow (send -> crew sees it -> accept).
+- Note: the notification bell's realtime subscription stopped working after migration 0011 (browser can't read tables);
+  it still refreshes on focus. Worth replacing with polling or a server push later.
+
+Next producer-side steps: verified credits + current engagement + hired count on the crew profile (built on this),
+reviews, bucket list + HIRE ALL, crew filters (profession/city/radius/dates/gender), contact + one-click message,
+minimal producer signup.
+
 ## 2026-10-20 — Crew vs Producer separation (client feedback) — built, NOT yet committed
 
 Client feedback: producers saw projects / Find Work / a subscription, and crew and producers felt like the same experience.
