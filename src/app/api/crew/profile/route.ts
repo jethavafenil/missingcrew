@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Return the response in the format expected by the client
-    revalidateTag('crew-profiles', 'max')
+    revalidateTag('crew-profiles', { expire: 0 })
     return NextResponse.json({ data: crewProfile || {} })
   } catch (error) {
     console.error('Error saving crew profile:', error)

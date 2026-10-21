@@ -55,7 +55,7 @@ export default function ProjectDetailsPage() {
   useEffect(() => {
     const fetchProject = async () => {
       try {
-        const response = await fetch(`/api/projects/${params.id}`)
+        const response = await fetch(`/api/projects/${params.id}?_=${Date.now()}`, { cache: 'no-store' })
         if (!response.ok) {
           throw new Error('Failed to fetch project details')
         }

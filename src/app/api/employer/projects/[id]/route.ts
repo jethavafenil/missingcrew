@@ -5,6 +5,7 @@ import { isBeforeToday } from '@/lib/utils'
 import { projectInputSchema } from '@/lib/projects/schema'
 import { parseBody } from '@/lib/api/body'
 import { ApiError } from '@/lib/api/errors'
+import { revalidateTag } from 'next/cache'
 
 // GET /api/employer/projects/[id] - Get a single project
 export async function GET(
@@ -121,6 +122,10 @@ export async function PUT(
       questions: input.questions,
       contactPreference: input.contactPreference,
     }, requester)
+
+    // The public list/detail are cached; purge them so the edit is visible straight away.
+    // expire: 0 = drop the cached copies now (the default 'max' serves stale once while refreshing).
+    revalidateTag('projects', { expire: 0 })
 
     return NextResponse.json({ project }, { status: 200 })
   } catch (error) {

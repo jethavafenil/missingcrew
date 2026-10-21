@@ -155,7 +155,7 @@ export async function POST(request: Request) {
       console.error('Project-live notification failed:', mailError);
     }
 
-    revalidateTag('projects', 'max');
+    revalidateTag('projects', { expire: 0 });
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
     // Validation failures (400) carry a user-facing message; surface them.

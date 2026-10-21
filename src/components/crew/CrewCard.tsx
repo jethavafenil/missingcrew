@@ -514,8 +514,8 @@ export function CrewCard({ crew }: CrewCardProps) {
         <div className="absolute top-0 left-5 right-5 h-px bg-gradient-to-r from-transparent via-indigo-300/60 to-transparent shadow-sm"></div>
         
         {/* Location and Experience */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5 text-sm">
-          <div className="flex items-center px-3 py-1.5 rounded-lg backdrop-blur-md shadow-sm w-full sm:w-auto" style={{
+        <div className="flex flex-wrap items-center gap-1.5 text-sm">
+          <div className="flex items-center px-3 py-1.5 rounded-lg backdrop-blur-md shadow-sm max-w-full min-w-0" style={{
             background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.5) 100%)',
             border: '1px solid rgba(99, 102, 241, 0.2)',
             boxShadow: '0 2px 8px rgba(99, 102, 241, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
@@ -523,7 +523,7 @@ export function CrewCard({ crew }: CrewCardProps) {
             <MapPin className="w-3.5 h-3.5 mr-1.5 text-indigo-600 flex-shrink-0" />
             <span className="truncate font-semibold text-gray-800 dark:text-gray-200 text-xs sm:text-sm">{formatLocation()}</span>
           </div>
-          <div className="flex items-center px-3 py-1.5 rounded-lg backdrop-blur-md shadow-sm w-full sm:w-auto" style={{
+          <div className="flex items-center px-3 py-1.5 rounded-lg backdrop-blur-md shadow-sm max-w-full min-w-0" style={{
             background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.5) 100%)',
             border: '1px solid rgba(168, 85, 247, 0.2)',
             boxShadow: '0 2px 8px rgba(168, 85, 247, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
@@ -534,8 +534,8 @@ export function CrewCard({ crew }: CrewCardProps) {
         </div>
 
         {/* Availability */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5">
-          <div className="flex items-center w-full sm:flex-1 px-3 py-2 rounded-lg backdrop-blur-md" style={{
+        <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center min-w-0 max-w-full flex-1 basis-40 px-3 py-2 rounded-lg backdrop-blur-md" style={{
             background: crew.availability 
               ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.2) 100%)'
               : 'linear-gradient(135deg, rgba(251, 146, 60, 0.15) 0%, rgba(249, 115, 22, 0.2) 100%)',
@@ -551,7 +551,7 @@ export function CrewCard({ crew }: CrewCardProps) {
               {getAvailabilityText()}
             </span>
           </div>
-          <div className="flex items-center text-sm px-3 py-2 rounded-lg backdrop-blur-md shadow-sm w-full sm:w-auto" style={{
+          <div className="flex items-center text-sm px-3 py-2 rounded-lg backdrop-blur-md shadow-sm max-w-full min-w-0" style={{
             background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.5) 100%)',
             border: '1px solid rgba(99, 102, 241, 0.2)',
             boxShadow: '0 2px 8px rgba(99, 102, 241, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
