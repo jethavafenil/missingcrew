@@ -3,6 +3,9 @@ import { crewProfileRepo, applicationRepo } from '@/lib/repo'
 import { getPublicCrewProfile } from '@/lib/cache/public'
 import { getSession } from '@/lib/auth/server'
 import { hasProBadge } from '@/lib/subscription/access'
+import { crewTags } from '@/lib/matching'
+import { vimeoId, youtubeId } from '@/lib/crew/profileFields'
+import { stripGuestProfile } from '@/lib/crew/guestView'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -104,17 +107,31 @@ export async function GET(
 
     const proBadge = hasProBadge(crew)
 
-    if (canViewContacts) {
-      return NextResponse.json({ crew: { ...crew, hasProBadge: proBadge } }, { headers: { 'Cache-Control': 'private, no-cache' } })
-    }
-
-    const publicCrew = {
+    // Showreel: the one the crew member chose, else the first video link in their portfolio.
+    const videoLink = (crew.portfolioLinks ?? []).find((l) => typeof l === 'string' && (youtubeId(l) || vimeoId(l)))
+    const detail = {
       ...crew,
       hasProBadge: proBadge,
+      showreelUrl: crew.showreelUrl || videoLink || null,
+      tags: crewTags(crew),
+    }
+
+    if (canViewContacts) {
+      return NextResponse.json({ crew: { ...detail, gender: undefined } }, { headers: { 'Cache-Control': 'private, no-cache' } })
+    }
+
+    // Anyone signed in sees the work links and IMDb; guests only see the public card
+    // information. Contact details stay employer/owner only.
+    const publicCrew = {
+      ...detail,
+      gender: undefined,
       contactWhatsApp: null,
       user: crew.user ? { ...crew.user, email: undefined, phone: undefined } : undefined,
     }
-    return NextResponse.json({ crew: publicCrew }, { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' } })
+    if (session?.user?.id) {
+      return NextResponse.json({ crew: publicCrew }, { headers: { 'Cache-Control': 'private, no-cache' } })
+    }
+    return NextResponse.json({ crew: stripGuestProfile(publicCrew) }, { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' } })
   } catch (error) {
     console.error('Error fetching crew data:', error)
     return NextResponse.json(

@@ -4,7 +4,7 @@ import { mapCrewProfile, mapUser, type CrewProfileRow, type CrewProfileWithUserR
 import type { Requester, SubscriptionTier, UserRole } from '@/lib/repo/types'
 
 export const CREW_COLS =
-  'id,"userId",photo,city,budget_range_min,budget_range_max,"budgetFlexible",primary_roles,years_experience,location,available_to_travel,availability,availability_start,availability_end,project_types,daily_budget_min,daily_budget_max,languages,imdb_link,portfolio_links,past_projects,referred_by,contact_whatsapp,terms_agreed,subscription_tier,trial_ends,completed,created_at,updated_at'
+  'id,"userId",photo,city,budget_range_min,budget_range_max,"budgetFlexible",primary_roles,years_experience,location,available_to_travel,availability,availability_start,availability_end,project_types,daily_budget_min,daily_budget_max,languages,imdb_link,portfolio_links,past_projects,referred_by,contact_whatsapp,terms_agreed,subscription_tier,trial_ends,completed,gender,first_project_date,showreel_url,custom_tags,created_at,updated_at'
 
 const CREW_WITH_USER = `${CREW_COLS},user:users(id,name,email,phone,"phoneVerified")`
 
@@ -73,6 +73,10 @@ export interface UpdateCrewProfileInput {
   completed?: boolean
   subscriptionTier?: SubscriptionTier
   trialEnds?: Date | string | null
+  gender?: 'MALE' | 'FEMALE' | 'OTHER' | null
+  firstProjectDate?: Date | string | null
+  showreelUrl?: string | null
+  customTags?: string[]
 }
 
 function buildCrewPatch(input: UpdateCrewProfileInput): Record<string, unknown> {
@@ -102,6 +106,10 @@ function buildCrewPatch(input: UpdateCrewProfileInput): Record<string, unknown> 
   if (input.completed !== undefined) patch.completed = input.completed
   if (input.subscriptionTier !== undefined) patch.subscription_tier = input.subscriptionTier
   if (input.trialEnds !== undefined) patch.trial_ends = iso(input.trialEnds)
+  if (input.gender !== undefined) patch.gender = input.gender
+  if (input.firstProjectDate !== undefined) patch.first_project_date = iso(input.firstProjectDate)
+  if (input.showreelUrl !== undefined) patch.showreel_url = input.showreelUrl
+  if (input.customTags !== undefined) patch.custom_tags = input.customTags
   return patch
 }
 
@@ -161,6 +169,10 @@ export interface CreateCrewProfileInput {
   completed?: boolean
   subscriptionTier?: string
   trialEnds?: Date | string | null
+  gender?: 'MALE' | 'FEMALE' | 'OTHER' | null
+  firstProjectDate?: Date | string | null
+  showreelUrl?: string | null
+  customTags?: string[]
 }
 
 export async function create(input: CreateCrewProfileInput, _req: Requester): Promise<CrewProfileRow> {
@@ -193,6 +205,10 @@ export async function create(input: CreateCrewProfileInput, _req: Requester): Pr
       completed: input.completed ?? false,
       subscription_tier: input.subscriptionTier ?? 'FREE_TRIAL',
       trial_ends: iso(input.trialEnds),
+      gender: input.gender ?? null,
+      first_project_date: iso(input.firstProjectDate),
+      showreel_url: input.showreelUrl ?? null,
+      custom_tags: input.customTags ?? [],
       created_at: now().toISOString(),
       updated_at: now().toISOString(),
     })

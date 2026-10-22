@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getPublicCrew } from '@/lib/cache/public'
 import { toIsoString } from '@/lib/utils'
 import { hasProBadge } from '@/lib/subscription/access'
+import { crewTags } from '@/lib/matching'
+import { vimeoId, youtubeId } from '@/lib/crew/profileFields'
 
 interface CrewProfile {
   id: string
@@ -31,6 +33,10 @@ interface CrewProfile {
   subscriptionTier: string
   hasProBadge: boolean
   budgetFlexible: boolean
+  tags: string[]
+  showreelUrl: string | null
+  firstProjectDate: string | null
+  gender: string | null
   createdAt: string
   user: {
     name: string
@@ -69,6 +75,10 @@ export async function GET() {
       subscriptionTier?: string | null
       trialEnds?: Date | string | null
       budgetFlexible?: boolean | null
+      customTags?: string[] | null
+      showreelUrl?: string | null
+      firstProjectDate?: Date | string | null
+      gender?: string | null
       createdAt?: Date | string | null
     }
 
@@ -152,6 +162,10 @@ export async function GET() {
         subscriptionTier: profile.subscriptionTier || '',
         hasProBadge: hasProBadge(profile),
         budgetFlexible: !!profile.budgetFlexible,
+        tags: crewTags({ projectTypes, primaryRoles, customTags: profile.customTags, pastProjects }),
+        showreelUrl: profile.showreelUrl || portfolioLinks.find((l) => typeof l === 'string' && (youtubeId(l) || vimeoId(l))) || null,
+        firstProjectDate: toIsoString(profile.firstProjectDate),
+        gender: profile.gender || null,
         createdAt: toIsoString(profile.createdAt) ?? new Date().toISOString()
       }
     })

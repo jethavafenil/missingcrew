@@ -244,7 +244,7 @@ export async function update(id: string, input: UpdateProjectInput, _req: Reques
 export async function findManyByEmployerId(employerId: string, _req: Requester): Promise<ProjectWithEmployerRow[]> {
   const { data, error } = await getServiceClient()
     .from('projects')
-    .select(`${PROJECT_WITH_EMPLOYER},applications(*,crew:crew_profiles(id,"userId",photo,city,budget_range_min,budget_range_max,"budgetFlexible",primary_roles,years_experience,location,available_to_travel,availability,availability_start,availability_end,project_types,daily_budget_min,daily_budget_max,languages,imdb_link,portfolio_links,past_projects,referred_by,contact_whatsapp,terms_agreed,subscription_tier,trial_ends,completed,created_at,updated_at,user:users(id,name,email,phone,"phoneVerified")))`)
+    .select(`${PROJECT_WITH_EMPLOYER},applications(*,crew:crew_profiles(id,"userId",photo,city,budget_range_min,budget_range_max,"budgetFlexible",primary_roles,years_experience,location,available_to_travel,availability,availability_start,availability_end,project_types,daily_budget_min,daily_budget_max,languages,imdb_link,portfolio_links,past_projects,referred_by,contact_whatsapp,terms_agreed,subscription_tier,trial_ends,completed,gender,first_project_date,showreel_url,custom_tags,created_at,updated_at,user:users(id,name,email,phone,"phoneVerified")))`)
     .eq('employer_id', employerId)
     .order('created_at', { ascending: false })
   throwOnError('project.findManyByEmployerId', error)

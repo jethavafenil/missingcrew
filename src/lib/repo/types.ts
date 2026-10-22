@@ -76,6 +76,10 @@ export interface CrewProfileRow {
   subscriptionTier: SubscriptionTier
   trialEnds: Date | null
   completed: boolean
+  gender: 'MALE' | 'FEMALE' | 'OTHER' | null
+  firstProjectDate: Date | null
+  showreelUrl: string | null
+  customTags: string[]
   createdAt: Date
   updatedAt: Date
   user?: Partial<UserRow>
@@ -328,6 +332,10 @@ export function mapCrewProfile(r: RawRow): CrewProfileRow {
     subscriptionTier: r.subscription_tier as SubscriptionTier,
     trialEnds: asDate(r.trial_ends),
     completed: asBool(r.completed),
+    gender: (r.gender as 'MALE' | 'FEMALE' | 'OTHER' | null) ?? null,
+    firstProjectDate: asDate(r.first_project_date),
+    showreelUrl: (r.showreel_url as string | null) ?? null,
+    customTags: asStringList(r.custom_tags),
     createdAt: asDate(r.created_at)!,
     updatedAt: asDate(r.updated_at)!,
   }

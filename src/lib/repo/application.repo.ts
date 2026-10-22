@@ -15,7 +15,7 @@ import type { Requester } from '@/lib/repo/types'
 
 export const APP_COLS = 'id,project_id,crew_id,status,applied_at,employer_notes,crew_notes,answers'
 
-const APP_WITH_CREW = `${APP_COLS},crew:crew_profiles(id,"userId",photo,city,budget_range_min,budget_range_max,"budgetFlexible",primary_roles,years_experience,location,available_to_travel,availability,availability_start,availability_end,project_types,daily_budget_min,daily_budget_max,languages,imdb_link,portfolio_links,past_projects,referred_by,contact_whatsapp,terms_agreed,subscription_tier,trial_ends,completed,created_at,updated_at,user:users(id,name,email,phone,"phoneVerified"))`
+const APP_WITH_CREW = `${APP_COLS},crew:crew_profiles(id,"userId",photo,city,budget_range_min,budget_range_max,"budgetFlexible",primary_roles,years_experience,location,available_to_travel,availability,availability_start,availability_end,project_types,daily_budget_min,daily_budget_max,languages,imdb_link,portfolio_links,past_projects,referred_by,contact_whatsapp,terms_agreed,subscription_tier,trial_ends,completed,gender,first_project_date,showreel_url,custom_tags,created_at,updated_at,user:users(id,name,email,phone,"phoneVerified"))`
 
 const APP_WITH_PROJECT_CREW = `${APP_COLS},project:projects(*,employer:employer_profiles(id,"userId",company_name,company_website,completed,created_at,updated_at,user:users(id,name,email,image,phone,"phoneVerified")),applications(id)),crew:crew_profiles(*,user:users(id,name,email,phone,"phoneVerified"))`
 
@@ -199,3 +199,40 @@ export async function findAppliedProjectIdsForCrew(crewId: string): Promise<stri
 }
 
 export type { ApplicationRow, ApplicationWithCrewRow, ApplicationWithProjectAndCrewRow, ApplicationStatus }
+// Projects a crew member was HIRED on (verified credits on the crew profile),
+// with the role agreed in the accepted hire request when there was one.
+export async function findHiredCreditSources(crewId: string): Promise<import('@/lib/crew/credits').CreditSource[]> {
+  const db = getServiceClient()
+  const [apps, hires] = await Promise.all([
+    db
+      .from('applications')
+      .select('project_id,project:projects(id,project_name,project_type,production_house,location,roles_needed,shoot_start_date,shoot_end_date,employer:employer_profiles(company_name,user:users(name)))')
+      .eq('crew_id', crewId)
+      .eq('status', 'HIRED'),
+    db.from('hire_requests').select('project_id,role').eq('crew_id', crewId).eq('status', 'ACCEPTED'),
+  ])
+  throwOnError('application.findHiredCreditSources', apps.error)
+  throwOnError('application.findHiredCreditSources.hires', hires.error)
+  const roleByProject = new Map<string, string | null>(
+    ((hires.data ?? []) as Array<{ project_id: string; role: string | null }>).map((h) => [h.project_id, h.role]),
+  )
+  const out: import('@/lib/crew/credits').CreditSource[] = []
+  for (const row of (apps.data ?? []) as unknown as Array<Record<string, any>>) {
+    const p = row.project
+    if (!p) continue
+    const emp = p.employer
+    out.push({
+      projectId: p.id,
+      projectName: p.project_name,
+      projectType: p.project_type,
+      productionHouse: p.production_house ?? emp?.company_name ?? null,
+      producerName: emp?.user?.name ?? null,
+      location: p.location ?? null,
+      rolesNeeded: Array.isArray(p.roles_needed) ? p.roles_needed : [],
+      startDate: p.shoot_start_date ? new Date(p.shoot_start_date) : null,
+      endDate: p.shoot_end_date ? new Date(p.shoot_end_date) : null,
+      hiredRole: roleByProject.get(p.id) ?? null,
+    })
+  }
+  return out
+}

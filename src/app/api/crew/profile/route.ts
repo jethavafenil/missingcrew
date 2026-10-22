@@ -3,6 +3,8 @@ import { getSession } from '@/lib/auth/server'
 import { userRepo, crewProfileRepo, requesterFromSession } from '@/lib/repo'
 import { revalidateTag } from 'next/cache'
 import { trialEndsFromNow } from '@/lib/subscription/access'
+import { parseFirstProject, parseGender, parseShowreel } from '@/lib/crew/profileFields'
+import { sanitizeCrewTags } from '@/lib/matching'
 
 
 export async function POST(request: NextRequest) {
@@ -78,8 +80,28 @@ export async function POST(request: NextRequest) {
       imdbLink = `${normalized}/`
     }
 
+    // Optional profile details: validated here, only touched when the client sent them.
+    const extra: Record<string, unknown> = {}
+    if ('gender' in profileData) {
+      const r = parseGender(profileData.gender)
+      if (!r.ok) return NextResponse.json({ error: r.error }, { status: 400 })
+      extra.gender = r.value
+    }
+    if ('firstProjectDate' in profileData) {
+      const r = parseFirstProject(profileData.firstProjectDate)
+      if (!r.ok) return NextResponse.json({ error: r.error }, { status: 400 })
+      extra.firstProjectDate = r.value
+    }
+    if ('showreelUrl' in profileData) {
+      const r = parseShowreel(profileData.showreelUrl)
+      if (!r.ok) return NextResponse.json({ error: r.error }, { status: 400 })
+      extra.showreelUrl = r.value
+    }
+    if ('customTags' in profileData) extra.customTags = sanitizeCrewTags(profileData.customTags)
+
     const completeProfileData = {
       ...profileData,
+      ...extra,
       portfolioLinks: portfolioLinks,
       projectTypes: profileData.projectTypes || [],
       primaryRoles: profileData.primaryRoles || [],
@@ -315,6 +337,10 @@ export async function GET() {
             budgetRangeMin: crewProfile.budgetRangeMin || null,
             budgetRangeMax: crewProfile.budgetRangeMax || null,
             imdbLink: crewProfile.imdbLink || '',
+            gender: crewProfile.gender ?? '',
+            firstProjectDate: crewProfile.firstProjectDate ? crewProfile.firstProjectDate.toISOString().slice(0, 7) : '',
+            showreelUrl: crewProfile.showreelUrl || '',
+            customTags: crewProfile.customTags ?? [],
             contactWhatsApp: crewProfile.contactWhatsApp || '',
             referredBy: crewProfile.referredBy || '',
             pastProjects: pastProjects
