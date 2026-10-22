@@ -2,12 +2,16 @@
 
 import { useMemo, useState } from 'react'
 import { departments } from '@/lib/departments'
+import { PROJECT_TYPES } from '@/lib/projectTypes'
+import { MAX_CREW_TAGS, sanitizeCrewTags } from '@/lib/matching'
+import { SUGGESTED_TAGS } from '@/lib/projectTags'
 
 interface PastProject {
   title: string
   year: string
   role: string
   link?: string
+  type?: string
 }
 
 interface PortfolioData {
@@ -15,6 +19,8 @@ interface PortfolioData {
   imdbLink: string
   languages: string[]
   pastProjects: PastProject[]
+  showreelUrl: string
+  customTags: string[]
 }
 
 interface PortfolioStepProps {
@@ -84,6 +90,12 @@ export function PortfolioStep({ data, onChange }: PortfolioStepProps) {
   })
 
   const [newLink, setNewLink] = useState('')
+  const [newTag, setNewTag] = useState('')
+  const tags = data.customTags || []
+  const addTag = (raw: string) => {
+    onChange({ customTags: sanitizeCrewTags([...tags, raw]) })
+    setNewTag('')
+  }
 
   const addPortfolioLink = () => {
     if (newLink.trim() && !portfolioLinks.includes(newLink.trim())) {
@@ -105,7 +117,7 @@ export function PortfolioStep({ data, onChange }: PortfolioStepProps) {
     const updatedProjects = [...currentProjects]
 
     if (!updatedProjects[index]) {
-      updatedProjects[index] = { title: '', year: '', role: '', link: '' }
+      updatedProjects[index] = { title: '', year: '', role: '', link: '', type: '' }
     }
 
     updatedProjects[index] = {
@@ -115,7 +127,7 @@ export function PortfolioStep({ data, onChange }: PortfolioStepProps) {
 
     // Filter out empty projects
     const filteredProjects = updatedProjects.filter(project =>
-      project.title || project.year || project.role || project.link
+      project.title || project.year || project.role || project.link || project.type
     )
 
     onChange({ pastProjects: filteredProjects })
@@ -203,6 +215,67 @@ export function PortfolioStep({ data, onChange }: PortfolioStepProps) {
           )}
           <p className="text-xs text-gray-500">Add all languages you can speak. Search to quickly find your languages.</p>
         </div>
+      </div>
+
+      {/* Showreel */}
+      <div>
+        <label htmlFor="showreelUrl" className="block text-sm font-medium text-gray-700">
+          Showreel link
+        </label>
+        <input
+          type="url"
+          id="showreelUrl"
+          placeholder="https://www.youtube.com/watch?v=..."
+          value={data.showreelUrl || ''}
+          onChange={(e) => onChange({ showreelUrl: e.target.value })}
+          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+        />
+        <p className="mt-1 text-sm text-gray-500">YouTube or Vimeo. It plays when producers hover your card and sits on top of your profile.</p>
+      </div>
+
+      {/* Hashtags */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Your hashtags (up to {MAX_CREW_TAGS})
+        </label>
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {tags.map((t) => (
+              <span key={t} className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full px-3 py-1 text-sm">
+                #{t}
+                <button type="button" onClick={() => onChange({ customTags: tags.filter((x) => x !== t) })} aria-label={`Remove ${t}`}>×</button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newTag}
+            onChange={(e) => setNewTag(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (newTag.trim()) addTag(newTag) } }}
+            placeholder="e.g. Thriller"
+            maxLength={30}
+            disabled={tags.length >= MAX_CREW_TAGS}
+            className="flex-1 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+          <button
+            type="button"
+            onClick={() => newTag.trim() && addTag(newTag)}
+            disabled={tags.length >= MAX_CREW_TAGS}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
+          >
+            Add
+          </button>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {SUGGESTED_TAGS.filter((t) => !tags.some((x) => x.toLowerCase() === t.replace(/\s+/g, '').toLowerCase())).slice(0, 10).map((t) => (
+            <button key={t} type="button" disabled={tags.length >= MAX_CREW_TAGS} onClick={() => addTag(t)} className="text-xs text-gray-600 border border-gray-200 rounded-full px-2 py-0.5 hover:bg-gray-50 disabled:opacity-50">
+              #{t.replace(/\s+/g, '')}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-sm text-gray-500">Project types from your portfolio are added as hashtags automatically. Producers can find you by these.</p>
       </div>
 
       {/* IMDb Link */}
@@ -335,6 +408,19 @@ export function PortfolioStep({ data, onChange }: PortfolioStepProps) {
                   onSelect={(role) => updatePastProject(index, 'role', role)}
                 />
               </div>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Project Type</label>
+              <select
+                value={data.pastProjects?.[index]?.type || ''}
+                onChange={(e) => updatePastProject(index, 'type', e.target.value)}
+                className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="">Select type</option>
+                {PROJECT_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Project Link (Optional)</label>

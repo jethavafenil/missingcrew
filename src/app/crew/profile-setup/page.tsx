@@ -26,6 +26,8 @@ interface CrewProfileFormData {
   yearsExperience?: string
   location?: string
   availableToTravel?: boolean
+  gender?: string
+  firstProjectDate?: string
 
   // Availability & Budget
   availability?: boolean
@@ -47,7 +49,10 @@ interface CrewProfileFormData {
     year: string
     role: string
     link?: string
+    type?: string
   }> | null
+  showreelUrl?: string
+  customTags?: string[]
 
   // Contact & Referral
   contactWhatsApp?: string
@@ -443,7 +448,9 @@ export default function CrewProfileSetup() {
                 portfolioLinks: formData.portfolioLinks || [],
                 imdbLink: formData.imdbLink,
                 languages: formData.languages || [],
-                pastProjects: formData.pastProjects || []
+                pastProjects: formData.pastProjects || [],
+                showreelUrl: formData.showreelUrl,
+                customTags: formData.customTags || []
               }}
               onChange={updateFormData}
             />

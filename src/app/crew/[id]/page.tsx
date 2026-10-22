@@ -1,45 +1,61 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { ConnectionButton } from '@/components/network/ConnectionButton'
 import { HireButton } from '@/components/network/HireButton'
 import { SocialShare } from '@/components/ui/social-share'
+import { ShowreelPlayer } from '@/components/crew-view/ShowreelPlayer'
 import { useSession } from '@/lib/auth/session-context'
-import { 
-  Globe, 
-  ExternalLink, 
-  ChevronLeft, 
-  ChevronRight,
+import { buildProfileShareMessage } from '@/lib/shareMessages'
+import { PROJECT_TYPES } from '@/lib/projectTypes'
+import { emailComposeUrl, whatsappUrl } from '@/lib/contactLinks'
+import type { Credit } from '@/lib/crew/credits'
+import {
+  ChevronLeft,
   MapPin,
-  Briefcase,
-  DollarSign,
   Calendar,
   CheckCircle,
-  Camera,
   Award,
+  BadgeCheck,
+  ExternalLink,
+  Lock,
+  Briefcase,
+  Film,
+  Clapperboard,
   Star,
-  MessageSquare
 } from 'lucide-react'
-import dynamic from 'next/dynamic'
-import { buildProfileShareMessage } from '@/lib/shareMessages'
+
 const CrewNetworkSection = dynamic(() => import('@/components/network/CrewNetworkSection').then(m => m.CrewNetworkSection), { ssr: false })
+
+interface PastProject {
+  title?: string
+  year?: number | string
+  role?: string
+  link?: string | null
+  type?: string | null
+  notes?: string | null
+}
 
 interface CrewProfile {
   id: string
   user: {
     id: string
     name: string
-    email: string
-    phone: string
+    email?: string
+    phone?: string
     phoneVerified: boolean
   }
   photo: string | null
   city: string | null
   primaryRoles: string[]
   yearsExperience: string | null
+  firstProjectDate: string | null
+  showreelUrl: string | null
+  tags: string[]
   location: string | null
   availableToTravel: boolean
   availability: boolean
@@ -52,36 +68,90 @@ interface CrewProfile {
   languages: string[]
   imdbLink: string | null
   portfolioLinks: string[]
-  pastProjects: Array<{ title?: string; year?: number; role?: string; link?: string | null; notes?: string | null }>
+  pastProjects: unknown
   referredBy: string | null
   contactWhatsApp: string | null
   subscriptionTier: string
-  trialEnds?: string | null
   hasProBadge?: boolean
-  createdAt: string
+  linksHidden?: boolean
   skills?: string[]
   specializations?: string[]
   bio?: string
+}
+
+interface CreditsData {
+  credits: Credit[]
+  currentEngagements: Credit[]
+  hiredCount: number
+  locked: boolean
+}
+
+interface ReviewsData {
+  reviews: Array<{ id: string; rating: number; comment: string; createdAt: string; projectName: string; producerName: string }>
+  average: number | null
+  count: number
+  eligible: Array<{ projectId: string; projectName: string; reviewed: boolean; rating: number | null; comment: string }>
+}
+
+type TabId = 'overview' | 'portfolio' | 'credits' | 'reviews' | 'details' | 'availability' | 'contact'
+
+const TABS: Array<{ id: TabId; label: string }> = [
+  { id: 'overview', label: 'Showreel' },
+  { id: 'portfolio', label: 'Projects' },
+  { id: 'credits', label: 'Credits' },
+  { id: 'reviews', label: 'Reviews' },
+  { id: 'details', label: 'Skills & Details' },
+  { id: 'availability', label: 'Availability' },
+  { id: 'contact', label: 'Contact' },
+]
+
+const slugify = (name: string) =>
+  name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+
+const monthYear = (iso: string | null | undefined) =>
+  iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : null
+
+const shortDate = (iso: string | null | undefined) =>
+  iso ? new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) : null
+
+function datesLabel(c: Pick<Credit, 'startDate' | 'endDate'>): string | null {
+  const a = shortDate(c.startDate)
+  const b = shortDate(c.endDate)
+  const y = c.endDate ? new Date(c.endDate).getFullYear() : c.startDate ? new Date(c.startDate).getFullYear() : null
+  if (a && b) return a === b ? `${a} ${y}` : `${a} – ${b} ${y}`
+  if (a) return `From ${a} ${y}`
+  return null
+}
+
+function parsePastProjects(value: unknown): PastProject[] {
+  let list: unknown = value
+  if (typeof list === 'string') {
+    try {
+      list = JSON.parse(list)
+    } catch {
+      return []
+    }
+  }
+  if (!Array.isArray(list)) return []
+  return list.filter((p): p is PastProject => !!p && typeof p === 'object' && Boolean((p as PastProject).title))
 }
 
 export default function CrewProfilePage() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const [crew, setCrew] = useState<CrewProfile | null>(null)
+  const [creditsData, setCreditsData] = useState<CreditsData | null>(null)
+  const [reviewsData, setReviewsData] = useState<ReviewsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState<TabId>('overview')
   const fromProject = searchParams.get('fromProject') === 'true'
-  const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
-
-  const slugify = (name: string) =>
-    name
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
 
   const fetchCrewProfile = useCallback(async (crewId: string) => {
     try {
@@ -89,15 +159,18 @@ export default function CrewProfilePage() {
       if (response.ok) {
         const data = await response.json()
         setCrew(data.crew)
-        // If accessed by ID, replace URL with pretty slug based on name
-        if (typeof window !== 'undefined' && data?.crew?.user?.name && typeof crewId === 'string') {
-          const current = crewId as string
-          const expectedSlug = slugify(data.crew.user.name)
-          // If current param isn't the expected slug, update URL
-          if (current !== expectedSlug) {
-            router.replace(`/crew/${expectedSlug}`)
-          }
+        if (data?.crew?.user?.name && slugify(data.crew.user.name) !== crewId) {
+          router.replace(`/crew/${slugify(data.crew.user.name)}`)
         }
+        // credits are loaded alongside; they are optional for the page to render
+        fetch(`/api/crew/${data.crew.id}/credits`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((c) => c && setCreditsData(c))
+          .catch(() => {})
+        fetch(`/api/crew/${data.crew.id}/reviews`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((v) => v && setReviewsData(v))
+          .catch(() => {})
       } else {
         router.push('/browse-crew')
       }
@@ -109,120 +182,24 @@ export default function CrewProfilePage() {
     }
   }, [router])
 
+  // Load once the session is known, and again when the viewer signs in/out so work
+  // links, credits and contact details unlock without a manual reload.
+  const viewerId = session?.user?.id
   useEffect(() => {
-    if (params.id) {
-      fetchCrewProfile(params.id as string)
-    }
-  }, [params.id, fetchCrewProfile])
+    if (status === 'loading' || !params.id) return
+    fetchCrewProfile(params.id as string)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id, status, viewerId])
 
-  // Ensure the address bar shows the pretty slug when crew data is available
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (!crew?.user?.name) return
-    const expectedSlug = slugify(crew.user.name)
-    const currentSegment = (params.id as string) || ''
-    if (currentSegment !== expectedSlug) {
-      const url = new URL(window.location.href)
-      url.pathname = `/crew/${expectedSlug}`
-      router.replace(url.toString())
-    }
-  }, [crew?.user?.name])
+  const reloadReviews = useCallback(() => {
+    if (!crew?.id) return
+    fetch(`/api/crew/${crew.id}/reviews`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((v) => v && setReviewsData(v))
+      .catch(() => {})
+  }, [crew?.id])
 
-
-  // Helper functions for media
-  const getVimeoId = (url: string): string | null => {
-    const match = url.match(/vimeo\.com\/(\d+)/)
-    return match ? match[1] : null
-  }
-
-  const getYouTubeId = (url: string): string | null => {
-    const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/)
-    return match ? match[1] : null
-  }
-
-  const isImageUrl = (url: string): boolean => {
-    // Check for common image file extensions
-    if (/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(url)) {
-      return true
-    }
-    // Check for common image hosting services without extensions
-    if (/images\.unsplash\.com|unsplash\.com\/photos/i.test(url)) {
-      return true
-    }
-    // Check for other image CDNs
-    if (/media-amazon\.com\/images|cloudinary\.com\/image|imgix\.net|cloudflare\.com\/cdn-cgi\/image/i.test(url)) {
-      return true
-    }
-    return false
-  }
-
-  const isImdbUrl = (url: string): boolean => {
-    return /imdb\.com/i.test(url)
-  }
-
-  const getAllPortfolioMedia = () => {
-    if (!crew) return null
-    
-    const mediaItems: Array<{ type: 'vimeo' | 'youtube' | 'image' | 'imdb', id?: string, url: string }> = []
-    
-    if (!crew.portfolioLinks || crew.portfolioLinks.length === 0) {
-      // Show IMDb link card if available
-      if (crew.imdbLink && typeof crew.imdbLink === 'string') {
-        mediaItems.push({ type: 'imdb', url: crew.imdbLink })
-      }
-      return mediaItems.length > 0 ? mediaItems : null
-    }
-    
-    for (const link of crew.portfolioLinks) {
-      // Ensure link is a string
-      if (typeof link !== 'string') continue
-      
-      const vimeoId = getVimeoId(link)
-      if (vimeoId) {
-        mediaItems.push({ type: 'vimeo', id: vimeoId, url: link })
-        continue
-      }
-      
-      const youtubeId = getYouTubeId(link)
-      if (youtubeId) {
-        mediaItems.push({ type: 'youtube', id: youtubeId, url: link })
-        continue
-      }
-      
-      if (isImageUrl(link)) {
-        mediaItems.push({ type: 'image', url: link })
-        continue
-      }
-      
-      if (isImdbUrl(link)) {
-        // Show IMDb link card for IMDb URLs
-        mediaItems.push({ type: 'imdb', url: link })
-        continue
-      }
-    }
-    
-    // Also add imdbLink if available and not already in portfolio
-    if (crew.imdbLink && typeof crew.imdbLink === 'string' && !crew.portfolioLinks.some(link => link === crew.imdbLink)) {
-      mediaItems.push({ type: 'imdb', url: crew.imdbLink })
-    }
-    
-    return mediaItems.length > 0 ? mediaItems : null
-  }
-
-  const portfolioMediaItems = crew ? getAllPortfolioMedia() : null
-  const hasMultipleMedia = portfolioMediaItems && portfolioMediaItems.length > 1
-
-  const nextMedia = () => {
-    if (portfolioMediaItems) {
-      setCurrentMediaIndex((prev) => (prev + 1) % portfolioMediaItems.length)
-    }
-  }
-
-  const prevMedia = () => {
-    if (portfolioMediaItems) {
-      setCurrentMediaIndex((prev) => (prev - 1 + portfolioMediaItems.length) % portfolioMediaItems.length)
-    }
-  }
+  const pastProjects = useMemo(() => parsePastProjects(crew?.pastProjects), [crew?.pastProjects])
 
   if (isLoading) {
     return (
@@ -236,22 +213,12 @@ export default function CrewProfilePage() {
   }
 
   if (!crew || !crew.user) {
-    // A profile without its user row (orphaned profile — e.g. pre-backfill
-    // data) cannot render: name, avatar and contacts all come from user.
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-purple-50/30 flex items-center justify-center">
         <div className="text-center bg-white rounded-2xl shadow-xl p-12 max-w-md">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-3">Crew Member Not Found</h1>
           <p className="text-gray-600 mb-6">The profile you&apos;re looking for doesn&apos;t exist or has been removed.</p>
-          <Button 
-            onClick={() => router.push('/browse-crew')}
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-          >
+          <Button onClick={() => router.push('/browse-crew')} className="bg-gradient-to-r from-indigo-600 to-purple-600">
             Back to Browse Crew
           </Button>
         </div>
@@ -260,784 +227,553 @@ export default function CrewProfilePage() {
   }
 
   const canViewContacts = !!(session?.user?.role === 'EMPLOYER' || session?.user?.id === crew.user.id)
+  const signedIn = !!session?.user?.id
+  const firstName = crew.user.name.split(' ')[0]
+  const firstProject = monthYear(crew.firstProjectDate)
+  const returnUrl = encodeURIComponent(typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : '')
+  const signUpHref = `/accounts?tab=signup&role=employer&returnUrl=${returnUrl}`
+  const signInHref = `/accounts?tab=signin&role=employer&returnUrl=${returnUrl}`
+  const hiredCount = creditsData?.hiredCount ?? 0
+  const engagements = creditsData?.currentEngagements ?? []
+  const hasPro = crew.hasProBadge ?? crew.subscriptionTier === 'PRO'
+  const budget =
+    crew.dailyBudgetMin && crew.dailyBudgetMax
+      ? `₹${crew.dailyBudgetMin.toLocaleString('en-IN')} – ₹${crew.dailyBudgetMax.toLocaleString('en-IN')} / day`
+      : crew.dailyBudgetMin
+        ? `From ₹${crew.dailyBudgetMin.toLocaleString('en-IN')} / day`
+        : null
+
+  const stats: Array<{ label: string; value: string }> = [
+    { label: firstProject ? 'First project' : 'Experience', value: firstProject ?? (crew.yearsExperience || '—') },
+    { label: 'Hired on MissingCrew', value: String(hiredCount) },
+    { label: 'Portfolio projects', value: String(pastProjects.length) },
+    { label: reviewsData && reviewsData.count > 0 ? `Rating (${reviewsData.count})` : 'Rating', value: reviewsData?.average != null ? `★ ${reviewsData.average.toFixed(1)}` : '—' },
+  ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-purple-50/30">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Back Button */}
+      <div className="container mx-auto px-4 py-6 sm:py-8 max-w-6xl">
         <Button
           variant="outline"
-          onClick={() => {
-            if (fromProject) {
-              router.push('/employer/dashboard')
-            } else {
-              router.push('/browse-crew')
-            }
-          }}
-          className="mb-6 hover:bg-indigo-50 hover:border-indigo-300 transition-all"
+          onClick={() => router.push(fromProject ? '/employer/dashboard' : '/browse-crew')}
+          className="mb-5 hover:bg-indigo-50 hover:border-indigo-300 transition-all"
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
           {fromProject ? 'Back to Projects' : 'Back to Crew'}
         </Button>
 
-        {/* Portfolio Media Banner */}
-        {portfolioMediaItems && portfolioMediaItems.length > 0 && (
-          <div className="relative w-full h-48 sm:h-56 md:h-64 lg:h-80 overflow-hidden rounded-lg shadow-lg mb-4 sm:mb-6 bg-black group/carousel">
-            {portfolioMediaItems[currentMediaIndex].type === 'vimeo' && (
-              <div className="relative w-full h-full">
-                <iframe
-                  src={`https://player.vimeo.com/video/${portfolioMediaItems[currentMediaIndex].id}?title=0&byline=0&portrait=0`}
-                  className="w-full h-full object-cover"
-                  allow="autoplay; fullscreen; picture-in-picture"
-                  allowFullScreen
-                  title="Portfolio video"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none"></div>
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden mb-6">
+          <div className="p-5 sm:p-8 grid gap-6 md:grid-cols-[220px_1fr] md:gap-8">
+            <div className="mx-auto md:mx-0 w-36 sm:w-44 md:w-full">
+              <div className="aspect-[4/5] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 shadow-xl flex items-center justify-center">
+                {crew.photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={crew.photo} alt={crew.user.name} className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-6xl font-bold text-indigo-600">{crew.user.name.charAt(0).toUpperCase()}</span>
+                )}
               </div>
-            )}
-            {portfolioMediaItems[currentMediaIndex].type === 'youtube' && (
-              <div className="relative w-full h-full">
-                <iframe
-                  src={`https://www.youtube.com/embed/${portfolioMediaItems[currentMediaIndex].id}`}
-                  className="w-full h-full object-cover"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title="Portfolio video"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none"></div>
+            </div>
+
+            <div className="min-w-0 text-center md:text-left">
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 break-words">{crew.user.name}</h1>
+                {crew.user.phoneVerified && <BadgeCheck className="h-6 w-6 text-blue-500" aria-label="Phone verified" />}
+                {hasPro && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1 text-xs font-bold text-white shadow">
+                    <Award className="h-3.5 w-3.5" /> PRO
+                  </span>
+                )}
               </div>
-            )}
-            {portfolioMediaItems[currentMediaIndex].type === 'image' && (
-              <div className="relative w-full h-full">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={portfolioMediaItems[currentMediaIndex].url}
-                  alt="Portfolio preview"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+              <p className="mt-1 text-lg sm:text-xl font-semibold text-indigo-600">{crew.primaryRoles.join(' • ')}</p>
+
+              <div className="mt-3 flex flex-wrap items-center justify-center md:justify-start gap-2 text-sm">
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-3 py-1.5 font-medium text-gray-700">
+                  <MapPin className="h-4 w-4 text-indigo-600" />
+                  {crew.location || crew.city || 'Location not specified'}
+                </span>
+                <span className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold ${crew.availability ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                  <span className={`h-2 w-2 rounded-full ${crew.availability ? 'bg-green-500' : 'bg-orange-500'}`} />
+                  {crew.availability ? 'Available' : 'Booked'}
+                </span>
+                {firstProject && (
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-3 py-1.5 font-medium text-gray-700">
+                    <Calendar className="h-4 w-4 text-indigo-600" /> Since {firstProject}
+                  </span>
+                )}
+                {budget && (
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-3 py-1.5 font-medium text-gray-700">
+                    {budget}
+                    {crew.budgetFlexible && (
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">Negotiable</span>
+                    )}
+                  </span>
+                )}
               </div>
-            )}
-            {portfolioMediaItems[currentMediaIndex].type === 'imdb' && (
-              <div className="relative w-full h-full bg-gradient-to-br from-yellow-400/20 to-yellow-600/30 flex items-center justify-center">
-                <a
-                  href={portfolioMediaItems[currentMediaIndex].url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex flex-col items-center justify-center space-y-4 text-yellow-900 hover:text-yellow-700 transition-colors group"
-                >
-                  <Globe className="w-20 h-20" />
-                  <span className="text-xl font-bold">View IMDb Profile</span>
-                  <ExternalLink className="w-6 h-6" />
-                </a>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
-              </div>
-            )}
-            
-            {/* Carousel Navigation */}
-            {hasMultipleMedia && (
-              <>
-                <button
-                  onClick={(e) => { e.preventDefault(); prevMedia(); }}
-                  className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 p-2 sm:p-3 rounded-full bg-white/90 hover:bg-white backdrop-blur-md transition-all duration-300 opacity-0 group-hover/carousel:opacity-100 hover:scale-110 z-20 shadow-lg"
-                  aria-label="Previous media"
-                >
-                  <ChevronLeft className="w-4 h-4 sm:w-6 sm:h-6 text-indigo-700" />
-                </button>
-                <button
-                  onClick={(e) => { e.preventDefault(); nextMedia(); }}
-                  className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 p-2 sm:p-3 rounded-full bg-white/90 hover:bg-white backdrop-blur-md transition-all duration-300 opacity-0 group-hover/carousel:opacity-100 hover:scale-110 z-20 shadow-lg"
-                  aria-label="Next media"
-                >
-                  <ChevronRight className="w-4 h-4 sm:w-6 sm:h-6 text-indigo-700" />
-                </button>
-                
-                {/* Carousel Indicators */}
-                <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 flex space-x-1.5 sm:space-x-2 z-20">
-                  {portfolioMediaItems.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={(e) => { e.preventDefault(); setCurrentMediaIndex(index); }}
-                      className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${
-                        index === currentMediaIndex ? 'w-6 sm:w-8 bg-white' : 'w-1.5 sm:w-2 bg-white/50 hover:bg-white/75'
-                      }`}
-                      style={{
-                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
-                      }}
-                      aria-label={`Go to media ${index + 1}`}
-                    />
+
+              {crew.tags.length > 0 && (
+                <div className="mt-3 flex flex-wrap items-center justify-center md:justify-start gap-1.5">
+                  {crew.tags.slice(0, 8).map((t) => (
+                    <Link
+                      key={t}
+                      href={`/browse-crew?tag=${encodeURIComponent(t)}`}
+                      className="rounded-full border border-indigo-100 bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                    >
+                      #{t}
+                    </Link>
                   ))}
                 </div>
-              </>
-            )}
-          </div>
-        )}
+              )}
 
-        {/* Profile Header */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden mb-6">
-          {/* Gradient Top Bar */}
-          <div className="h-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"></div>
-          
-          <div className="p-6 md:p-8">
-            <div className="flex flex-col md:flex-row md:items-start space-y-6 md:space-y-0 md:space-x-8">
-              {/* Photo */}
-              <div className="flex-shrink-0 mx-auto md:mx-0">
-                <div className="relative">
-                  <div className="w-32 h-32 sm:w-40 sm:h-40 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center overflow-hidden border-4 border-white shadow-xl">
-                    {crew.photo ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={crew.photo}
-                        alt={crew.user.name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                          const fallback = e.currentTarget.nextElementSibling as HTMLElement
-                          if (fallback) fallback.style.display = 'flex'
-                        }}
-                      />
-                    ) : null}
-                    <span 
-                      className="text-indigo-600 text-5xl sm:text-6xl font-bold w-full h-full flex items-center justify-center"
-                      style={{ display: crew.photo ? 'none' : 'flex' }}
-                    >
-                      {crew.user.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  {/* Status Badge */}
-                  <div className="absolute -bottom-2 -right-2">
-                    <div className={`px-3 py-1 rounded-full text-xs font-bold shadow-lg ${
-                      crew.availability
-                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white'
-                        : 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
-                    }`}>
-                      {crew.availability ? '● Available' : '● Booked'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            {/* Basic Info */}
-            <div className="flex-1 text-center md:text-left">
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between">
-                <div className="flex-1">
-                  <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 via-indigo-900 to-purple-900 bg-clip-text text-transparent mb-2">
-                    {crew.user.name}
-                  </h1>
-                  <p className="text-xl sm:text-2xl font-semibold text-indigo-600 mt-2">
-                    {crew.primaryRoles.join(' • ')}
-                  </p>
-
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-4 text-gray-600">
-                    <span className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg">
-                      <MapPin className="h-4 w-4 text-indigo-600" />
-                      <span className="text-sm font-medium">{crew.location || crew.city || 'Location not specified'}</span>
-                    </span>
-                    <span className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg">
-                      <Briefcase className="h-4 w-4 text-indigo-600" />
-                      <span className="text-sm font-medium">{crew.yearsExperience || 'Experience not specified'}</span>
-                    </span>
-                    {((crew.dailyBudgetMin && crew.dailyBudgetMax) || crew.budgetFlexible) && (
-                      <span className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg">
-                        <DollarSign className="h-4 w-4 text-indigo-600" />
-                        <span className="text-sm font-medium">
-                          {crew.dailyBudgetMin && crew.dailyBudgetMax && `₹${crew.dailyBudgetMin} - ₹${crew.dailyBudgetMax} per day`}
-                          {crew.budgetFlexible && (
-                            <span className="ml-1.5 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
-                              Negotiable
-                            </span>
-                          )}
-                        </span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Verification Badges */}
-                <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-4 md:mt-0">
-                  {crew.user.phoneVerified && (
-                    <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md">
-                      <CheckCircle className="h-4 w-4" />
-                      Phone Verified
-                    </span>
-                  )}
-                  {crew.portfolioLinks && crew.portfolioLinks.length > 0 && (
-                    <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md">
-                      <Camera className="h-4 w-4" />
-                      Portfolio
-                    </span>
-                  )}
-                  {(crew.hasProBadge ?? crew.subscriptionTier === 'PRO') && (
-                    <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md">
-                      <Award className="h-4 w-4" />
-                      PRO Member
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Action Buttons: Connect + Hire + Share */}
-              <div className="mt-6 flex flex-wrap items-center gap-3 justify-center md:justify-start">
-                {/* Connect shows only if logged in */}
-                {session?.user?.id && (
-                  <ConnectionButton
-                    userId={crew.user.id}
-                    currentUserId={session.user.id}
-                    onSuccess={() => {
-                      console.log('Connection request sent successfully')
-                    }}
-                  />
-                )}
-                {/* Hire shows for everyone (HireButton handles routing for non-employers/non-logged-in) */}
+              {/* Actions */}
+              <div className="mt-5 flex flex-wrap items-center justify-center md:justify-start gap-3">
                 <HireButton crewUserId={crew.user.id} crewId={crew.id} crewName={crew.user.name} crewRoles={crew.primaryRoles ?? []} />
-                {/* Social Share button */}
-                <SocialShare 
+                <Button variant="outline" onClick={() => setActiveTab('contact')}>
+                  Message {firstName}
+                </Button>
+                {session?.user?.id && (
+                  <ConnectionButton userId={crew.user.id} currentUserId={session.user.id} onSuccess={() => {}} />
+                )}
+                <SocialShare
                   url={typeof window !== 'undefined' ? window.location.href : `https://missingcrew.vercel.app/crew/${params.id}`}
                   title={`Check out ${crew.user.name}'s profile on MissingCrew`}
-                  description={`${crew.primaryRoles.join(', ')} - ${crew.yearsExperience || 'Experienced'} professional`}
+                  description={`${crew.primaryRoles.join(', ')} on MissingCrew`}
                   message={buildProfileShareMessage({ name: crew.user.name, role: crew.primaryRoles?.[0], city: crew.city })}
                 />
               </div>
-              {/* Availability Status */}
-              <div className="mt-6 p-5 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl border border-indigo-100">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                      <Calendar className="h-5 w-5 text-indigo-600" />
-                      Availability
-                    </h3>
-                    <p className="text-gray-700 mt-2 font-medium">
-                      {crew.availability
-                        ? (crew.availabilityStart && crew.availabilityEnd
-                            ? `${new Date(crew.availabilityStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${new Date(crew.availabilityEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                            : 'Available Immediately'
-                          )
-                        : 'Currently Booked'}
-                    </p>
+
+              {/* Stats */}
+              <dl className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4 rounded-xl border border-gray-100 bg-gray-50/60 p-3 text-center">
+                {stats.map((s) => (
+                  <div key={s.label}>
+                    <dd className="text-lg sm:text-xl font-bold text-gray-900">{s.value}</dd>
+                    <dt className="text-[11px] sm:text-xs text-gray-500">{s.label}</dt>
                   </div>
-                </div>
-                {crew.availableToTravel && (
-                  <div className="flex items-center gap-2 text-sm text-blue-600 mt-3 font-medium">
-                    <CheckCircle className="h-4 w-4" />
-                    Available to travel for projects
-                  </div>
-                )}
-              </div>
+                ))}
+              </dl>
             </div>
           </div>
+
+          {/* Current engagement */}
+          {engagements.length > 0 && (
+            <div className="border-t border-gray-100 bg-emerald-50/60 px-5 py-4 sm:px-8">
+              <h2 className="text-xs font-bold uppercase tracking-wide text-emerald-700">Current engagement</h2>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                {engagements.map((e) => (
+                  <div key={e.projectId} className="rounded-xl border border-emerald-100 bg-white p-3 text-sm">
+                    <p className="font-semibold text-gray-900">{e.projectName}</p>
+                    <p className="text-gray-600">
+                      {e.production && <>Production House: {e.production} · </>}Role: {e.role}
+                    </p>
+                    <p className="text-gray-600">
+                      {datesLabel(e) && <>Engagement: {datesLabel(e)} · </>}
+                      <span className="font-semibold text-emerald-700">Status: Confirmed</span>
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
-        {/* Tab Navigation */}
-        <div className="bg-white rounded-t-2xl shadow-lg border border-b-0 border-gray-200 overflow-hidden">
-          <nav className="flex space-x-1 p-2">
-            {[
-              { id: 'overview', label: 'Overview', icon: Star },
-              { id: 'portfolio', label: 'Portfolio', icon: Camera },
-              { id: 'experience', label: 'Experience', icon: Briefcase },
-              { id: 'contact', label: 'Contact', icon: MessageSquare }
-            ].map(tab => {
-              const Icon = tab.icon
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 font-medium text-sm rounded-xl transition-all duration-200 ${
-                    activeTab === tab.id
-                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{tab.label}</span>
-                  <span className="sm:hidden">{tab.label.substring(0, 3)}</span>
-                </button>
-              )
-            })}
+
+        {/* Tabs */}
+        <div className="bg-white rounded-t-2xl shadow-lg border border-b-0 border-gray-200">
+          <nav className="flex gap-1 overflow-x-auto p-2" role="tablist">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`shrink-0 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition ${
+                  activeTab === tab.id ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </nav>
         </div>
 
-        {/* Tab Content */}
-        <div className="bg-white rounded-b-2xl shadow-lg border border-t-0 border-gray-200 p-6 md:p-8">
-          {activeTab === 'overview' && <OverviewTab crew={crew} />}
-          {activeTab === 'portfolio' && <PortfolioTab crew={crew} />}
-          {activeTab === 'experience' && <ExperienceTab crew={crew} />}
-          {activeTab === 'contact' && <ContactTab crew={crew} canViewContacts={canViewContacts} />}
+        <div className="bg-white rounded-b-2xl shadow-lg border border-t-0 border-gray-200 p-5 sm:p-8">
+          {activeTab === 'overview' && <OverviewTab crew={crew} pastProjects={pastProjects} />}
+          {activeTab === 'portfolio' && <PortfolioTab crew={crew} pastProjects={pastProjects} signedIn={signedIn} signUpHref={signUpHref} signInHref={signInHref} />}
+          {activeTab === 'credits' && <CreditsTab data={creditsData} signUpHref={signUpHref} signInHref={signInHref} />}
+          {activeTab === 'reviews' && <ReviewsTab crewId={crew.id} data={reviewsData} onChanged={reloadReviews} />}
+          {activeTab === 'details' && <DetailsTab crew={crew} />}
+          {activeTab === 'availability' && <AvailabilityTab crew={crew} />}
+          {activeTab === 'contact' && <ContactTab crew={crew} canViewContacts={canViewContacts} signedIn={signedIn} signInHref={signInHref} signUpHref={signUpHref} />}
         </div>
-                      {/* Network Profiles Section - moved inside header card bottom */}
-              <div className="mt-6">
-                <CrewNetworkSection crewUserId={crew.user.id} />
-              </div>
+
+        <div className="mt-6">
+          <CrewNetworkSection crewUserId={crew.user.id} />
+        </div>
       </div>
     </div>
   )
 }
 
-function OverviewTab({ crew }: { crew: CrewProfile }) {
+function LockedNotice({ signUpHref, signInHref, text }: { signUpHref: string; signInHref: string; text: string }) {
   return (
-    <div className="grid md:grid-cols-2 gap-8">
-      {/* Professional Details */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Professional Details</h3>
-        <div className="space-y-4">
-          <div>
-            <span className="font-medium text-gray-700">Primary Roles:</span>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {crew.primaryRoles.map(role => (
-                <span
-                  key={role}
-                  className="inline-block bg-indigo-100 text-indigo-800 rounded-full px-3 py-1 text-sm font-medium"
-                >
-                  {role}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <span className="font-medium text-gray-700">Years of Experience:</span>
-            <p className="mt-1 text-gray-600">{crew.yearsExperience || 'Not specified'}</p>
-          </div>
-
-          <div>
-            <span className="font-medium text-gray-700">Project Types:</span>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {crew.projectTypes.map(type => (
-                <span
-                  key={type}
-                  className="inline-block bg-blue-50 text-blue-700 rounded-full px-3 py-1 text-sm"
-                >
-                  {type}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <span className="font-medium text-gray-700">Languages:</span>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {crew.languages.map(language => (
-                <span
-                  key={language}
-                  className="inline-block bg-gray-100 text-gray-700 rounded-full px-3 py-1 text-sm"
-                >
-                  {language}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Skills */}
-          {crew.skills && crew.skills.length > 0 && (
-            <div>
-              <span className="font-medium text-gray-700">Skills:</span>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {crew.skills.map(skill => (
-                  <span
-                    key={skill}
-                    className="inline-block bg-green-100 text-green-800 rounded-full px-3 py-1 text-sm"
-                  >
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Specializations */}
-          {crew.specializations && crew.specializations.length > 0 && (
-            <div>
-              <span className="font-medium text-gray-700">Specializations:</span>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {crew.specializations.map(specialization => (
-                  <span
-                    key={specialization}
-                    className="inline-block bg-purple-100 text-purple-800 rounded-full px-3 py-1 text-sm"
-                  >
-                    {specialization}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-      {/* Bio */}
-      {crew.bio && (
-        <div className="md:col-span-2">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Bio</h3>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-gray-700 whitespace-pre-line">{crew.bio}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Budget & Availability */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Budget & Availability</h3>
-        <div className="space-y-4">
-          <div>
-            <span className="font-medium text-gray-700">Budget (per day):</span>
-            <p className="mt-1 text-gray-600">
-              {crew.dailyBudgetMin && crew.dailyBudgetMax
-                ? `₹${crew.dailyBudgetMin} - ₹${crew.dailyBudgetMax} per day`
-                : 'Not specified'}
-              {crew.budgetFlexible && (
-                <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
-                  Negotiable
-                </span>
-              )}
-            </p>
-          </div>
-
-          <div>
-            <span className="font-medium text-gray-700">Availability:</span>
-            <p className="mt-1 text-gray-600">
-              {crew.availability
-                ? (crew.availabilityStart && crew.availabilityEnd
-                    ? `${new Date(crew.availabilityStart).toLocaleDateString()} - ${new Date(crew.availabilityEnd).toLocaleDateString()}`
-                    : 'Immediately available'
-                  )
-                : 'Currently booked'}
-            </p>
-          </div>
-
-          <div>
-            <span className="font-medium text-gray-700">Travel Availability:</span>
-            <p className="mt-1 text-gray-600">
-              {crew.availableToTravel ? 'Available to travel' : 'Prefers local projects'}
-            </p>
-          </div>
-
-          {crew.referredBy && (
-            <div>
-              <span className="font-medium text-gray-700">Referred By:</span>
-              <p className="mt-1 text-gray-600">{crew.referredBy}</p>
-            </div>
-          )}
-        </div>
-      </div>
+    <div className="flex flex-col gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-indigo-900 sm:flex-row sm:items-center sm:justify-between">
+      <span className="flex items-start gap-2 text-sm">
+        <Lock className="mt-0.5 h-4 w-4 shrink-0" /> {text}
+      </span>
+      <span className="flex shrink-0 gap-2">
+        <Link href={signUpHref} className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">Sign up free</Link>
+        <Link href={signInHref} className="rounded-md border border-indigo-300 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-white">Sign in</Link>
+      </span>
     </div>
   )
 }
 
-function PortfolioTab({ crew }: { crew: CrewProfile }) {
-  // Define a type for portfolio items
-  interface PortfolioItem {
-    url: string
-    title: string
-  }
-
-  // Handle different data structures for portfolioLinks
-  let portfolioItems: PortfolioItem[] = []
-
-  if (crew.portfolioLinks) {
-    if (Array.isArray(crew.portfolioLinks)) {
-      // If it's already an array, use it directly
-      portfolioItems = crew.portfolioLinks.map(item => {
-        // Handle both object and string cases
-        if (typeof item === 'object' && item !== null) {
-          // Type assertion to handle the object case
-          const portfolioItem = item as { url?: string, title?: string }
-          return {
-            url: portfolioItem.url || '',
-            title: portfolioItem.title || portfolioItem.url || 'Untitled Portfolio'
-          }
-        } else if (typeof item === 'string') {
-          return {
-            url: item,
-            title: item
-          }
-        }
-        return {
-          url: '',
-          title: 'Untitled Portfolio'
-        }
-      })
-    } else if (typeof crew.portfolioLinks === 'string') {
-      // If it's a string, try to parse it as JSON
-      try {
-        const parsed = JSON.parse(crew.portfolioLinks)
-        if (Array.isArray(parsed)) {
-          portfolioItems = parsed.map(item => {
-            const portfolioItem = item as { url?: string, title?: string }
-            return {
-              url: portfolioItem.url || '',
-              title: portfolioItem.title || portfolioItem.url || 'Untitled Portfolio'
-            }
-          })
-        }
-      } catch (e) {
-        console.error("Error parsing portfolioLinks:", e)
-      }
-    }
-  }
-
-  if (!portfolioItems || portfolioItems.length === 0) {
-    return (
-        <div className="text-center py-8">
-        <div className="text-gray-400 text-6xl mb-4">📷</div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No Portfolio Links</h3>
-        <p className="text-gray-600">This crew member hasn&apos;t added any portfolio links yet.</p>
-      </div>
-    )
-  }
-
+function OverviewTab({ crew, pastProjects }: { crew: CrewProfile; pastProjects: PastProject[] }) {
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Portfolio & Links</h3>
-
-      {/* Portfolio Links */}
-      <div>
-        <h4 className="font-medium text-gray-700 mb-3">Portfolio Links:</h4>
-        <div className="grid gap-3">
-          {portfolioItems.map((item, index) => (
-            <a
-              key={index}
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center p-3 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
-            >
-              <span className="text-indigo-600 mr-3">🔗</span>
-              <span className="text-gray-700 truncate">{item.title}</span>
-            </a>
-          ))}
+      {crew.showreelUrl ? (
+        <ShowreelPlayer url={crew.showreelUrl} name={crew.user.name} />
+      ) : (
+        <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
+          <Film className="mx-auto mb-2 h-8 w-8 text-gray-300" />
+          {crew.user.name.split(' ')[0]} hasn&apos;t added a showreel yet.
         </div>
-      </div>
-
-      {/* IMDb Link */}
-      {crew.imdbLink && (
+      )}
+      {crew.bio && <p className="whitespace-pre-line text-gray-700">{crew.bio}</p>}
+      {pastProjects.length > 0 && (
         <div>
-          <h4 className="font-medium text-gray-700 mb-3">IMDb Profile:</h4>
-          <a
-            href={crew.imdbLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center p-3 border border-gray-200 rounded-lg hover:border-yellow-300 hover:bg-yellow-50 transition-colors"
-          >
-            <span className="text-yellow-600 mr-3">🎬</span>
-            <span className="text-gray-700">View IMDb Profile</span>
-          </a>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function ExperienceTab({ crew }: { crew: CrewProfile }) {
-  // Define a type for past projects
-  interface PastProject {
-    title: string
-    role: string
-    year: string
-    link?: string
-  }
-
-  // Handle different data structures for pastProjects
-  let pastProjects: PastProject[] = []
-
-  if (crew.pastProjects) {
-    if (Array.isArray(crew.pastProjects)) {
-      // If it's already an array, use it directly
-      pastProjects = crew.pastProjects.map(project => {
-        // Handle both object and string cases
-        if (typeof project === 'object' && project !== null) {
-          // Type assertion to handle the object case
-          const proj = project as { title?: string; role?: string; year?: string; url?: string; link?: string }
-          return {
-            title: proj.title || proj.url || 'Untitled Project',
-            role: proj.role || 'Unknown role',
-            year: proj.year || 'Unknown year',
-            link: proj.link || proj.url
-          }
-        } else if (typeof project === 'string') {
-          return {
-            title: project,
-            role: 'Unknown role',
-            year: 'Unknown year'
-          }
-        }
-        return {
-          title: 'Untitled Project',
-          role: 'Unknown role',
-          year: 'Unknown year'
-        }
-      })
-    } else if (typeof crew.pastProjects === 'string') {
-      // If it's a string, try to parse it as JSON
-      try {
-        const parsed = JSON.parse(crew.pastProjects)
-        if (Array.isArray(parsed)) {
-          pastProjects = parsed.map(project => {
-            const proj = project as { title?: string; role?: string; year?: string; url?: string; link?: string }
-            return {
-              title: proj.title || proj.url || 'Untitled Project',
-              role: proj.role || 'Unknown role',
-              year: proj.year || 'Unknown year',
-              link: proj.link || proj.url
-            }
-          })
-        }
-      } catch (e) {
-        console.error("Error parsing pastProjects:", e)
-      }
-    } else if (typeof crew.pastProjects === 'object') {
-      // If it's an object, convert it to an array
-      pastProjects = Object.entries(crew.pastProjects).map(([key, value]) => {
-        if (typeof value === 'object' && value !== null) {
-          const proj = value as { title?: string; role?: string; year?: string; url?: string; link?: string }
-          return {
-            title: proj.title || proj.url || key,
-            role: proj.role || 'Unknown role',
-            year: proj.year || 'Unknown year',
-            link: proj.link || proj.url
-          }
-        }
-        return {
-          title: key,
-          role: 'Unknown role',
-          year: 'Unknown year'
-        }
-      })
-    }
-  }
-
-  return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Experience & Past Projects</h3>
-
-      {/* Past Projects */}
-      <div>
-        <h4 className="font-medium text-gray-700 mb-4">Past Projects:</h4>
-        {pastProjects.length === 0 ? (
-          <p className="text-gray-600">No past projects listed.</p>
-        ) : (
-          <div className="space-y-4">
-            {pastProjects.map((project, index) => (
-              <div key={index} className="p-4 border border-gray-200 rounded-lg">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h5 className="font-medium text-gray-900">
-                      {project.title}
-                    </h5>
-                    <p className="text-gray-600 text-sm mt-1">
-                      {project.role}
-                    </p>
-                    {project.link && (
-                      <a
-                        href={project.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-800 mt-2"
-                      >
-                        View Project
-                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
-                    )}
-                  </div>
-                  <span className="text-gray-500 text-sm">
-                    {project.year}
-                  </span>
-                </div>
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">Selected projects</h3>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {pastProjects.slice(0, 3).map((p, i) => (
+              <div key={i} className="rounded-xl border border-gray-200 p-3">
+                <Clapperboard className="mb-1 h-4 w-4 text-indigo-500" />
+                <p className="font-semibold text-gray-900">{p.title}</p>
+                <p className="text-sm text-gray-500">{[p.type, p.role, p.year].filter(Boolean).join(' · ')}</p>
               </div>
             ))}
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PortfolioTab({ crew, pastProjects, signedIn, signUpHref, signInHref }: { crew: CrewProfile; pastProjects: PastProject[]; signedIn: boolean; signUpHref: string; signInHref: string }) {
+  const [type, setType] = useState<string>('All')
+  const counts = new Map<string, number>()
+  for (const p of pastProjects) counts.set(p.type || 'Other', (counts.get(p.type || 'Other') ?? 0) + 1)
+  const types = [...PROJECT_TYPES.filter((t) => counts.has(t)), ...(counts.has('Other') ? ['Other'] : [])]
+  const shown = type === 'All' ? pastProjects : pastProjects.filter((p) => (p.type || 'Other') === type)
+  const extraLinks = (crew.portfolioLinks ?? []).filter((l) => typeof l === 'string')
+
+  if (pastProjects.length === 0 && extraLinks.length === 0 && !crew.imdbLink) {
+    return <p className="py-8 text-center text-gray-500">No projects added yet.</p>
+  }
+
+  return (
+    <div className="space-y-6">
+      {!signedIn && (
+        <LockedNotice signUpHref={signUpHref} signInHref={signInHref} text="Sign up as a producer to open the work links and the IMDb profile." />
+      )}
+
+      {types.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {['All', ...types].map((t) => (
+            <button
+              key={t}
+              onClick={() => setType(t)}
+              className={`rounded-full border px-3 py-1 text-sm font-medium ${type === t ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+            >
+              {t}
+              {t !== 'All' && <span className="ml-1 opacity-70">{counts.get(t)}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="grid gap-3">
+        {shown.map((p, i) => (
+          <div key={i} className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 p-4">
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-900">{p.title}</p>
+              <p className="text-sm text-gray-500">{[p.type, p.role, p.year].filter(Boolean).join(' · ')}</p>
+            </div>
+            {p.link ? (
+              <a href={p.link} target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                View work <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            ) : !signedIn ? (
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs text-gray-400"><Lock className="h-3 w-3" /> Sign in</span>
+            ) : null}
+          </div>
+        ))}
+      </div>
+
+      {signedIn && (extraLinks.length > 0 || crew.imdbLink) && (
+        <div>
+          <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-500">More links</h3>
+          <div className="grid gap-2">
+            {crew.imdbLink && (
+              <a href={crew.imdbLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-gray-200 p-3 hover:border-yellow-300 hover:bg-yellow-50">
+                <span>🎬</span> <span className="text-gray-700">IMDb profile</span>
+              </a>
+            )}
+            {extraLinks.map((l) => (
+              <a key={l} href={l} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 truncate rounded-lg border border-gray-200 p-3 hover:border-indigo-300 hover:bg-indigo-50">
+                <span>🔗</span> <span className="truncate text-gray-700">{l}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CreditsTab({ data, signUpHref, signInHref }: { data: CreditsData | null; signUpHref: string; signInHref: string }) {
+  if (!data) return <p className="py-8 text-center text-gray-500">Loading credits…</p>
+  if (data.locked) {
+    return (
+      <div className="space-y-4">
+        <p className="text-gray-700">
+          Hired on MissingCrew: <span className="font-bold">{data.hiredCount}</span> {data.hiredCount === 1 ? 'project' : 'projects'}
+        </p>
+        <LockedNotice signUpHref={signUpHref} signInHref={signInHref} text="Sign up as a producer to see the verified production credits." />
+      </div>
+    )
+  }
+  if (data.credits.length === 0) {
+    return (
+      <div className="py-8 text-center text-gray-500">
+        <Briefcase className="mx-auto mb-2 h-8 w-8 text-gray-300" />
+        No verified credits yet. They appear here once a producer hires this crew member on MissingCrew.
+      </div>
+    )
+  }
+  return (
+    <div className="grid gap-3">
+      {data.credits.map((c) => (
+        <div key={c.projectId} className="rounded-xl border border-gray-200 p-4">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+            <CheckCircle className="h-4 w-4" /> Verified Production Credit
+          </p>
+          <p className="mt-1 font-semibold text-gray-900">Project: {c.projectName}</p>
+          <p className="text-sm text-gray-600">Role: {c.role}</p>
+          {c.production && <p className="text-sm text-gray-600">Production: {c.production}</p>}
+          {datesLabel(c) && <p className="text-sm text-gray-600">Dates: {datesLabel(c)}</p>}
+          <p className="mt-1 text-xs text-gray-500">Confirmed by Producer</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function Stars({ value, size = 'h-4 w-4' }: { value: number; size?: string }) {
+  return (
+    <span className="inline-flex" aria-label={`${value} out of 5`}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star key={n} className={`${size} ${n <= Math.round(value) ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`} />
+      ))}
+    </span>
+  )
+}
+
+function ReviewsTab({ crewId, data, onChanged }: { crewId: string; data: ReviewsData | null; onChanged: () => void }) {
+  const eligible = data?.eligible ?? []
+  const [projectId, setProjectId] = useState('')
+  const [rating, setRating] = useState(0)
+  const [comment, setComment] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [done, setDone] = useState(false)
+
+  const chosen = eligible.find((e) => e.projectId === (projectId || eligible[0]?.projectId))
+  const activeProject = chosen?.projectId ?? ''
+
+  useEffect(() => {
+    // switching project pre-fills that project's existing review (if any)
+    setRating(chosen?.rating ?? 0)
+    setComment(chosen?.comment ?? '')
+    setDone(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chosen?.projectId])
+
+  if (!data) return <p className="py-8 text-center text-gray-500">Loading reviews…</p>
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!activeProject) return
+    if (rating < 1) {
+      setError('Please pick a star rating')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ crewId, projectId: activeProject, rating, comment }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || 'Could not save the review')
+      setDone(true)
+      onChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save the review')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        {data.average != null ? (
+          <>
+            <span className="text-3xl font-bold text-gray-900">{data.average.toFixed(1)}</span>
+            <Stars value={data.average} size="h-5 w-5" />
+            <span className="text-sm text-gray-500">{data.count} {data.count === 1 ? 'review' : 'reviews'}</span>
+          </>
+        ) : (
+          <p className="text-gray-500">No reviews yet. Only producers who hired this crew member can review them.</p>
         )}
+      </div>
+
+      {eligible.length > 0 && (
+        <form onSubmit={submit} className="space-y-3 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
+          <h3 className="font-semibold text-gray-900">{chosen?.reviewed ? 'Edit your review' : 'Review this crew member'}</h3>
+          {eligible.length > 1 && (
+            <select value={activeProject} onChange={(e) => setProjectId(e.target.value)} className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base">
+              {eligible.map((p) => (
+                <option key={p.projectId} value={p.projectId}>
+                  {p.projectName}{p.reviewed ? ' (reviewed)' : ''}
+                </option>
+              ))}
+            </select>
+          )}
+          {eligible.length === 1 && <p className="text-sm text-gray-600">For {eligible[0].projectName}</p>}
+          <div className="flex gap-1" role="radiogroup" aria-label="Rating">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button key={n} type="button" role="radio" aria-checked={rating === n} aria-label={`${n} star${n > 1 ? 's' : ''}`} onClick={() => setRating(n)}>
+                <Star className={`h-8 w-8 ${n <= rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`} />
+              </button>
+            ))}
+          </div>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            maxLength={1000}
+            rows={3}
+            placeholder="How was it working with them? (optional)"
+            className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base"
+          />
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          {done && <p className="text-sm text-emerald-700">Thanks, your review is saved.</p>}
+          <Button type="submit" disabled={busy}>{busy ? 'Saving…' : chosen?.reviewed ? 'Update review' : 'Submit review'}</Button>
+        </form>
+      )}
+
+      <div className="space-y-3">
+        {data.reviews.map((r) => (
+          <div key={r.id} className="rounded-xl border border-gray-200 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Stars value={r.rating} />
+              <span className="text-xs text-gray-500">{new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+            </div>
+            {r.comment && <p className="mt-2 whitespace-pre-line text-gray-700">{r.comment}</p>}
+            <p className="mt-2 text-xs text-gray-500">{r.producerName} · {r.projectName}</p>
+          </div>
+        ))}
       </div>
     </div>
   )
 }
 
-function ContactTab({ crew, canViewContacts }: { crew: CrewProfile; canViewContacts: boolean }) {
+function Chips({ title, items, tone }: { title: string; items?: string[]; tone: string }) {
+  if (!items || items.length === 0) return null
   return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
-
-      {!canViewContacts && (
-        <div className="mb-4 p-4 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-800 flex items-center justify-between gap-3">
-          <span>Only logged-in employers can view contact details. Please sign in as an employer to reveal this information.</span>
-          <Link
-            href={`/accounts?tab=signin&role=employer&returnUrl=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : '')}`}
-            className="inline-flex items-center px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
-          >
-            Sign in
-          </Link>
-        </div>
-      )}
-
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Phone */}
-        <div className="p-4 border border-gray-200 rounded-lg">
-          <h4 className="font-medium text-gray-700 mb-2">Phone</h4>
-          <div className="flex items-center justify-between">
-            <span className={`text-gray-600 ${!canViewContacts ? 'blur-sm select-none' : ''}`}>{crew.user.phone || 'Not provided'}</span>
-            {crew.user.phone && canViewContacts && (
-              <a
-                href={`tel:${crew.user.phone}`}
-                className="inline-flex items-center px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-              >
-                Call
-              </a>
-            )}
-          </div>
-          {crew.user.phoneVerified && (
-            <span className="inline-flex items-center mt-2 text-xs text-green-600">
-              ✓ Verified
-            </span>
-          )}
-        </div>
-
-        {/* WhatsApp */}
-        <div className="p-4 border border-gray-200 rounded-lg">
-          <h4 className="font-medium text-gray-700 mb-2">WhatsApp</h4>
-          <div className="flex items-center justify-between">
-            <span className={`text-gray-600 ${!canViewContacts ? 'blur-sm select-none' : ''}`}>
-              {crew.contactWhatsApp || 'Not provided'}
-            </span>
-            {crew.contactWhatsApp && canViewContacts && (
-              <a
-                href={`https://wa.me/${crew.contactWhatsApp}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-              >
-                Message
-              </a>
-            )}
-          </div>
-        </div>
-
-        {/* Email */}
-        <div className="p-4 border border-gray-200 rounded-lg">
-          <h4 className="font-medium text-gray-700 mb-2">Email</h4>
-          <div className="flex items-center justify-between">
-            <span className={`text-gray-600 ${!canViewContacts ? 'blur-sm select-none' : ''}`}>{crew.user.email}</span>
-            {canViewContacts && (
-              <a
-                href={`mailto:${crew.user.email}`}
-                className="inline-flex items-center px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-              >
-                Email
-              </a>
-            )}
-          </div>
-        </div>
-
-        {/* Location */}
-        <div className="p-4 border border-gray-200 rounded-lg">
-          <h4 className="font-medium text-gray-700 mb-2">Location</h4>
-          <p className="text-gray-600">
-            {crew.location || crew.city || 'Not specified'}
-          </p>
-          {crew.availableToTravel && (
-            <span className="inline-flex items-center mt-2 text-xs text-blue-600">
-              ✓ Available to travel
-            </span>
-          )}
-        </div>
+    <div>
+      <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-500">{title}</h3>
+      <div className="flex flex-wrap gap-2">
+        {items.map((i) => (
+          <span key={i} className={`rounded-full px-3 py-1 text-sm font-medium ${tone}`}>{i}</span>
+        ))}
       </div>
+    </div>
+  )
+}
+
+function DetailsTab({ crew }: { crew: CrewProfile }) {
+  return (
+    <div className="space-y-5">
+      <Chips title="Roles" items={crew.primaryRoles} tone="bg-indigo-100 text-indigo-800" />
+      <Chips title="Skills" items={crew.skills} tone="bg-green-100 text-green-800" />
+      <Chips title="Specializations" items={crew.specializations} tone="bg-purple-100 text-purple-800" />
+      <Chips title="Languages" items={Array.isArray(crew.languages) ? crew.languages : []} tone="bg-gray-100 text-gray-700" />
+    </div>
+  )
+}
+
+function AvailabilityTab({ crew }: { crew: CrewProfile }) {
+  const fmt = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return (
+    <div className="space-y-3">
+      <p className="text-lg font-semibold text-gray-900">
+        {crew.availability
+          ? crew.availabilityStart && crew.availabilityEnd
+            ? `Available ${fmt(crew.availabilityStart)} – ${fmt(crew.availabilityEnd)}`
+            : 'Available immediately'
+          : 'Currently booked'}
+      </p>
+      <p className="text-gray-600">{crew.availableToTravel ? 'Open to travel for projects.' : 'Prefers local projects.'}</p>
+    </div>
+  )
+}
+
+function ContactTab({ crew, canViewContacts, signedIn, signInHref, signUpHref }: { crew: CrewProfile; canViewContacts: boolean; signedIn: boolean; signInHref: string; signUpHref: string }) {
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  const firstName = crew.user.name.split(' ')[0]
+  const greeting = `Hi ${firstName}, I found your profile on MissingCrew and would like to talk about a project.`
+  const email = crew.user.email
+  const wa = crew.contactWhatsApp ? whatsappUrl(crew.contactWhatsApp, greeting) : null
+
+  if (!canViewContacts) {
+    return (
+      <LockedNotice
+        signUpHref={signUpHref}
+        signInHref={signInHref}
+        text={signedIn ? 'Contact details are visible to producers. Sign in with a producer account to see them.' : 'Sign up as a producer to see the contact details and message this crew member.'}
+      />
+    )
+  }
+
+  const rows: Array<{ label: string; value: string | null | undefined; action?: { href: string; text: string; external?: boolean } }> = [
+    { label: 'Email', value: email, action: email ? { href: emailComposeUrl(email, ua, 'Project on MissingCrew', greeting), text: 'Email', external: true } : undefined },
+    { label: 'Phone', value: crew.user.phone, action: crew.user.phone ? { href: `tel:${crew.user.phone}`, text: 'Call' } : undefined },
+    { label: 'WhatsApp', value: crew.contactWhatsApp, action: wa ? { href: wa, text: 'Message', external: true } : undefined },
+    { label: 'IMDb', value: crew.imdbLink, action: crew.imdbLink ? { href: crew.imdbLink, text: 'Open', external: true } : undefined },
+  ]
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {rows.map((r) => (
+        <div key={r.label} className="rounded-xl border border-gray-200 p-4">
+          <h4 className="mb-1 text-sm font-medium text-gray-500">{r.label}</h4>
+          <div className="flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-gray-800">{r.value || 'Not provided'}</span>
+            {r.action && (
+              <a
+                href={r.action.href}
+                {...(r.action.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                className="shrink-0 rounded-md bg-indigo-600 px-3 py-1 text-sm font-medium text-white hover:bg-indigo-700"
+              >
+                {r.action.text}
+              </a>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

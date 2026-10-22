@@ -28,13 +28,15 @@ interface HireNowModalProps {
   crewId: string
   crewName: string
   crewRoles: string[]
+  // preselect this project (hiring an applicant from the review screen)
+  defaultProjectId?: string
   onSent?: () => void
 }
 
 const fieldClass =
   'block w-full rounded-lg border border-gray-300 bg-white px-3 py-3 text-base text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
 
-export function HireNowModal({ open, onOpenChange, crewId, crewName, crewRoles, onSent }: HireNowModalProps) {
+export function HireNowModal({ open, onOpenChange, crewId, crewName, crewRoles, defaultProjectId, onSent }: HireNowModalProps) {
   const { data: session } = useSession()
   const { data, isLoading } = useSWR<{ projects: ProjectOption[] }>(open ? '/api/employer/projects/options' : null, swrFetcher)
   const projects = data?.projects ?? []
@@ -54,9 +56,9 @@ export function HireNowModal({ open, onOpenChange, crewId, crewName, crewRoles, 
   useEffect(() => {
     if (open && projects.length > 0 && !projectId && !initialised.current) {
       initialised.current = true
-      setProjectId(projects[0].id)
+      setProjectId(projects.find((p) => p.id === defaultProjectId)?.id ?? projects[0].id)
     }
-  }, [open, projects, projectId])
+  }, [open, projects, projectId, defaultProjectId])
 
   // Roles to choose from: what the project needs first, then the crew member's own roles.
   const roleOptions = useMemo(() => {

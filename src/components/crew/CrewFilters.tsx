@@ -4,30 +4,11 @@ import { useState, useEffect } from 'react'
 import { departments } from '@/lib/departments'
 import { LocationAutocomplete } from '@/components/ui/location-autocomplete'
 import { PROJECT_TYPES } from '@/lib/projectTypes'
+import { EMPTY_CREW_FILTERS, type CrewFilterState } from '@/lib/crewFilters'
 
 interface CrewFiltersProps {
-  filters: {
-    role: string
-    location: string
-    availability: string
-    experience: string
-    budgetMin: string
-    budgetMax: string
-    languages: string[]
-    hasPortfolio: boolean
-    projectType: string
-  }
-  onFiltersChange: (filters: {
-    role: string
-    location: string
-    availability: string
-    experience: string
-    budgetMin: string
-    budgetMax: string
-    languages: string[]
-    hasPortfolio: boolean
-    projectType: string
-  }) => void
+  filters: CrewFilterState
+  onFiltersChange: (filters: CrewFilterState) => void
   compact?: boolean
   showAdvanced?: boolean
 }
@@ -126,6 +107,52 @@ const updateFilter = (key: string, value: string | string[] | boolean) => {
             <option value="available">Available Now</option>
             <option value="booked">Currently Booked</option>
           </select>
+        </div>
+
+        {/* Available on a date */}
+        <div className="bg-white/80 backdrop-blur-sm p-4 rounded-lg border border-gray-200 hover:border-indigo-300 transition-all">
+          <label htmlFor="availableOn" className="block text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <span className="text-indigo-600">🗓️</span> Free on date
+          </label>
+          <input
+            id="availableOn"
+            type="date"
+            value={filters.availableOn}
+            onChange={(e) => updateFilter('availableOn', e.target.value)}
+            className="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white hover:border-indigo-400"
+          />
+        </div>
+
+        {/* Gender Filter */}
+        <div className="bg-white/80 backdrop-blur-sm p-4 rounded-lg border border-gray-200 hover:border-indigo-300 transition-all">
+          <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <span className="text-indigo-600">👤</span> Gender
+          </label>
+          <select
+            value={filters.gender}
+            onChange={(e) => updateFilter('gender', e.target.value)}
+            className="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white hover:border-indigo-400"
+          >
+            <option value="">Any</option>
+            <option value="MALE">Male</option>
+            <option value="FEMALE">Female</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+
+        {/* Hashtag Filter */}
+        <div className="bg-white/80 backdrop-blur-sm p-4 rounded-lg border border-gray-200 hover:border-indigo-300 transition-all">
+          <label htmlFor="tagFilter" className="block text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <span className="text-indigo-600">#</span> Hashtag
+          </label>
+          <input
+            id="tagFilter"
+            type="text"
+            placeholder="e.g. Thriller"
+            value={filters.tag}
+            onChange={(e) => updateFilter('tag', e.target.value.replace(/^#/, '').replace(/\s+/g, ''))}
+            className="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white hover:border-indigo-400"
+          />
         </div>
 
         {/* Experience Filter */}
@@ -234,17 +261,7 @@ const updateFilter = (key: string, value: string | string[] | boolean) => {
       {!compact && (
         <div className="flex justify-between items-center mt-6 pt-5 border-t border-gray-200">
           <button
-            onClick={() => onFiltersChange({
-              role: '',
-              location: '',
-              availability: '',
-              experience: '',
-              budgetMin: '',
-              budgetMax: '',
-              languages: [],
-              hasPortfolio: false,
-              projectType: ''
-            })}
+            onClick={() => onFiltersChange({ ...EMPTY_CREW_FILTERS })}
             className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-all shadow-sm hover:shadow-md"
           >
             Clear all filters

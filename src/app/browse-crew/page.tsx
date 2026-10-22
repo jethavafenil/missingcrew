@@ -5,6 +5,7 @@ import { useSession } from '@/lib/auth/session-context'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CrewCard } from '@/components/crew/CrewCard'
 import { CrewFilters } from '@/components/crew/CrewFilters'
+import { activeFilterCount, EMPTY_CREW_FILTERS, filterCrew, type CrewFilterState } from '@/lib/crewFilters'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -44,6 +45,8 @@ interface CrewMember {
   pastProjects: PastProject[]
   contactWhatsApp: string | null
   subscriptionTier: string
+  tags?: string[]
+  gender?: string | null
   createdAt: string
 }
 
@@ -62,105 +65,33 @@ function BrowseCrewContent() {
   const itemsPerPage = 12
 
   // Parse URL parameters to initialize filters
-  const getInitialFilters = () => {
-    const role = searchParams.get('role') || ''
-    const location = searchParams.get('location') || ''
-    const availability = searchParams.get('availability') || ''
-    const experience = searchParams.get('experience') || ''
-    const budgetMin = searchParams.get('budgetMin') || ''
-    const budgetMax = searchParams.get('budgetMax') || ''
-    const projectType = searchParams.get('projectType') || ''
-
-    // Handle languages which could be a comma-separated list
+  const getInitialFilters = (): CrewFilterState => {
     const languagesParam = searchParams.get('languages')
-    const languages = languagesParam ? languagesParam.split(',') : [] as string[]
-
-    // Handle hasPortfolio which is a boolean
-    const hasPortfolio = searchParams.get('hasPortfolio') === 'true'
-
     return {
-      role,
-      location,
-      availability,
-      experience,
-      budgetMin,
-      budgetMax,
-      languages,
-      hasPortfolio,
-      projectType
+      ...EMPTY_CREW_FILTERS,
+      role: searchParams.get('role') || '',
+      location: searchParams.get('location') || '',
+      availability: searchParams.get('availability') || '',
+      availableOn: searchParams.get('availableOn') || '',
+      gender: (searchParams.get('gender') || '').toUpperCase(),
+      experience: searchParams.get('experience') || '',
+      budgetMin: searchParams.get('budgetMin') || '',
+      budgetMax: searchParams.get('budgetMax') || '',
+      languages: languagesParam ? languagesParam.split(',') : [],
+      hasPortfolio: searchParams.get('hasPortfolio') === 'true',
+      projectType: searchParams.get('projectType') || '',
+      tag: (searchParams.get('tag') || '').replace(/^#/, ''),
     }
   }
 
-  const [filters, setFilters] = useState(getInitialFilters())
+  const [filters, setFilters] = useState<CrewFilterState>(getInitialFilters())
 
   useEffect(() => {
     fetchCrewMembers()
   }, [])
 
   useEffect(() => {
-    let filtered = crewMembers
-
-    // Filter by role
-    if (filters.role) {
-      filtered = filtered.filter(crew =>
-        crew.primaryRoles.includes(filters.role)
-      )
-    }
-
-    // Filter by location
-    if (filters.location) {
-      filtered = filtered.filter(crew =>
-        crew.location?.toLowerCase().includes(filters.location.toLowerCase()) ||
-        crew.city?.toLowerCase().includes(filters.location.toLowerCase())
-      )
-    }
-
-    // Filter by availability
-    if (filters.availability === 'available') {
-      filtered = filtered.filter(crew => crew.availability)
-    } else if (filters.availability === 'booked') {
-      filtered = filtered.filter(crew => !crew.availability)
-    }
-
-    // Filter by experience
-    if (filters.experience) {
-      filtered = filtered.filter(crew =>
-        crew.yearsExperience === filters.experience
-      )
-    }
-
-    // Filter by budget
-    if (filters.budgetMin) {
-      filtered = filtered.filter(crew =>
-        crew.dailyBudgetMin && crew.dailyBudgetMin >= parseInt(filters.budgetMin)
-      )
-    }
-    if (filters.budgetMax) {
-      filtered = filtered.filter(crew =>
-        crew.dailyBudgetMax && crew.dailyBudgetMax <= parseInt(filters.budgetMax)
-      )
-    }
-
-    // Filter by languages
-    if (filters.languages.length > 0) {
-      filtered = filtered.filter(crew =>
-        filters.languages.every(lang => crew.languages.includes(lang))
-      )
-    }
-
-    // Filter by portfolio
-    if (filters.hasPortfolio) {
-      filtered = filtered.filter(crew =>
-        crew.portfolioLinks && crew.portfolioLinks.length > 0
-      )
-    }
-
-    // Filter by project type
-    if (filters.projectType) {
-      filtered = filtered.filter(crew =>
-        crew.projectTypes.includes(filters.projectType)
-      )
-    }
+    let filtered = filterCrew(crewMembers, filters)
 
     // Sort by subscription tier - Pro members appear first
     filtered = [...filtered].sort((a, b) => {
@@ -259,31 +190,10 @@ function BrowseCrewContent() {
     )
   }
 
-  const getActiveFilterCount = () => {
-    let count = 0
-    if (filters.role) count++
-    if (filters.location) count++
-    if (filters.availability) count++
-    if (filters.experience) count++
-    if (filters.budgetMin || filters.budgetMax) count++
-    if (filters.languages.length > 0) count++
-    if (filters.hasPortfolio) count++
-    if (filters.projectType) count++
-    return count
-  }
+  const getActiveFilterCount = () => activeFilterCount(filters)
 
   const clearAllFilters = () => {
-    setFilters({
-      role: '',
-      location: '',
-      availability: '',
-      experience: '',
-      budgetMin: '',
-      budgetMax: '',
-      languages: [],
-      hasPortfolio: false,
-      projectType: ''
-    })
+    setFilters({ ...EMPTY_CREW_FILTERS })
   }
 
   return (

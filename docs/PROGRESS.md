@@ -10,6 +10,37 @@ together with `docs/HANDOFF.md` (architecture) and
 
 ---
 
+## 2026-10-22 — Producer side, steps 2-4: credits, hashtags/match, split-screen review, profile redesign, reviews — built, NOT yet committed
+
+- **Migrations `0016`, `0017`** (applied to the test DB): `crew_profiles.gender / first_project_date / showreel_url / custom_tags`;
+  `reviews` table (one per project+crew, rating 1-5, server-only access).
+- **Verified credits + current engagement + hired count**: `/api/crew/[id]/credits`, derived from HIRED applications (so both
+  accepted hire requests and the old shortlist-to-hire path count). Rules are pure + tested in `src/lib/crew/credits.ts`
+  (role = hired role, else matching needed role, else main role; ONGOING/UPCOMING/COMPLETED/CONFIRMED by shoot dates).
+  Guests only get the count.
+- **Hashtags + matching** (`src/lib/matching.ts`): crew tags are derived from project types (declared + portfolio) plus up to 5
+  tags the crew chose; `matchScore` (role 40, type 25, tags 15, city 15, budget 5) drives "Best match %". `/browse-crew?tag=X`.
+- **Crew profile redesign** (`/crew/[id]`): photo, name, PRO, role, location, availability, "since" month, per-day budget
+  (+Negotiable), hashtag chips, stats (first project, hired on MissingCrew, portfolio projects, rating), Current engagement
+  card, tabs Showreel / Projects (by type, work links) / Credits / Reviews / Skills & Details / Availability / Contact.
+  Mobile-first (scrollable tabs, stacked layout). Showreel plays on click (YouTube thumbnail first).
+- **Guests** (not signed in) see the card-level info only; work links, IMDb, credit details and contact are stripped on the
+  server (`src/lib/crew/guestView.ts`). Contact is still producer/owner only. Sign-in returns to the same profile.
+- **Email** button opens a Gmail compose tab on desktop and the phone's mail app on mobile (`src/lib/contactLinks.ts`).
+- **Crew profile form** now asks: first project month/year, gender (optional), showreel link, hashtags, project type per
+  past project. All validated server-side (`src/lib/crew/profileFields.ts`).
+- **Split-screen applicant review** (producer dashboard > Applications): project picker, Applications / Shortlisted / Hired /
+  Rejected tabs, sort by Best match / First applied / Newest, list left + profile preview right (showreel, key skills,
+  fee, availability, portfolio, credits, screening answers), Shortlist / Hire / Reject / Undo. Hire opens the Hire Now dialog
+  with the project preselected.
+- **Reviews**: `POST /api/reviews` (producer must own the project and have HIRED that crew member; one review per project,
+  re-posting edits it), `GET /api/crew/[id]/reviews` (public list + average; producers also get which projects they can review).
+- **Filters** (browse crew): added Free-on-date, Gender, Hashtag. Logic moved to `src/lib/crewFilters.ts` (unit tested).
+- Verified: 150+ unit tests; e2e suites incl. new `e2e-profile` (profile fields, guest vs signed-in view, credits, reviews).
+
+Still to do (producer side): bucket list + HIRE ALL, map-radius filter (needs LocationIQ key), one-click in-app message,
+minimal producer signup. Crew side: crew card overhaul, progressive profile + 1-click apply, referral link. AI writer last.
+
 ## 2026-10-21 — Producer side, step 1: Hire Now -> crew approval — built, NOT yet committed
 
 Before: "Hire Now" on a crew profile only sent a *connection* request. There was no real hiring flow.

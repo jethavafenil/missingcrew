@@ -15,6 +15,7 @@ import { NetworkCrewSlider } from '@/components/network/NetworkCrewSlider'
 import { slugifyName } from '@/lib/utils'
 import { swrFetcher } from '@/lib/swr'
 import { formatShootRange } from '@/lib/projects/format'
+import { ApplicantReview, type ReviewProject } from '@/components/dashboard/ApplicantReview'
 import { HireRequestsPanel } from '@/components/hire/HireRequestsPanel'
 
 interface EmployerUserData {
@@ -650,28 +651,6 @@ export function EmployerDashboard({ user, userData }: EmployerDashboardProps) {
                       <Users className="h-5 w-5 mr-2 text-indigo-600" />
                       All Applications
                     </CardTitle>
-                    <Button
-                      onClick={() => {
-                        console.log('[EmployerDashboard] Refreshing applications...');
-                        mutateProjects();
-                      }}
-                      variant="outline"
-                      size="sm"
-                      disabled={isLoading}
-                      className="gap-1"
-                    >
-                      {isLoading ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 animate-spin" />
-                          Refreshing...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="h-4 w-4" />
-                          Refresh
-                        </>
-                      )}
-                    </Button>
                   </CardHeader>
                   <CardContent>
                     {isLoading ? (
@@ -680,168 +659,13 @@ export function EmployerDashboard({ user, userData }: EmployerDashboardProps) {
                         <p className="text-gray-600 dark:text-gray-300">Loading applications...</p>
                       </div>
                     ) : (
-                      <div className="space-y-6">
-                        {applicationActionError && (
-                          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{applicationActionError}</div>
-                        )}
-                        {projects.filter(project => project.applications.length > 0).length > 0 ? (
-                          projects
-                            .filter(project => project.applications.length > 0)
-                            .map(project => (
-                              <div key={project.id} className="space-y-4">
-                                <h3 className="font-medium text-gray-900 dark:text-white text-lg mb-2">
-                                  {project.projectName}
-                                </h3>
-
-                                {[...project.applications]
-                                  .sort((a, b) => new Date(a.appliedAt).getTime() - new Date(b.appliedAt).getTime())
-                                  .map(application => (
-                                  <Card key={application.id} className="border-l-4 border-green-500 mb-4">
-                                    <CardContent className="pt-6">
-                                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                                        <div className="flex-1">
-                                          <div className="flex items-center justify-between mb-2">
-                                            <h4 className="font-medium text-gray-900 dark:text-white">
-                                              {application.crew.user.name}
-                                            </h4>
-                                            <Badge
-                                              variant="success"
-                                              className={
-                                                application.status === 'SHORTLISTED'
-                                                  ? 'bg-indigo-100 text-indigo-800 hover:bg-indigo-100'
-                                                  : application.status === 'REJECTED'
-                                                    ? 'bg-red-100 text-red-800 hover:bg-red-100'
-                                                    : application.status === 'HIRED'
-                                                      ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100'
-                                                      : 'bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900 dark:text-green-200'
-                                              }
-                                            >
-                                              <Check className="h-3 w-3 mr-1" />
-                                              {application.status === 'SHORTLISTED' ? 'Shortlisted'
-                                                : application.status === 'REJECTED' ? 'Rejected'
-                                                : application.status === 'HIRED' ? 'Hired'
-                                                : 'Applied'}
-                                            </Badge>
-                                          </div>
-
-                                          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                                            Applied on {formatDate(application.appliedAt)}
-                                          </p>
-
-                                          <div className="flex flex-wrap items-center gap-2 mb-3">
-                                            {application.crew.primaryRoles && application.crew.primaryRoles.length > 0 && (
-                                              <Badge variant="secondary" className="bg-indigo-100 text-indigo-800 hover:bg-indigo-100 dark:bg-indigo-900 dark:text-indigo-200">
-                                                {application.crew.primaryRoles[0]}
-                                                {application.crew.primaryRoles.length > 1 && ` +${application.crew.primaryRoles.length - 1}`}
-                                              </Badge>
-                                            )}
-
-                                            {application.crew.yearsExperience && (
-                                              <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                                                <Briefcase className="h-3 w-3 mr-1" />
-                                                {application.crew.yearsExperience}
-                                              </div>
-                                            )}
-
-                                            {application.crew.city && (
-                                              <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                                                <MapPin className="h-3 w-3 mr-1" />
-                                                {application.crew.city}
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-
-                                        <div className="flex md:flex-col space-x-2 md:space-x-0 md:space-y-2">
-                                          <Link
-                                            href={`/crew/${slugifyName(application.crew.user.name)}`}
-                                            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center"
-                                          >
-                                            <User className="h-3 w-3 mr-1" />
-                                            View Profile
-                                          </Link>
-                                          <button
-                                            className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 flex items-center"
-                                            onClick={() => alert('Messaging functionality will be implemented soon')}
-                                          >
-                                            <MessageSquare className="h-3 w-3 mr-1" />
-                                            Message
-                                          </button>
-                                          {application.status !== 'HIRED' && (
-                                            <div className="flex flex-wrap gap-2 md:pt-1">
-                                              {application.status !== 'SHORTLISTED' && (
-                                                <Button
-                                                  size="sm"
-                                                  disabled={updatingApplicationId === application.id}
-                                                  onClick={() => updateApplicationStatus(project.id, application.id, 'SHORTLISTED')}
-                                                >
-                                                  Shortlist
-                                                </Button>
-                                              )}
-                                              {application.status !== 'REJECTED' && (
-                                                <Button
-                                                  size="sm"
-                                                  variant="outline"
-                                                  disabled={updatingApplicationId === application.id}
-                                                  onClick={() => updateApplicationStatus(project.id, application.id, 'REJECTED')}
-                                                >
-                                                  Reject
-                                                </Button>
-                                              )}
-                                              {(application.status === 'SHORTLISTED' || application.status === 'REJECTED') && (
-                                                <Button
-                                                  size="sm"
-                                                  variant="ghost"
-                                                  disabled={updatingApplicationId === application.id}
-                                                  onClick={() => updateApplicationStatus(project.id, application.id, 'PENDING')}
-                                                >
-                                                  Undo
-                                                </Button>
-                                              )}
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-
-                                      {application.answers && application.answers.length > 0 && (
-                                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                          <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            Application Answers
-                                          </h5>
-                                          <div className="space-y-3">
-                                            {application.answers.map((answer: string, index: number) => (
-                                              <div key={index} className="text-sm">
-                                                <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                                  {project.questions[index]}
-                                                </p>
-                                                <p className="text-gray-600 dark:text-gray-400">{answer}</p>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </CardContent>
-                                  </Card>
-                                ))}
-                              </div>
-                            ))
-                        ) : (
-                          <div className="text-center py-12">
-                            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No applications yet</h3>
-                            <p className="text-gray-500 dark:text-gray-400 mb-4">
-                              You haven&#39;t received any applications for your projects yet.
-                            </p>
-                            <Link
-                              href="/employer/post-requirement"
-                              className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
-                            >
-                              <UserPlus className="h-4 w-4 mr-1" />
-                              Post a New Project
-                            </Link>
-                          </div>
-                        )}
-                      </div>
+                      <ApplicantReview
+                        projects={projects as unknown as ReviewProject[]}
+                        updatingId={updatingApplicationId}
+                        error={applicationActionError}
+                        onStatus={updateApplicationStatus}
+                        onRefresh={() => mutateProjects()}
+                      />
                     )}
                   </CardContent>
                 </Card>

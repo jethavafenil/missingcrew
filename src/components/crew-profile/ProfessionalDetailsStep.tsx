@@ -7,6 +7,8 @@ interface ProfessionalDetailsData {
   yearsExperience: string
   location: string
   availableToTravel: boolean
+  gender: string
+  firstProjectDate: string
 }
 
 interface ProfessionalDetailsStepProps {
@@ -129,6 +131,41 @@ export function ProfessionalDetailsStep({ data, onChange }: ProfessionalDetailsS
          {EXPERIENCE_LEVELS.map((level) => (
            <option key={level} value={level}>{level}</option>
          ))}
+       </select>
+     </div>
+
+     {/* First project (month/year) - shown on the profile instead of years of experience */}
+     <div>
+       <label htmlFor="firstProjectDate" className="block text-sm font-medium text-gray-700">
+         First project (month &amp; year)
+       </label>
+       <input
+         id="firstProjectDate"
+         type="month"
+         min="1950-01"
+         max={new Date().toISOString().slice(0, 7)}
+         value={data.firstProjectDate || ''}
+         onChange={(e) => onChange({ firstProjectDate: e.target.value })}
+         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+       />
+       <p className="mt-1 text-xs text-gray-500">When you worked on your first film project. Producers see this on your profile.</p>
+     </div>
+
+     {/* Gender (optional, used by producers' crew filters) */}
+     <div>
+       <label htmlFor="gender" className="block text-sm font-medium text-gray-700">
+         Gender (optional)
+       </label>
+       <select
+         id="gender"
+         value={data.gender || ''}
+         onChange={(e) => onChange({ gender: e.target.value })}
+         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+       >
+         <option value="">Prefer not to say</option>
+         <option value="MALE">Male</option>
+         <option value="FEMALE">Female</option>
+         <option value="OTHER">Other</option>
        </select>
      </div>
 
