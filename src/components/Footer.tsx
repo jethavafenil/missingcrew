@@ -24,7 +24,7 @@ const EMPLOYER_LINKS: FooterLink[] = [
   { href: '/employer/post-requirement', label: 'Post a Job' },
   { href: '/browse-crew', label: 'Browse Crew' },
   { href: '/employer/dashboard', label: 'My Dashboard' },
-  { href: '/employer/wishlist', label: 'My Wishlist' },
+  { href: '/employer/wishlist', label: 'My Bucket List' },
   { href: '/employer/edit-profile', label: 'Edit Profile' },
 ];
 const ADMIN_LINKS: FooterLink[] = [

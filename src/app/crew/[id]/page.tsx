@@ -403,7 +403,7 @@ export default function CrewProfilePage() {
           {activeTab === 'reviews' && <ReviewsTab crewId={crew.id} data={reviewsData} onChanged={reloadReviews} />}
           {activeTab === 'details' && <DetailsTab crew={crew} />}
           {activeTab === 'availability' && <AvailabilityTab crew={crew} />}
-          {activeTab === 'contact' && <ContactTab crew={crew} canViewContacts={canViewContacts} signedIn={signedIn} signInHref={signInHref} signUpHref={signUpHref} />}
+          {activeTab === 'contact' && <ContactTab crew={crew} canViewContacts={canViewContacts} canMessage={session?.user?.role === 'EMPLOYER'} signedIn={signedIn} signInHref={signInHref} signUpHref={signUpHref} />}
         </div>
 
         <div className="mt-6">
@@ -731,7 +731,7 @@ function AvailabilityTab({ crew }: { crew: CrewProfile }) {
   )
 }
 
-function ContactTab({ crew, canViewContacts, signedIn, signInHref, signUpHref }: { crew: CrewProfile; canViewContacts: boolean; signedIn: boolean; signInHref: string; signUpHref: string }) {
+function ContactTab({ crew, canViewContacts, canMessage, signedIn, signInHref, signUpHref }: { crew: CrewProfile; canViewContacts: boolean; canMessage: boolean; signedIn: boolean; signInHref: string; signUpHref: string }) {
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
   const firstName = crew.user.name.split(' ')[0]
   const greeting = `Hi ${firstName}, I found your profile on MissingCrew and would like to talk about a project.`
@@ -756,6 +756,8 @@ function ContactTab({ crew, canViewContacts, signedIn, signInHref, signUpHref }:
   ]
 
   return (
+    <div className="space-y-4">
+    {canMessage && <MessageBox crewId={crew.id} greeting={greeting} />}
     <div className="grid gap-3 sm:grid-cols-2">
       {rows.map((r) => (
         <div key={r.label} className="rounded-xl border border-gray-200 p-4">
@@ -775,5 +777,52 @@ function ContactTab({ crew, canViewContacts, signedIn, signInHref, signUpHref }:
         </div>
       ))}
     </div>
+    </div>
+  )
+}
+
+// One-click message from a producer: lands as a notification + email (Reply-To = producer).
+function MessageBox({ crewId, greeting }: { crewId: string; greeting: string }) {
+  const [text, setText] = useState(greeting)
+  const [busy, setBusy] = useState(false)
+  const [status, setStatus] = useState<'idle' | 'sent' | 'error'>('idle')
+  const [error, setError] = useState('')
+
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    setStatus('idle')
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ crewId, message: text }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || 'Could not send the message')
+      setStatus('sent')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send the message')
+      setStatus('error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form onSubmit={send} className="space-y-2 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
+      <h3 className="font-semibold text-gray-900">Send a message</h3>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={4}
+        maxLength={1000}
+        required
+        className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base"
+      />
+      {status === 'sent' && <p className="text-sm text-emerald-700">Message sent. They will reply to your email.</p>}
+      {status === 'error' && <p className="text-sm text-red-600">{error}</p>}
+      <Button type="submit" disabled={busy || !text.trim()}>{busy ? 'Sending…' : 'Send message'}</Button>
+    </form>
   )
 }

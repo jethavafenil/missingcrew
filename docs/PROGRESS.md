@@ -10,6 +10,26 @@ together with `docs/HANDOFF.md` (architecture) and
 
 ---
 
+## 2026-10-23 — Bucket list + HIRE ALL, messages, crew card, one-click apply, referral link, producer signup — built, NOT yet committed
+
+- **Bucket list + HIRE ALL** (`/employer/wishlist`, the old wishlist renamed): tick people, pick a project, one message
+  (`{name}` becomes each first name), `POST /api/hire-requests/batch` (max 20, per-person results, duplicates/declined reported
+  with the reason). The single and batch routes share `src/lib/hire/send.ts`.
+- **Message a crew member** (profile > Contact, producers only): `POST /api/messages` creates a notification + an email with
+  Reply-To = the producer, so the conversation continues by email. Rate limited; the crew address is never returned.
+- **Crew card overhaul** (`CrewCard`): reel on top that plays on hover (tap on phones), name, role, location, "Since <month>",
+  availability dates, hashtags, View Full Profile. Budget, project types and languages removed. Home crew cards lost the rate too.
+  Home project cards now show the full title, hashtags and posted date.
+- **One-click apply**: screening questions are now optional ("Apply now"); the producer's applicant preview shows the
+  crew's work of the same project type first, marked "Relevant", so nothing has to be attached by hand.
+- **Referral link** (crew dashboard card, WhatsApp share): `/accounts?tab=signup&role=crew&ref=<crew profile id>`; remembered in the
+  browser, pre-filled in the profile form, and when the new member completes their profile the referrer gets +2 months
+  (existing rule, now also accepts the code; self-referral and non-trial referrers are ignored).
+- **Producer signup**: full name, production company, mobile number (validated, stored normalised), email, password.
+- **Skipped on purpose**: "add to cart" (the bucket list heart already covers it) and the map-radius filter (waiting for the
+  LocationIQ key; gender/date/city/profession/hashtag filters are in).
+- Tests: unit 152, e2e incl. new `e2e-more` (HIRE ALL, messages, referral, signup phone).
+
 ## 2026-10-22 — Producer side, steps 2-4: credits, hashtags/match, split-screen review, profile redesign, reviews — built, NOT yet committed
 
 - **Migrations `0016`, `0017`** (applied to the test DB): `crew_profiles.gender / first_project_date / showreel_url / custom_tags`;

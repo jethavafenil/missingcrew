@@ -51,23 +51,10 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
     }
   }, [])
 
-  const validateForm = () => {
-    const newErrors: { [key: number]: string } = {}
-    project.questions.forEach((question, index) => {
-      if (question && question.trim() && !answers[index]?.trim()) {
-        newErrors[index] = 'This question is required'
-      }
-    })
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
+  // One-click apply: answers are optional (producers see which ones were skipped), so a
+  // crew member can apply straight away. Their relevant work is shown to the producer
+  // automatically from their profile.
   const handleSubmit = async () => {
-    if (!validateForm()) {
-      toast.error('Please answer all required questions')
-      return
-    }
-
     setIsSubmitting(true)
     try {
       const response = await fetch(`/api/projects/${project.id}/apply`, {
@@ -226,7 +213,7 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
               <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 text-indigo-600" />
                 Employer Questions
-                <span className="text-xs text-red-500 font-normal">* Required</span>
+                <span className="text-xs text-gray-400 font-normal">Optional, but answering helps you stand out</span>
               </h3>
               {project.questions.map((question: string, index: number) => (
                 question && typeof question === 'string' && question.trim() && (
@@ -295,7 +282,7 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
         <div className="border-t border-gray-200 p-6 bg-gray-50">
           <div className="flex flex-col-reverse sm:flex-row justify-between items-center gap-3">
             <p className="text-xs text-gray-500 text-center sm:text-left">
-              Your application will be reviewed by the employer
+              Your profile and relevant work are shared with the producer automatically
             </p>
             <div className="flex gap-3 w-full sm:w-auto">
               <Button
@@ -320,7 +307,7 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
                     Submitting...
                   </span>
                 ) : (
-                  'Submit Application'
+                  'Apply now'
                 )}
               </Button>
             </div>

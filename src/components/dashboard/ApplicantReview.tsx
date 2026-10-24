@@ -297,9 +297,15 @@ function ApplicantDetail({
   const detail = profile?.crew
   const st = app.status ?? 'PENDING'
   const tags = detail?.tags ?? crewTags({ projectTypes: app.crew.projectTypes, customTags: app.crew.customTags, pastProjects: app.crew.pastProjects })
-  const past = Array.isArray(detail?.pastProjects ?? app.crew.pastProjects)
+  // Work relevant to THIS project (same project type) comes first and is marked, so the
+  // applicant does not have to pick links when applying.
+  const projectTypes = project.projectType.split(/[,/]+/).map((t) => t.trim().toLowerCase()).filter(Boolean)
+  const past = (Array.isArray(detail?.pastProjects ?? app.crew.pastProjects)
     ? ((detail?.pastProjects ?? app.crew.pastProjects) as Array<{ title?: string; type?: string; role?: string; year?: string | number; link?: string | null }>).filter((p) => p?.title)
     : []
+  )
+    .map((p) => ({ ...p, relevant: !!p.type && projectTypes.includes(p.type.toLowerCase()) }))
+    .sort((a, b) => Number(b.relevant) - Number(a.relevant))
   const hiredCount = credits?.hiredCount ?? 0
   const crewSlug = app.crew.user.name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-')
 
@@ -424,7 +430,10 @@ function ApplicantDetail({
             {past.map((p, i) => (
               <div key={i} className="flex items-start justify-between gap-3 rounded-lg border border-gray-200 p-3">
                 <div className="min-w-0">
-                  <p className="font-semibold text-gray-900">{p.title}</p>
+                  <p className="font-semibold text-gray-900">
+                    {p.title}
+                    {p.relevant && <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">Relevant</span>}
+                  </p>
                   <p className="text-xs text-gray-500">{[p.type, p.role, p.year].filter(Boolean).join(' · ')}</p>
                 </div>
                 {p.link && (
@@ -463,7 +472,7 @@ function ApplicantDetail({
             {app.answers.map((answer, i) => (
               <div key={i} className="text-sm">
                 <p className="mb-1 font-medium text-gray-700">{project.questions[i]}</p>
-                <p className="text-gray-600">{answer}</p>
+                {answer && String(answer).trim() ? <p className="text-gray-600">{answer}</p> : <p className="italic text-gray-400">Not answered</p>}
               </div>
             ))}
           </div>

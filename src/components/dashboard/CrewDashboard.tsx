@@ -15,6 +15,7 @@ import { Calendar, MapPin, Briefcase, DollarSign, Users, Clock, CheckCircle, Ale
 import { ConnectionRequestCard } from '@/components/network/ConnectionRequestCard'
 import { NetworkList } from '@/components/network/NetworkList'
 import { CrewSubscriptionCard } from '@/components/subscription/CrewSubscriptionCard'
+import { ReferralCard } from '@/components/dashboard/ReferralCard'
 import { slugifyName } from '@/lib/utils'
 import { swrFetcher } from '@/lib/swr'
 import { HireRequestsPanel } from '@/components/hire/HireRequestsPanel'
@@ -983,6 +984,8 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
                     )}
                   </CardContent>
                 </Card>
+
+                {userData.crewProfile?.id && <ReferralCard crewProfileId={userData.crewProfile.id} />}
 
                 {/* Subscription Plan Card */}
                 {userData.crewProfile?.subscriptionTier && (

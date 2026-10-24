@@ -45,26 +45,15 @@ describe('ApplyModal', () => {
     expect(screen.getByPlaceholderText(/share why you're the perfect fit/i)).toBeInTheDocument()
   })
 
-  it('blocks submission when required questions are unanswered', async () => {
+  it('applies in one click without answering the optional questions', async () => {
     const user = userEvent.setup()
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('{}', { status: 200 }))
     renderModal()
-    await user.click(screen.getByRole('button', { name: /submit application/i }))
+    await user.click(screen.getByRole('button', { name: /apply now/i }))
 
-    expect(await screen.findAllByText(/this question is required/i)).toHaveLength(2)
-    expect(fetch).not.toHaveBeenCalled()
-  })
-
-  it('clears a question error as soon as the user types an answer', async () => {
-    const user = userEvent.setup()
-    renderModal()
-    await user.click(screen.getByRole('button', { name: /submit application/i }))
-    expect(await screen.findAllByText(/this question is required/i)).toHaveLength(2)
-
-    await user.type(screen.getAllByPlaceholderText(/type your answer here/i)[0], 'Because I love film.')
-    await waitFor(() => {
-      expect(screen.getAllByText(/this question is required/i)).toHaveLength(1)
-    })
-    expect(fetch).not.toHaveBeenCalled()
+    expect(await screen.findByText(/application submitted!/i)).toBeInTheDocument()
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string)
+    expect(body.answers).toEqual(['', ''])
   })
 
   it('submits answers + notes to the apply endpoint and shows the success state', async () => {
@@ -76,7 +65,7 @@ describe('ApplyModal', () => {
     await user.type(answers[0], 'Because I love film.')
     await user.type(answers[1], 'Ten years of camera work.')
     await user.type(screen.getByPlaceholderText(/share why you're the perfect fit/i), 'Available immediately.')
-    await user.click(screen.getByRole('button', { name: /submit application/i }))
+    await user.click(screen.getByRole('button', { name: /apply now/i }))
 
     expect(await screen.findByText(/application submitted!/i)).toBeInTheDocument()
     expect(fetch).toHaveBeenCalledWith(
@@ -100,7 +89,7 @@ describe('ApplyModal', () => {
     const answers = screen.getAllByPlaceholderText(/type your answer here/i)
     await user.type(answers[0], 'a')
     await user.type(answers[1], 'b')
-    await user.click(screen.getByRole('button', { name: /submit application/i }))
+    await user.click(screen.getByRole('button', { name: /apply now/i }))
 
     expect(await screen.findByText(/already applied/i)).toBeInTheDocument()
   })

@@ -8,6 +8,8 @@ import { slugifyName } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { HireAllModal } from '@/components/hire/HireAllModal'
+import { MAX_HIRE_ALL } from '@/lib/hire/schema'
 import { Heart, MapPin, Briefcase, DollarSign, Mail, Phone, RefreshCw, Search, ArrowLeft } from 'lucide-react'
 
 interface WishlistCrew {
@@ -35,6 +37,15 @@ export default function WishlistPage() {
   const router = useRouter()
   const [wishlists, setWishlists] = useState<WishlistCrew[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [hireOpen, setHireOpen] = useState(false)
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else if (next.size < MAX_HIRE_ALL) next.add(id)
+      return next
+    })
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -67,6 +78,7 @@ export default function WishlistPage() {
       })
       if (response.ok) {
         setWishlists(wishlists.filter(w => w.crew.id !== crewId))
+        setSelected((prev) => { const next = new Set(prev); next.delete(crewId); return next })
       }
     } catch (error) {
       console.error('Error removing from wishlist:', error)
@@ -96,9 +108,9 @@ export default function WishlistPage() {
               <span>Back</span>
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Wishlist</h1>
+              <h1 className="text-3xl font-bold text-gray-900">My Bucket List</h1>
               <p className="text-gray-600 mt-2">
-                Your saved crew members ({wishlists.length})
+                Crew you have saved ({wishlists.length})
               </p>
             </div>
           </div>
@@ -120,6 +132,27 @@ export default function WishlistPage() {
           </div>
         </div>
 
+        {wishlists.length > 0 && (
+          <div className="mb-6 flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-gray-700">
+              Tick the people you want and hire them for a project in one go. Each person gets a request they can accept or decline.
+            </p>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSelected(selected.size === Math.min(wishlists.length, MAX_HIRE_ALL) ? new Set() : new Set(wishlists.slice(0, MAX_HIRE_ALL).map((w) => w.crew.id)))}
+              >
+                {selected.size > 0 ? 'Clear' : 'Select all'}
+              </Button>
+              <Button type="button" size="sm" disabled={selected.size === 0} onClick={() => setHireOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
+                Hire all ({selected.size})
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Wishlist Grid */}
         {wishlists.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -128,6 +161,13 @@ export default function WishlistPage() {
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(wishlist.crew.id)}
+                        onChange={() => toggle(wishlist.crew.id)}
+                        className="h-5 w-5 rounded border-gray-300 text-emerald-600"
+                        aria-label={`Select ${wishlist.crew.user.name}`}
+                      />
                       <Avatar className="h-16 w-16 border-2 border-red-200">
                         {wishlist.crew.photo ? (
                           <AvatarImage src={wishlist.crew.photo} alt={wishlist.crew.user.name} />
@@ -219,7 +259,7 @@ export default function WishlistPage() {
               <div className="text-center">
                 <Heart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  Your wishlist is empty
+                  Your bucket list is empty
                 </h3>
                 <p className="text-gray-600 mb-6">
                   Start building your list of favorite crew members by clicking the heart icon on crew profiles.
@@ -235,6 +275,12 @@ export default function WishlistPage() {
           </Card>
         )}
       </div>
+      <HireAllModal
+        open={hireOpen}
+        onOpenChange={setHireOpen}
+        crew={wishlists.filter((w) => selected.has(w.crew.id)).map((w) => ({ id: w.crew.id, name: w.crew.user.name }))}
+        onDone={() => setSelected(new Set())}
+      />
     </div>
   )
 }

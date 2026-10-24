@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { slugifyName } from '@/lib/utils'
+import { displayHashtags } from '@/lib/projectTags'
 
 export interface HomeProject {
   id: string
@@ -29,6 +30,8 @@ export interface HomeProject {
   shootEndDate: string
   location: string
   description: string
+  tags?: string[]
+  createdAt?: string
   questions?: string[]
   employer: {
     user: {
@@ -246,10 +249,17 @@ export function HomeDualFeed({ projects, crew }: HomeDualFeedProps) {
             href={`/projects/${project.id}`} 
             className="block group-hover:text-indigo-600 transition-colors"
           >
-            <h4 className="text-base sm:text-lg font-bold text-gray-900 line-clamp-1">
+            <h4 className="text-base sm:text-lg font-bold text-gray-900 break-words">
               {project.projectName}
             </h4>
           </Link>
+
+          {/* Hashtags: project type + the producer's own tags */}
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {displayHashtags(project.projectType, project.tags).slice(0, 4).map((t) => (
+              <span key={t} className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">{t}</span>
+            ))}
+          </div>
 
           {/* Description snippet */}
           <p className="mt-1.5 text-xs text-gray-500 line-clamp-2 leading-relaxed flex-1">
@@ -294,6 +304,11 @@ export function HomeDualFeed({ projects, crew }: HomeDualFeedProps) {
               <Calendar className="w-3.5 h-3.5 text-indigo-500" />
               {dateText}
             </span>
+            {project.createdAt && (
+              <span className="text-gray-400">
+                Posted {new Date(project.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            )}
           </div>
 
           <Link
@@ -314,7 +329,6 @@ export function HomeDualFeed({ projects, crew }: HomeDualFeedProps) {
     const profileSlug = slugifyName(name)
     const locationText = member.city || member.location || 'India'
     const roles = (member.primaryRoles || []).slice(0, 3)
-    const rateText = formatBudget(member.dailyBudgetMin, member.dailyBudgetMax)
 
     return (
       <div
@@ -415,10 +429,7 @@ export function HomeDualFeed({ projects, crew }: HomeDualFeedProps) {
 
         {/* Bottom Details Footer */}
         <div className="mt-4 pt-3.5 border-t border-gray-100 flex items-center justify-between gap-2 text-xs shrink-0">
-          <div className="flex items-center gap-1 text-gray-600 font-medium">
-            <IndianRupee className="w-3.5 h-3.5 text-purple-600" />
-            <span className="text-gray-900 font-semibold">{rateText}</span>
-          </div>
+          <span />
 
           <Link
             href={`/crew/${profileSlug}`}

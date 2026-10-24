@@ -333,7 +333,7 @@ export function EmployerDashboard({ user, userData }: EmployerDashboardProps) {
                     href="/employer/wishlist"
                     className="block w-full text-center px-4 py-2 bg-gray-100 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                   >
-                    My Wishlist ({wishlists.length})
+                    My Bucket List ({wishlists.length})
                   </Link>
                   <Link
                     href="/change-password"
@@ -423,7 +423,7 @@ export function EmployerDashboard({ user, userData }: EmployerDashboardProps) {
                 </TabsTrigger>
                 <TabsTrigger value="wishlist" className="data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-900">
                   <Heart className="h-4 w-4 mr-2" />
-                  Wishlist
+                  Bucket list
                 </TabsTrigger>
                 <TabsTrigger value="hire" className="data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-900">
                   <UserPlus className="h-4 w-4 mr-2" />
