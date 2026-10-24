@@ -392,7 +392,7 @@ function BrowseCrewContent() {
                     : 'grid-cols-1'
                 }`}>
                   {paginatedCrew.map(crew => (
-                    <CrewCard key={crew.id} crew={crew} />
+                    <CrewCard key={crew.id} crew={crew} onTagClick={(tag) => { setFilters((f) => ({ ...f, tag })); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
                   ))}
                 </div>
 

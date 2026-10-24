@@ -10,6 +10,23 @@ together with `docs/HANDOFF.md` (architecture) and
 
 ---
 
+## 2026-10-25 — Test feedback round 1 — built, NOT yet committed
+
+- **Thumbnails**: if a showreel thumbnail fails to load (or there is none and no photo) the card and profile now show a neutral
+  placeholder instead of a broken image.
+- **Hashtags on cards** are clickable on Browse Crew (filters in place); on other pages they open Browse Crew filtered.
+- **Notifications**: the list opens on hover (desktop; tap on phones) and **clicking one opens the right page**
+  (`src/lib/notificationLinks.ts`): hire request -> crew Hire requests tab, hire answer -> producer Hire tab, new application ->
+  Applications tab, shortlisted -> My Applications, matching project -> the project page. Producer dashboard now honours `?tab=`.
+- **Bucket list button** (heart + count) beside the bell for producers.
+- **Matching-project notifications**: when a producer posts a project, crew with a needed role, not booked, and a match score >= 55
+  (role + project type/hashtags/city/budget, `src/lib/projects/matchCrew.ts`) get an in-app notification ("New project matches your
+  profile, 80% match") — sent after the response so posting stays fast. No email on purpose (avoid spam); easy to add for >= 80%.
+  Tests set `MATCH_NOTIFY_EMAIL_PREFIX=qa-` so only QA accounts are notified on the shared DB.
+- **Speed**: the functions ran in Vercel `iad1` (US East) while the Supabase database is in Tokyo (AWS ap-northeast-1), so every
+  query paid a ~170 ms round trip and a page makes several in a row. `vercel.json` now pins functions to `hnd1` (Tokyo). Also the crew
+  profile page now fetches profile/credits/reviews in parallel.
+
 ## 2026-10-23 — Bucket list + HIRE ALL, messages, crew card, one-click apply, referral link, producer signup — built, NOT yet committed
 
 - **Bucket list + HIRE ALL** (`/employer/wishlist`, the old wishlist renamed): tick people, pick a project, one message

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Heart, MapPin, Calendar, Check, Award, Play, Film } from 'lucide-react'
+import { Heart, MapPin, Calendar, Check, Award, Play, User } from 'lucide-react'
+import { mutate as globalMutate } from 'swr'
 import { useSession } from '@/lib/auth/session-context'
 import { Button } from '../ui/button'
 import { slugifyName } from '@/lib/utils'
@@ -10,6 +11,8 @@ import { hasProBadge } from '@/lib/subscription/access'
 import { vimeoId, youtubeId } from '@/lib/crew/profileFields'
 
 interface CrewCardProps {
+  // Browse page: clicking a hashtag filters the list in place. Elsewhere it opens Browse Crew filtered.
+  onTagClick?: (tag: string) => void
   crew: {
     id: string
     user: {
@@ -52,12 +55,13 @@ function pickReel(crew: CrewCardProps['crew']): string | null {
   return (crew.portfolioLinks ?? []).find((l) => typeof l === 'string' && (youtubeId(l) || vimeoId(l))) ?? null
 }
 
-export function CrewCard({ crew }: CrewCardProps) {
+export function CrewCard({ crew, onTagClick }: CrewCardProps) {
   const { data: session } = useSession()
   const isProducer = session?.user?.role === 'EMPLOYER'
   const [isWishlisted, setIsWishlisted] = useState(false)
   const [busy, setBusy] = useState(false)
   const [playing, setPlaying] = useState(false)
+  const [thumbFailed, setThumbFailed] = useState(false)
 
   useEffect(() => {
     if (!isProducer) return
@@ -80,7 +84,10 @@ export function CrewCard({ crew }: CrewCardProps) {
       const res = isWishlisted
         ? await fetch(`/api/wishlist?crewId=${crew.id}`, { method: 'DELETE' })
         : await fetch('/api/wishlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ crewId: crew.id }) })
-      if (res.ok) setIsWishlisted(!isWishlisted)
+      if (res.ok) {
+        setIsWishlisted(!isWishlisted)
+        void globalMutate('/api/wishlist') // refresh the bucket list count in the header
+      }
     } catch (error) {
       console.error('Bucket list update failed:', error)
     } finally {
@@ -115,15 +122,16 @@ export function CrewCard({ crew }: CrewCardProps) {
           <iframe src={embed} title={`${crew.user.name} showreel`} className="pointer-events-none absolute inset-0 h-full w-full" allow="autoplay; encrypted-media; picture-in-picture" loading="lazy" />
         ) : (
           <>
-            {yt ? (
+            {yt && !thumbFailed ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={`https://img.youtube.com/vi/${yt}/hqdefault.jpg`} alt="" loading="lazy" className="h-full w-full object-cover" />
+              <img src={`https://img.youtube.com/vi/${yt}/hqdefault.jpg`} alt="" loading="lazy" onError={() => setThumbFailed(true)} className="h-full w-full object-cover" />
             ) : crew.photo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={crew.photo} alt="" loading="lazy" className="h-full w-full object-cover opacity-90" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-indigo-300">
-                <Film className="h-10 w-10" />
+              // No thumbnail and no photo: a neutral placeholder that works for everyone
+              <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 text-indigo-400">
+                <User className="h-12 w-12" strokeWidth={1.5} />
               </div>
             )}
             {hasVideo && (
@@ -200,11 +208,22 @@ export function CrewCard({ crew }: CrewCardProps) {
 
         {crew.tags && crew.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {crew.tags.slice(0, 3).map((t) => (
-              <span key={t} className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
-                #{t}
-              </span>
-            ))}
+            {crew.tags.slice(0, 3).map((t) =>
+              onTagClick ? (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => onTagClick(t)}
+                  className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 transition hover:bg-indigo-100 hover:text-indigo-900"
+                >
+                  #{t}
+                </button>
+              ) : (
+                <Link key={t} href={`/browse-crew?tag=${encodeURIComponent(t)}`} className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 transition hover:bg-indigo-100 hover:text-indigo-900">
+                  #{t}
+                </Link>
+              ),
+            )}
           </div>
         )}
 

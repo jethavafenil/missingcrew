@@ -154,6 +154,11 @@ export default function CrewProfilePage() {
   const fromProject = searchParams.get('fromProject') === 'true'
 
   const fetchCrewProfile = useCallback(async (crewId: string) => {
+    // Profile, credits and reviews are requested together (the routes accept the slug too),
+    // so the page does not wait for one round trip before starting the next.
+    const json = (r: Response) => (r.ok ? r.json() : null)
+    const creditsReq = fetch(`/api/crew/${crewId}/credits`).then(json).catch(() => null)
+    const reviewsReq = fetch(`/api/crew/${crewId}/reviews`).then(json).catch(() => null)
     try {
       const response = await fetch(`/api/crew/${crewId}`)
       if (response.ok) {
@@ -162,15 +167,8 @@ export default function CrewProfilePage() {
         if (data?.crew?.user?.name && slugify(data.crew.user.name) !== crewId) {
           router.replace(`/crew/${slugify(data.crew.user.name)}`)
         }
-        // credits are loaded alongside; they are optional for the page to render
-        fetch(`/api/crew/${data.crew.id}/credits`)
-          .then((r) => (r.ok ? r.json() : null))
-          .then((c) => c && setCreditsData(c))
-          .catch(() => {})
-        fetch(`/api/crew/${data.crew.id}/reviews`)
-          .then((r) => (r.ok ? r.json() : null))
-          .then((v) => v && setReviewsData(v))
-          .catch(() => {})
+        creditsReq.then((c) => c && setCreditsData(c))
+        reviewsReq.then((v) => v && setReviewsData(v))
       } else {
         router.push('/browse-crew')
       }
