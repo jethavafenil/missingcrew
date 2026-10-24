@@ -7,6 +7,7 @@ import { containsLetter } from '@/lib/utils'
 import { getAdminAuthClient, isEmailVerificationRequired, sendSignupConfirmation } from '@/lib/auth/admin'
 import { isStrongPassword, PASSWORD_MAX_LENGTH, PASSWORD_POLICY_MESSAGE } from '@/lib/auth/password'
 import { userRepo, employerProfileRepo, SYSTEM_REQUESTER } from '@/lib/repo'
+import { isValidPhone, normalizePhone, PHONE_MESSAGE } from '@/lib/phone'
 
 // Creates the GoTrue user; the on_auth_user_created trigger (migration 0001)
 // provisions the public.users row + placeholder employer profile, reading the
@@ -19,9 +20,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { companyName, contactName, email, password } = await parseBody(request, z.object({
+    const { companyName, contactName, phone, email, password } = await parseBody(request, z.object({
       companyName: z.string().trim().min(1).max(150),
       contactName: z.string().trim().min(1).max(100).refine(containsLetter, 'Contact name must contain letters, not just numbers'),
+      phone: z.string().trim().max(30).refine(isValidPhone, PHONE_MESSAGE),
       email: z.email().max(254),
       password: z.string().max(PASSWORD_MAX_LENGTH).refine(isStrongPassword, PASSWORD_POLICY_MESSAGE),
     }))
@@ -53,6 +55,7 @@ export async function POST(request: NextRequest) {
     const dbUser = await userRepo.findByEmail(email, SYSTEM_REQUESTER)
     if (dbUser) {
       await employerProfileRepo.updateByUserId(dbUser.id, { companyName }, SYSTEM_REQUESTER)
+      await userRepo.updateUser(dbUser.id, { phone: normalizePhone(phone) }, SYSTEM_REQUESTER)
     }
 
     if (verificationRequired) {

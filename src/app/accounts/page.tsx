@@ -14,6 +14,7 @@ import { createAuthClient } from '@/lib/auth/client'
 import { setOAuthState, clearOAuthState } from '@/lib/oauthState'
 import { isSafeReturnPath } from '@/lib/utils'
 import { isSignInVerifying } from '@/lib/auth/auth-flags'
+import { rememberReferral } from '@/lib/referral'
 
 function AccountsContent() {
   const { data: session, status } = useSession()
@@ -33,6 +34,12 @@ function AccountsContent() {
       ? roleParam
       : intent === 'post-requirement' ? 'employer' : 'crew'
   const [isLoading, setIsLoading] = useState(false)
+
+  // A referral link (?ref=<code>) is remembered until the new member finishes their profile.
+  const refCode = searchParams.get('ref')
+  useEffect(() => {
+    if (refCode) rememberReferral(refCode)
+  }, [refCode])
 
   // Redirect logged-in users to their destination or dashboard
   useEffect(() => {

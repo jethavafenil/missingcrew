@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PhoneVerification } from './PhoneVerification'
+import { recalledReferral } from '@/lib/referral'
 
 interface ContactData {
   contactWhatsApp: string
@@ -18,6 +19,15 @@ interface ContactStepProps {
 
 export function ContactStep({ data, onChange }: ContactStepProps) {
   const [showVerification, setShowVerification] = useState(false)
+
+  // Arrived through a referral link: pre-fill the referrer (never overwrites what they typed)
+  useEffect(() => {
+    if (!data.referredBy) {
+      const code = recalledReferral()
+      if (code) onChange({ referredBy: code })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleVerificationComplete = (verified: boolean) => {
     onChange({ phoneVerified: verified })
@@ -51,9 +61,9 @@ export function ContactStep({ data, onChange }: ContactStepProps) {
           Referred By (Optional)
         </label>
         <input
-          type="email"
+          type="text"
           id="referredBy"
-          placeholder="Email of person who referred you"
+          placeholder="Referrer's email or referral code"
           value={data.referredBy || ''}
           onChange={(e) => onChange({ referredBy: e.target.value })}
           className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"

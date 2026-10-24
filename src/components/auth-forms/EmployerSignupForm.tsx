@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 import { getPasswordRequirements, isStrongPassword } from '@/lib/auth/password'
+import { isValidPhone, PHONE_MESSAGE } from '@/lib/phone'
 
 export default function EmployerSignupForm() {
   const router = useRouter()
@@ -17,6 +18,7 @@ export default function EmployerSignupForm() {
   const [formData, setFormData] = useState({
     companyName: '',
     contactName: '',
+    phone: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -35,6 +37,12 @@ export default function EmployerSignupForm() {
     e.preventDefault()
     setIsLoading(true)
     setError('')
+
+    if (!isValidPhone(formData.phone)) {
+      setError(PHONE_MESSAGE)
+      setIsLoading(false)
+      return
+    }
 
     if (!isStrongPassword(formData.password)) {
       setError('Please fix password errors before submitting')
@@ -57,6 +65,7 @@ export default function EmployerSignupForm() {
       body: JSON.stringify({
         companyName: formData.companyName,
         contactName: formData.contactName,
+        phone: formData.phone,
         email: formData.email,
         password: formData.password
       }),
@@ -87,7 +96,7 @@ export default function EmployerSignupForm() {
     <form method="post" onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
-          Company Name
+          Production company
         </label>
         <Input
           id="companyName"
@@ -102,7 +111,7 @@ export default function EmployerSignupForm() {
 
       <div>
         <label htmlFor="contactName" className="block text-sm font-medium text-gray-700">
-          Contact Name
+          Full name
         </label>
         <Input
           id="contactName"
@@ -112,6 +121,23 @@ export default function EmployerSignupForm() {
           placeholder="Your full name"
           autoComplete="name"
           value={formData.contactName}
+          onChange={handleChange}
+          className="mt-1"
+        />
+      </div>
+
+      <div>
+        <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+          Mobile number
+        </label>
+        <Input
+          id="phone"
+          name="phone"
+          type="tel"
+          required
+          placeholder="+91 98765 43210"
+          autoComplete="tel"
+          value={formData.phone}
           onChange={handleChange}
           className="mt-1"
         />

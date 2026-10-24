@@ -5,6 +5,7 @@ import { revalidateTag } from 'next/cache'
 import { trialEndsFromNow } from '@/lib/subscription/access'
 import { parseFirstProject, parseGender, parseShowreel } from '@/lib/crew/profileFields'
 import { sanitizeCrewTags } from '@/lib/matching'
+import { isEmailLike, isValidReferralCode } from '@/lib/referral'
 
 
 export async function POST(request: NextRequest) {
@@ -155,15 +156,24 @@ export async function POST(request: NextRequest) {
 
     // If someone used a referral code, grant the REFERRER 2 months free
     if (isCompletingWithReferral) {
-      const referralEmail = completeProfileData.referredBy.trim()
+      const referralValue = completeProfileData.referredBy.trim()
 
-      // Find the referrer by email only
-      const referrer = await userRepo.findByEmailIgnoreCaseWithCrew(referralEmail, requester)
+      // The referrer is an email address (typed) or a referral code = crew profile id (link)
+      let referrer: { id: string } | null = null
+      let referrerProfile: { id: string; subscriptionTier?: string; trialEnds?: Date | string | null } | null | undefined
+      if (isEmailLike(referralValue)) {
+        const found = await userRepo.findByEmailIgnoreCaseWithCrew(referralValue, requester)
+        referrer = found ? { id: found.id } : null
+        referrerProfile = found?.crewProfile as typeof referrerProfile
+      } else if (isValidReferralCode(referralValue)) {
+        const found = await crewProfileRepo.findById(referralValue)
+        referrer = found ? { id: found.userId } : null
+        referrerProfile = found
+      }
 
       // Grant referrer 2 months free subscription
       // No self-referral, and never downgrade a referrer who already pays
       // (the bonus only applies to trial accounts).
-      const referrerProfile = referrer?.crewProfile as { id: string; subscriptionTier?: string; trialEnds?: Date | string | null } | null | undefined
       if (referrer && referrer.id !== session.user.id && referrerProfile && referrerProfile.subscriptionTier === 'FREE_TRIAL') {
         // Extend from whichever is later: the current trial end or today.
         const currentEnd = referrerProfile.trialEnds ? new Date(referrerProfile.trialEnds) : new Date(0)
