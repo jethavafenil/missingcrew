@@ -1,6 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { getSession } from '@/lib/auth/server'
-import { userRepo, employerProfileRepo, projectRepo, notificationRepo, requesterFromSession, type Requester } from '@/lib/repo';
+import { userRepo, employerProfileRepo, projectRepo, notificationRepo, crewProfileRepo, requesterFromSession, type Requester } from '@/lib/repo';
+import { pickMatchingCrew } from '@/lib/projects/matchCrew';
+import { formatShootRange } from '@/lib/projects/format';
 import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimiter'
 import { parseBody } from '@/lib/api/body'
 import { isBeforeToday } from '@/lib/utils'
@@ -154,6 +156,32 @@ export async function POST(request: Request) {
     } catch (mailError) {
       console.error('Project-live notification failed:', mailError);
     }
+
+    // Tell crew whose profile fits (role + type/hashtags/city/budget); after the response so posting stays fast.
+    after(async () => {
+      try {
+        let everyone = await crewProfileRepo.findManyWithUser({ userRole: 'CREW' });
+        // Test runs against the shared database set this so only QA accounts are ever notified.
+        const onlyPrefix = process.env.MATCH_NOTIFY_EMAIL_PREFIX;
+        if (onlyPrefix) everyone = everyone.filter((c) => c.user?.email?.startsWith(onlyPrefix));
+        const matches = pickMatchingCrew(
+          { projectType: project.projectType, rolesNeeded: project.rolesNeeded, tags: project.tags, location: project.location, budgetMin: project.budgetMin, budgetMax: project.budgetMax },
+          everyone.map((c) => ({ ...c, primaryRoles: c.primaryRoles, customTags: c.customTags })),
+        );
+        const dates = project.shootStartDate || project.shootEndDate ? ` (${formatShootRange(project.shootStartDate, project.shootEndDate)})` : '';
+        await notificationRepo.createMany(
+          matches.map((m) => ({
+            userId: m.crew.userId,
+            type: 'PROJECT_POSTED' as const,
+            title: 'New project matches your profile',
+            message: `${project.projectName} - ${project.projectType} in ${project.location}${dates}. ${m.score}% match.`,
+            data: { projectId: project.id, match: m.score },
+          })),
+        );
+      } catch (matchError) {
+        console.error('Matching-crew notification failed:', matchError);
+      }
+    });
 
     revalidateTag('projects', { expire: 0 });
     return NextResponse.json(project, { status: 201 });

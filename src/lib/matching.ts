@@ -67,6 +67,10 @@ function cityOf(value?: string | null): string {
   return lc((value || '').split(',')[0] || '')
 }
 
+export function hasRoleOverlap(crewRoles: string[] | null | undefined, needed: string[] | null | undefined): boolean {
+  return overlap(crewRoles ?? [], needed ?? []) > 0
+}
+
 // 0-100 fit between a crew member and a project:
 // role 40, project type 25, tags 15, city 15, budget 5.
 export function matchScore(crew: MatchableCrew, project: MatchableProject): number {

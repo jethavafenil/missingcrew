@@ -51,6 +51,17 @@ export async function create(input: CreateNotificationInput, _req: Requester): P
   return mapNotification(data as Record<string, unknown>)
 }
 
+// One insert for many recipients (e.g. crew matching a new project).
+export async function createMany(inputs: CreateNotificationInput[]): Promise<number> {
+  if (inputs.length === 0) return 0
+  const createdAt = now().toISOString()
+  const { error } = await getServiceClient().from('notifications').insert(
+    inputs.map((i) => ({ user_id: i.userId, type: i.type, title: i.title, message: i.message, read: false, data: i.data ?? null, created_at: createdAt })),
+  )
+  throwOnError('notification.createMany', error)
+  return inputs.length
+}
+
 export async function markAllReadByUserId(userId: string, _req: Requester): Promise<void> {
   const { error } = await getServiceClient().from('notifications').update({ read: true }).eq('user_id', userId).eq('read', false)
   throwOnError('notification.markAllRead', error)
