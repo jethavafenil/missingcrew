@@ -5,6 +5,7 @@ interface EmailOptions {
   to: string;
   subject: string;
   html: string;
+  replyTo?: string;
 }
 
 export async function sendEmail(options: EmailOptions) {
@@ -36,6 +37,7 @@ export async function sendEmail(options: EmailOptions) {
       to: options.to,
       subject: options.subject,
       html: options.html,
+      ...(options.replyTo ? { replyTo: options.replyTo } : {}),
     };
 
     // Send email with timeout
@@ -159,6 +161,18 @@ export function createHireRequestEmail(crewName: string, producerName: string, p
       <blockquote style="margin: 16px 0; padding: 12px 16px; background-color: #f3f4f6; border-left: 4px solid #2563eb; white-space: pre-wrap;">${escapeHtml(message)}</blockquote>
       <p>Open your dashboard to accept or decline the request.</p>`,
     { label: 'Review hire request', href: `${siteUrl()}/dashboard?tab=requests` })
+  return { subject, html }
+}
+
+// Producer -> crew direct message (reply goes to the producer through Reply-To).
+export function createDirectMessageEmail(crewName: string, producerName: string, message: string) {
+  const subject = `${producerName} sent you a message on MissingCrew`
+  const html = layout('You have a new message', `
+      <p>Hi ${escapeHtml(crewName)},</p>
+      <p><strong>${escapeHtml(producerName)}</strong> sent you a message:</p>
+      <blockquote style="margin: 16px 0; padding: 12px 16px; background-color: #f3f4f6; border-left: 4px solid #2563eb; white-space: pre-wrap;">${escapeHtml(message)}</blockquote>
+      <p>Reply to this email to answer them directly.</p>`,
+    { label: 'Open MissingCrew', href: `${siteUrl()}/dashboard` })
   return { subject, html }
 }
 

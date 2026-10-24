@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createHireRequestSchema, respondHireRequestSchema, MAX_HIRE_MESSAGE } from '@/lib/hire/schema'
+import { createHireRequestSchema, respondHireRequestSchema, hireAllSchema, personalise, MAX_HIRE_MESSAGE, MAX_HIRE_ALL } from '@/lib/hire/schema'
 import { createHireRequestEmail, createHireResponseEmail } from '@/lib/email'
 import { formatShootRange } from '@/lib/projects/format'
 
@@ -39,5 +39,22 @@ describe('hire emails', () => {
 describe('formatShootRange same day', () => {
   it('shows a single date for one-day shoots', () => {
     expect(formatShootRange('2026-11-05T10:00:00Z', '2026-11-05T12:00:00Z')).not.toContain(' - ')
+  })
+})
+
+describe('HIRE ALL', () => {
+  const base = { projectId: 'p1', crewIds: ['a', 'b'], message: 'Hi {name}, join us' }
+  it('accepts 1..20 crew and rejects 0 or too many', () => {
+    expect(hireAllSchema.safeParse(base).success).toBe(true)
+    expect(hireAllSchema.safeParse({ ...base, crewIds: [] }).success).toBe(false)
+    expect(hireAllSchema.safeParse({ ...base, crewIds: Array.from({ length: MAX_HIRE_ALL + 1 }, (_, i) => `c${i}`) }).success).toBe(false)
+  })
+  it('rejects bad ids and empty messages', () => {
+    expect(hireAllSchema.safeParse({ ...base, crewIds: ['a b'] }).success).toBe(false)
+    expect(hireAllSchema.safeParse({ ...base, message: '  ' }).success).toBe(false)
+  })
+  it('personalises with the first name', () => {
+    expect(personalise('Hi {name}, and {NAME}', 'Rahul Mehta')).toBe('Hi Rahul, and Rahul')
+    expect(personalise('Hi {name}', null)).toBe('Hi there')
   })
 })
