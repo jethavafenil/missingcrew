@@ -6,6 +6,7 @@ import { useSession, signOut } from '@/lib/auth/session-context';
 import Image from 'next/image';
 import { useState, useRef, useEffect } from 'react';
 import { NotificationBell } from './notifications/NotificationBell';
+import { BucketListButton } from './notifications/BucketListButton';
 import { Film, Menu, X, User, LogOut, Briefcase, Users, Search } from 'lucide-react';
 
 export default function Header() {
@@ -104,6 +105,7 @@ export default function Header() {
           <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
             {session ? (
               <div className="flex items-center space-x-3">
+                <BucketListButton />
                 <NotificationBell />
                 <Link
                   href={session.user?.role === 'CREW' ? '/dashboard' :

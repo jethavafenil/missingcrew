@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSession } from '@/lib/auth/session-context'
 import useSWR from 'swr'
 import { swrFetcher } from '@/lib/swr'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { notificationLink } from '@/lib/notificationLinks'
 
 interface Notification {
   id: string
@@ -12,6 +14,7 @@ interface Notification {
   title: string
   message: string
   read: boolean
+  data?: unknown
   createdAt: string
 }
 
@@ -23,7 +26,24 @@ interface NotificationsData {
 export function NotificationBell() {
   const { data: session } = useSession()
   const [isOpen, setIsOpen] = useState(false)
-  
+  const router = useRouter()
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Desktop: the list opens when the pointer is over the bell and closes shortly after it
+  // leaves. Touch screens have no hover, so tapping the bell still toggles it.
+  const canHover = () => typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches
+  const hoverOpen = () => {
+    if (!canHover()) return
+    if (closeTimer.current) clearTimeout(closeTimer.current)
+    setIsOpen(true)
+  }
+  const hoverClose = () => {
+    if (!canHover()) return
+    if (closeTimer.current) clearTimeout(closeTimer.current)
+    closeTimer.current = setTimeout(() => setIsOpen(false), 200)
+  }
+  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current) }, [])
+
   // Use SWR for fetching notifications with automatic revalidation
   const { data, error, mutate } = useSWR<NotificationsData>(
     session ? '/api/notifications' : null,
@@ -118,7 +138,7 @@ export function NotificationBell() {
   }
 
   return (
-    <div className="relative">
+    <div className="relative" onMouseEnter={hoverOpen} onMouseLeave={hoverClose}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-gray-700 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-full"
@@ -191,7 +211,11 @@ export function NotificationBell() {
                     className={`p-4 border-b hover:bg-gray-50 cursor-pointer ${
                       !notification.read ? 'bg-blue-50' : ''
                     }`}
-                    onClick={() => markAsRead(notification.id)}
+                    onClick={() => {
+                      if (!notification.read) void markAsRead(notification.id)
+                      setIsOpen(false)
+                      router.push(notificationLink(notification.type, notification.data, session?.user?.role))
+                    }}
                   >
                     <div className="flex justify-between items-start gap-3">
                       <div className="flex-1 min-w-0">

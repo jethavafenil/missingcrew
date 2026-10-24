@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -144,7 +145,14 @@ export function EmployerDashboard({ user, userData }: EmployerDashboardProps) {
     }
   }
 
-  const [activeTab, setActiveTab] = useState('dashboard')
+  // Deep-linkable tab: /employer/dashboard?tab=applications opens that tab (used by notifications).
+  const tabParam = useSearchParams().get('tab')
+  const isTab = (t: string | null): t is string => t === 'dashboard' || t === 'projects' || t === 'applications' || t === 'wishlist' || t === 'hire'
+  const [activeTab, setActiveTab] = useState(isTab(tabParam) ? tabParam : 'dashboard')
+  useEffect(() => {
+    if (isTab(tabParam)) setActiveTab(tabParam)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabParam])
 
   // Use SWR for fetching projects with automatic caching and revalidation
   // Always fetch to enable refresh, use initial data from server-side props
