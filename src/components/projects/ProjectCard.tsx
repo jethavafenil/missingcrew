@@ -95,8 +95,11 @@ export function ProjectCard({
           // Check subscription status
           const subscriptionTier = userData.crewProfile?.subscriptionTier
 
+          // Trials only matter once an admin has turned paid plans on (everything is free until then)
+          const plans = await fetch('/api/settings/public').then((r) => (r.ok ? r.json() : { paidPlansEnabled: false })).catch(() => ({ paidPlansEnabled: false }))
+
           // If free trial, check if trial has expired
-          if (subscriptionTier === 'FREE_TRIAL' && userData.crewProfile?.trialEnds) {
+          if (plans.paidPlansEnabled === true && subscriptionTier === 'FREE_TRIAL' && userData.crewProfile?.trialEnds) {
             const trialEndDate = new Date(userData.crewProfile.trialEnds)
             const today = new Date()
 

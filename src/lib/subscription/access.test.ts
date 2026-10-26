@@ -1,41 +1,27 @@
-import { describe, expect, it } from 'vitest'
-import { hasProBadge, isTrialActive, monthlyApplicationLimit, trialEndsFromNow, TRIAL_DAYS } from '@/lib/subscription/access'
+import { describe, it, expect } from 'vitest'
+import { hasProBadge, monthlyApplicationLimit, FREE_MONTHLY_APPLICATIONS } from './access'
 
-const now = new Date('2026-10-19T00:00:00Z')
-const future = new Date('2026-12-01T00:00:00Z')
-const past = new Date('2026-09-01T00:00:00Z')
+const expired = { subscriptionTier: 'FREE_TRIAL', trialEnds: new Date(Date.now() - 86400000) }
+const active = { subscriptionTier: 'FREE_TRIAL', trialEnds: new Date(Date.now() + 86400000 * 10) }
+const basic = { subscriptionTier: 'BASIC', trialEnds: null }
 
-describe('crew access rules', () => {
-  it('trialEndsFromNow adds the trial length', () => {
-    const end = trialEndsFromNow(now)
-    expect(Math.round((end.getTime() - now.getTime()) / 86_400_000)).toBe(TRIAL_DAYS)
+describe('plans ON (default)', () => {
+  it('limits crew without a trial or PRO to the monthly cap', () => {
+    expect(monthlyApplicationLimit(expired)).toBe(FREE_MONTHLY_APPLICATIONS)
+    expect(monthlyApplicationLimit(basic)).toBe(FREE_MONTHLY_APPLICATIONS)
   })
-
-  it('active trial: PRO badge + unlimited applications', () => {
-    const crew = { subscriptionTier: 'FREE_TRIAL', trialEnds: future }
-    expect(isTrialActive(crew, now)).toBe(true)
-    expect(hasProBadge(crew, now)).toBe(true)
-    expect(monthlyApplicationLimit(crew, now)).toBe(Infinity)
+  it('keeps trial and PRO unlimited with the badge', () => {
+    expect(monthlyApplicationLimit(active)).toBe(Infinity)
+    expect(hasProBadge(active)).toBe(true)
+    expect(hasProBadge(expired)).toBe(false)
   })
+})
 
-  it('expired or missing trial falls back to the free limit and no badge', () => {
-    for (const crew of [
-      { subscriptionTier: 'FREE_TRIAL', trialEnds: past },
-      { subscriptionTier: 'FREE_TRIAL', trialEnds: null },
-      { subscriptionTier: 'BASIC', trialEnds: future },
-    ]) {
-      expect(hasProBadge(crew, now)).toBe(false)
-      expect(monthlyApplicationLimit(crew, now)).toBe(10)
+describe('plans OFF (free mode)', () => {
+  it('everyone applies without a limit and gets the PRO badge', () => {
+    for (const crew of [expired, basic, active]) {
+      expect(monthlyApplicationLimit(crew, new Date(), false)).toBe(Infinity)
+      expect(hasProBadge(crew, new Date(), false)).toBe(true)
     }
-  })
-
-  it('PRO is always unlimited with the badge', () => {
-    const crew = { subscriptionTier: 'PRO', trialEnds: null }
-    expect(hasProBadge(crew, now)).toBe(true)
-    expect(monthlyApplicationLimit(crew, now)).toBe(Infinity)
-  })
-
-  it('tolerates string dates from cached JSON', () => {
-    expect(isTrialActive({ subscriptionTier: 'FREE_TRIAL', trialEnds: future.toISOString() }, now)).toBe(true)
   })
 })

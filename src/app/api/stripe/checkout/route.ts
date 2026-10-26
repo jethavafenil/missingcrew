@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/server'
 import { subscriptionRepo, requesterFromSession } from '@/lib/repo'
 import { getPaymentProvider } from '@/lib/payments'
+import { arePaidPlansEnabled } from '@/lib/settings'
 
 
 export async function POST(request: NextRequest) {
@@ -15,6 +16,10 @@ export async function POST(request: NextRequest) {
 
     if (session.user.role !== 'CREW') {
       return NextResponse.json({ error: 'Subscriptions are only available to crew members' }, { status: 403 })
+    }
+
+    if (!(await arePaidPlansEnabled())) {
+      return NextResponse.json({ error: 'Everything on MissingCrew is free right now. Paid plans have not opened yet.' }, { status: 403 })
     }
 
     const { planId } = await request.json()

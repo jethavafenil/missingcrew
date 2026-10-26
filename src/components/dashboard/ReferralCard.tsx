@@ -7,7 +7,7 @@ import { buildReferralLink } from '@/lib/referral'
 
 // Crew share their personal link; when a friend signs up through it and completes their
 // profile, the crew member gets 2 more months of free access.
-export function ReferralCard({ crewProfileId }: { crewProfileId: string }) {
+export function ReferralCard({ crewProfileId, plansOn = false }: { crewProfileId: string; plansOn?: boolean }) {
   const [copied, setCopied] = useState(false)
   const link = buildReferralLink(typeof window !== 'undefined' ? window.location.origin : 'https://missingcrew.vercel.app', crewProfileId)
   const text = `Join me on MissingCrew, where film crew and producers find each other: ${link}`
@@ -25,9 +25,13 @@ export function ReferralCard({ crewProfileId }: { crewProfileId: string }) {
   return (
     <div className="rounded-xl border border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50 p-4 sm:p-5">
       <h3 className="flex items-center gap-2 text-base font-semibold text-gray-900">
-        <Gift className="h-5 w-5 text-purple-600" /> Invite friends, get 2 months free
+        <Gift className="h-5 w-5 text-purple-600" /> {plansOn ? 'Invite friends, get 2 months free' : 'Invite your crew friends'}
       </h3>
-      <p className="mt-1 text-sm text-gray-600">Share your link. When someone joins with it and completes their profile, you get 2 more months of free access.</p>
+      <p className="mt-1 text-sm text-gray-600">
+        {plansOn
+          ? 'Share your link. When someone joins with it and completes their profile, you get 2 more months of free access.'
+          : 'Share your link so friends in the industry can join MissingCrew. Everything is free for now.'}
+      </p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
         <input readOnly value={link} onFocus={(e) => e.currentTarget.select()} className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700" aria-label="Your referral link" />
         <div className="flex gap-2">

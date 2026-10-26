@@ -18,6 +18,7 @@ export * as wishlistRepo from '@/lib/repo/wishlist.repo'
 export * as connectionRepo from '@/lib/repo/connection.repo'
 export * as hireRequestRepo from '@/lib/repo/hireRequest.repo'
 export * as reviewRepo from '@/lib/repo/review.repo'
+export * as settingsRepo from '@/lib/repo/settings.repo'
 
 export { assertUser, assertAdmin, currentUserId, requesterFromSession, SYSTEM_REQUESTER, type RequiresRequester, type RequiresAdmin } from '@/lib/repo/scope'
 export type {

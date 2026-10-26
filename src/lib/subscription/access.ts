@@ -22,13 +22,18 @@ export function isTrialActive(crew: CrewAccessInput, now: Date = new Date()): bo
   return !Number.isNaN(end.getTime()) && end.getTime() > now.getTime()
 }
 
-// PRO badge: paid PRO members and everyone on an active trial.
-export function hasProBadge(crew: CrewAccessInput, now: Date = new Date()): boolean {
+// `paidPlansEnabled` is the admin switch (site settings). While it is off everything is free:
+// every crew member has the PRO badge and applies without limit, whatever their tier or trial.
+
+// PRO badge: paid PRO members and everyone on an active trial (everyone while plans are off).
+export function hasProBadge(crew: CrewAccessInput, now: Date = new Date(), paidPlansEnabled = true): boolean {
+  if (!paidPlansEnabled) return true
   return crew.subscriptionTier === 'PRO' || isTrialActive(crew, now)
 }
 
-// Applications allowed per calendar month. Unlimited for PRO and during the trial.
-export function monthlyApplicationLimit(crew: CrewAccessInput, now: Date = new Date()): number {
+// Applications allowed per calendar month. Unlimited for PRO, during the trial, and while plans are off.
+export function monthlyApplicationLimit(crew: CrewAccessInput, now: Date = new Date(), paidPlansEnabled = true): number {
+  if (!paidPlansEnabled) return Infinity
   if (crew.subscriptionTier === 'PRO' || isTrialActive(crew, now)) return Infinity
   return FREE_MONTHLY_APPLICATIONS
 }

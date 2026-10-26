@@ -16,6 +16,7 @@ import { ConnectionRequestCard } from '@/components/network/ConnectionRequestCar
 import { NetworkList } from '@/components/network/NetworkList'
 import { CrewSubscriptionCard } from '@/components/subscription/CrewSubscriptionCard'
 import { ReferralCard } from '@/components/dashboard/ReferralCard'
+import { usePaidPlansEnabled } from '@/lib/useSiteSettings'
 import { slugifyName } from '@/lib/utils'
 import { swrFetcher } from '@/lib/swr'
 import { HireRequestsPanel } from '@/components/hire/HireRequestsPanel'
@@ -151,6 +152,8 @@ interface CrewDashboardProps {
 const fetcher: (url: string) => Promise<any> = swrFetcher
 
 export function CrewDashboard({ user, userData }: CrewDashboardProps) {
+  // Trials, plans and upgrade prompts only show once an admin turns paid plans on.
+  const plansOn = usePaidPlansEnabled() === true
   // Check if user has completed their profile
   const hasProfile = userData?.crewProfile && Object.keys(userData.crewProfile).length > 0
   // Check if profile is complete by checking if required fields are filled
@@ -390,7 +393,7 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
           </p>
 
           {/* Trial Expiration Warning */}
-          {userData?.crewProfile?.subscriptionTier === 'FREE_TRIAL' && userData.crewProfile.trialEnds && (
+          {plansOn && userData?.crewProfile?.subscriptionTier === 'FREE_TRIAL' && userData.crewProfile.trialEnds && (
             <div className="mt-3 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded-md">
               <div className="flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -411,17 +414,17 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
 
         {isProfileComplete && (
           <div className="flex items-center space-x-4">
-            {userData?.crewProfile?.subscriptionTier === 'PRO' && (
+            {plansOn && userData?.crewProfile?.subscriptionTier === 'PRO' && (
               <Badge variant="success" className="bg-purple-100 text-purple-800 hover:bg-purple-100">
                 ✓ Pro Member
               </Badge>
             )}
-            {userData?.crewProfile?.subscriptionTier === 'BASIC' && (
+            {plansOn && userData?.crewProfile?.subscriptionTier === 'BASIC' && (
               <Badge variant="success" className="bg-blue-100 text-blue-800 hover:bg-blue-100">
                 Basic Member
               </Badge>
             )}
-            {userData?.crewProfile?.subscriptionTier === 'FREE_TRIAL' && (
+            {plansOn && userData?.crewProfile?.subscriptionTier === 'FREE_TRIAL' && (
               <Badge variant="success" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
                 Free Trial
               </Badge>
@@ -664,15 +667,17 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
                     >
                       My Wishlist ({wishlists.length})
                     </Link>
+                    {plansOn && (
                     <Link
                       href="/subscription-management"
                       className="block w-full text-center px-4 py-2 bg-gray-100 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                     >
                       Manage Subscription
                     </Link>
+                    )}
 
                   {/* Subscription Upgrade Prompt */}
-                  {userData?.crewProfile?.subscriptionTier === 'FREE_TRIAL' && (
+                  {plansOn && userData?.crewProfile?.subscriptionTier === 'FREE_TRIAL' && (
                     <Link
                       href="/subscription-plans"
                       className="block w-full text-center px-4 py-2 bg-yellow-100 text-yellow-800 text-sm font-medium rounded-md hover:bg-yellow-200 transition-colors border border-yellow-200"
@@ -680,7 +685,7 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
                       Upgrade Subscription
                     </Link>
                   )}
-                  {userData?.crewProfile?.subscriptionTier === 'BASIC' && (
+                  {plansOn && userData?.crewProfile?.subscriptionTier === 'BASIC' && (
                     <Link
                       href="/subscription-plans"
                       className="block w-full text-center px-4 py-2 bg-purple-100 text-purple-800 text-sm font-medium rounded-md hover:bg-purple-200 transition-colors border border-purple-200"
@@ -985,10 +990,10 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
                   </CardContent>
                 </Card>
 
-                {userData.crewProfile?.id && <ReferralCard crewProfileId={userData.crewProfile.id} />}
+                {userData.crewProfile?.id && <ReferralCard crewProfileId={userData.crewProfile.id} plansOn={plansOn} />}
 
                 {/* Subscription Plan Card */}
-                {userData.crewProfile?.subscriptionTier && (
+                {plansOn && userData.crewProfile?.subscriptionTier && (
                   <CrewSubscriptionCard 
                     subscriptionTier={userData.crewProfile.subscriptionTier as 'FREE_TRIAL' | 'BASIC' | 'PRO'}
                     trialEnds={userData.crewProfile.trialEnds}

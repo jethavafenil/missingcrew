@@ -6,6 +6,8 @@ import { SubscriptionPlans } from '@/components/subscription/SubscriptionPlans'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react'
+import { usePaidPlansEnabled } from '@/lib/useSiteSettings'
+import Link from 'next/link'
 
 function SubscriptionPlansContent() {
   const router = useRouter()
@@ -18,6 +20,7 @@ function SubscriptionPlansContent() {
     }
   } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const plansOn = usePaidPlansEnabled()
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -44,6 +47,17 @@ function SubscriptionPlansContent() {
 
   // Check if trial has expired
   const isTrialExpired = searchParams.get('expired') === 'true'
+
+  if (plansOn === false) {
+    return (
+      <div className="container mx-auto max-w-xl px-4 py-16 text-center">
+        <CheckCircle className="mx-auto mb-4 h-14 w-14 text-emerald-500" />
+        <h1 className="text-3xl font-bold text-gray-900">Everything is free right now</h1>
+        <p className="mt-3 text-gray-600">Apply to as many projects as you like and use every feature. Paid plans will be announced here when they open.</p>
+        <Link href="/find-work" className="mt-6 inline-flex rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">Find work</Link>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-6xl">

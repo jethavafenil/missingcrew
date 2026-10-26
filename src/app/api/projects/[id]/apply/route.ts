@@ -6,6 +6,7 @@ import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimiter'
 import { z } from 'zod'
 import { parseBody } from '@/lib/api/body'
 import { monthlyApplicationLimit } from '@/lib/subscription/access'
+import { arePaidPlansEnabled } from '@/lib/settings'
 
 // Ids are TEXT (legacy cuids + new uuids); this charset also rules out
 // PostgREST filter metacharacters (, . ( ) etc).
@@ -60,7 +61,7 @@ export async function POST(
     }
 
     // Trial / PRO crew apply without limit; everyone else gets the monthly cap.
-    const maxApplications = monthlyApplicationLimit(crewProfile)
+    const maxApplications = monthlyApplicationLimit(crewProfile, new Date(), await arePaidPlansEnabled())
 
     // Check if user has reached their application limit
     const applicationCount = await applicationRepo.countByCrewIdSince(

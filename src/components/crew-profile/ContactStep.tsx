@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { PhoneVerification } from './PhoneVerification'
 import { recalledReferral } from '@/lib/referral'
+import { usePaidPlansEnabled } from '@/lib/useSiteSettings'
 
 interface ContactData {
   contactWhatsApp: string
@@ -19,6 +20,7 @@ interface ContactStepProps {
 
 export function ContactStep({ data, onChange }: ContactStepProps) {
   const [showVerification, setShowVerification] = useState(false)
+  const plansOn = usePaidPlansEnabled() === true
 
   // Arrived through a referral link: pre-fill the referrer (never overwrites what they typed)
   useEffect(() => {
@@ -68,6 +70,7 @@ export function ContactStep({ data, onChange }: ContactStepProps) {
           onChange={(e) => onChange({ referredBy: e.target.value })}
           className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
         />
+        {plansOn && (
         <div className="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-md">
           <p className="text-sm text-purple-800 font-medium flex items-center">
             <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -79,6 +82,7 @@ export function ContactStep({ data, onChange }: ContactStepProps) {
             When someone uses your email as referral, YOU get 2 months of free access.
           </p>
         </div>
+        )}
       </div>
 
       {/* Profile Completion Summary */}
