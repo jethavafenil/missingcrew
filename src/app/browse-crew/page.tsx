@@ -5,7 +5,7 @@ import { useSession } from '@/lib/auth/session-context'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CrewCard } from '@/components/crew/CrewCard'
 import { CrewFilters } from '@/components/crew/CrewFilters'
-import { activeFilterCount, EMPTY_CREW_FILTERS, filterCrew, type CrewFilterState } from '@/lib/crewFilters'
+import { activeFilterCount, EMPTY_CREW_FILTERS, filterChips, filterCrew, filtersFromParams, toggleIn, type CrewFilterState } from '@/lib/crewFilters'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -65,24 +65,7 @@ function BrowseCrewContent() {
   const itemsPerPage = 12
 
   // Parse URL parameters to initialize filters
-  const getInitialFilters = (): CrewFilterState => {
-    const languagesParam = searchParams.get('languages')
-    return {
-      ...EMPTY_CREW_FILTERS,
-      role: searchParams.get('role') || '',
-      location: searchParams.get('location') || '',
-      availability: searchParams.get('availability') || '',
-      availableOn: searchParams.get('availableOn') || '',
-      gender: (searchParams.get('gender') || '').toUpperCase(),
-      experience: searchParams.get('experience') || '',
-      budgetMin: searchParams.get('budgetMin') || '',
-      budgetMax: searchParams.get('budgetMax') || '',
-      languages: languagesParam ? languagesParam.split(',') : [],
-      hasPortfolio: searchParams.get('hasPortfolio') === 'true',
-      projectType: searchParams.get('projectType') || '',
-      tag: (searchParams.get('tag') || '').replace(/^#/, ''),
-    }
-  }
+  const getInitialFilters = (): CrewFilterState => filtersFromParams((name) => searchParams.get(name))
 
   const [filters, setFilters] = useState<CrewFilterState>(getInitialFilters())
 
@@ -311,6 +294,27 @@ function BrowseCrewContent() {
 
           {/* Main Content */}
           <div className="flex-1 min-w-0">
+            {/* Selected filters: one click removes any of them */}
+            {filterChips(filters).length > 0 && (
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                {filterChips(filters).map((chip) => (
+                  <button
+                    key={chip.key}
+                    type="button"
+                    onClick={() => setFilters(chip.remove(filters))}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-800 hover:bg-indigo-100"
+                    aria-label={`Remove filter ${chip.label}`}
+                  >
+                    {chip.label}
+                    <span aria-hidden="true">×</span>
+                  </button>
+                ))}
+                <button type="button" onClick={clearAllFilters} className="text-sm font-medium text-gray-500 underline hover:text-gray-800">
+                  Clear all
+                </button>
+              </div>
+            )}
+
             {/* Toolbar */}
             <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -392,7 +396,7 @@ function BrowseCrewContent() {
                     : 'grid-cols-1'
                 }`}>
                   {paginatedCrew.map(crew => (
-                    <CrewCard key={crew.id} crew={crew} onTagClick={(tag) => { setFilters((f) => ({ ...f, tag })); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
+                    <CrewCard key={crew.id} crew={crew} onTagClick={(tag) => { setFilters((f) => ({ ...f, tags: toggleIn(f.tags, tag) })); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
                   ))}
                 </div>
 
