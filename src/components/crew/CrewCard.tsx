@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Heart, MapPin, Calendar, Check, Award, Play, User } from 'lucide-react'
+import { Heart, MapPin, Calendar, Check, Award, Play } from 'lucide-react'
+import { RolePlaceholder } from '@/components/crew-view/RolePlaceholder'
 import { mutate as globalMutate } from 'swr'
 import { useSession } from '@/lib/auth/session-context'
 import { Button } from '../ui/button'
@@ -129,10 +130,8 @@ export function CrewCard({ crew, onTagClick }: CrewCardProps) {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={crew.photo} alt="" loading="lazy" className="h-full w-full object-cover opacity-90" />
             ) : (
-              // No thumbnail and no photo: a neutral placeholder that works for everyone
-              <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 text-indigo-400">
-                <User className="h-12 w-12" strokeWidth={1.5} />
-              </div>
+              // No thumbnail and no photo: a picture for their department
+              <RolePlaceholder role={crew.primaryRoles[0]} />
             )}
             {hasVideo && (
               <button
@@ -176,7 +175,7 @@ export function CrewCard({ crew, onTagClick }: CrewCardProps) {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={crew.photo} alt={`${crew.user.name}'s photo`} loading="lazy" className="h-full w-full object-cover" />
             ) : (
-              <span className="flex h-full w-full items-center justify-center text-lg font-bold text-white">{crew.user.name.charAt(0).toUpperCase()}</span>
+              <RolePlaceholder role={crew.primaryRoles[0]} />
             )}
           </div>
           <div className="min-w-0">

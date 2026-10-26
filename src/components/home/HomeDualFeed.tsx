@@ -20,6 +20,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { slugifyName } from '@/lib/utils'
 import { displayHashtags } from '@/lib/projectTags'
+import { CrewCard } from '@/components/crew/CrewCard'
+import { crewTags } from '@/lib/matching'
 
 export interface HomeProject {
   id: string
@@ -62,6 +64,15 @@ export interface HomeCrewMember {
   dailyBudgetMax?: number | null
   projectTypes?: string[]
   portfolioLinks?: string[]
+  availabilityStart?: string | Date | null
+  availabilityEnd?: string | Date | null
+  firstProjectDate?: string | Date | null
+  showreelUrl?: string | null
+  customTags?: string[]
+  pastProjects?: unknown
+  subscriptionTier?: string
+  trialEnds?: string | Date | null
+  hasProBadge?: boolean
 }
 
 interface HomeDualFeedProps {
@@ -174,13 +185,7 @@ export function HomeDualFeed({ projects, crew }: HomeDualFeedProps) {
 
   const displayProjects = projects && projects.length > 0 ? projects.slice(0, 4) : FALLBACK_PROJECTS
   const displayCrew = crew && crew.length > 0 ? crew.slice(0, 4) : FALLBACK_CREW
-
-  // Equalize count to 4 pairs so both sides have the exact same number of cards
-  const rowCount = Math.max(displayProjects.length, displayCrew.length, 4)
-  const pairedRows = Array.from({ length: rowCount }).map((_, index) => ({
-    project: displayProjects[index] || FALLBACK_PROJECTS[index % FALLBACK_PROJECTS.length],
-    member: displayCrew[index] || FALLBACK_CREW[index % FALLBACK_CREW.length],
-  }))
+  const desktopCrew = crew && crew.length > 0 ? crew.slice(0, 6) : FALLBACK_CREW
 
   const formatDate = (isoString?: string) => {
     if (!isoString) return ''
@@ -323,125 +328,26 @@ export function HomeDualFeed({ projects, crew }: HomeDualFeedProps) {
     )
   }
 
-  // Render a single crew card with flex layout for equal row height
-  const renderCrewCard = (member: HomeCrewMember) => {
-    const name = member.user?.name || 'Film Professional'
-    const profileSlug = slugifyName(name)
-    const locationText = member.city || member.location || 'India'
-    const roles = (member.primaryRoles || []).slice(0, 3)
-
-    return (
-      <div
-        key={member.id}
-        className="group relative bg-white rounded-2xl p-5 border border-gray-200/80 shadow-xs hover:shadow-lg hover:border-purple-300 transition-all duration-300 flex flex-col justify-between h-full"
-      >
-        <div className="flex-1 flex flex-col">
-          {/* Top Header: Avatar + Name + Availability */}
-          <div className="flex items-start justify-between gap-3 mb-2.5">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="relative shrink-0">
-                <Avatar className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl border border-purple-200/70 shadow-xs">
-                  {member.photo || member.user?.image ? (
-                    <AvatarImage 
-                      src={member.photo || member.user?.image || ''} 
-                      alt={name} 
-                      className="object-cover"
-                    />
-                  ) : null}
-                  <AvatarFallback className="rounded-xl bg-gradient-to-br from-purple-100 to-indigo-100 text-purple-800 font-bold text-base">
-                    {name.slice(0, 1).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                {/* Active availability badge indicator */}
-                <span 
-                  className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow-xs" 
-                  title="Available for projects" 
-                />
-              </div>
-
-              <div className="min-w-0">
-                <Link 
-                  href={`/crew/${profileSlug}`}
-                  className="font-bold text-gray-900 text-base group-hover:text-purple-600 transition-colors flex items-center gap-1.5"
-                >
-                  <span className="truncate">{name}</span>
-                  <BadgeCheck className="w-4 h-4 text-purple-600 shrink-0" />
-                </Link>
-                <p className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
-                  <span className="inline-flex items-center gap-0.5">
-                    <MapPin className="w-3 h-3 text-purple-500" />
-                    {locationText}
-                  </span>
-                  {member.availableToTravel && (
-                    <span className="inline-flex items-center gap-0.5 text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded text-[10px] font-medium border border-purple-100">
-                      <Plane className="w-2.5 h-2.5" />
-                      Can Travel
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            {/* Experience / Status Badge */}
-            {member.yearsExperience ? (
-              <Badge 
-                variant="secondary" 
-                className="bg-purple-50 text-purple-700 border-purple-200 text-[11px] font-semibold shrink-0"
-              >
-                {member.yearsExperience}+ yrs exp
-              </Badge>
-            ) : (
-              <Badge 
-                variant="secondary" 
-                className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] font-semibold shrink-0"
-              >
-                Available
-              </Badge>
-            )}
-          </div>
-
-          {/* Subtitle / Bio snippet for visual balance with project card */}
-          <p className="mt-1.5 text-xs text-gray-500 line-clamp-2 leading-relaxed flex-1">
-            {roles.length > 0
-              ? `Specializing in ${roles.join(', ')} with verified production experience across film & media.`
-              : 'Verified crew professional ready for commercial, feature, and indie productions.'}
-          </p>
-
-          {/* Primary Roles Pills */}
-          <div className="mt-3 pt-2 flex flex-wrap gap-1.5 items-center">
-            <span className="text-[11px] font-semibold text-gray-400 mr-0.5">Skills:</span>
-            {roles.length > 0 ? (
-              roles.map((r, i) => (
-                <span
-                  key={i}
-                  className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-800 border border-purple-200/60"
-                >
-                  {r}
-                </span>
-              ))
-            ) : (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200/60">
-                Film Crew Professional
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Bottom Details Footer */}
-        <div className="mt-4 pt-3.5 border-t border-gray-100 flex items-center justify-between gap-2 text-xs shrink-0">
-          <span />
-
-          <Link
-            href={`/crew/${profileSlug}`}
-            className="inline-flex items-center gap-1 text-xs font-bold text-purple-600 group-hover:text-purple-700 bg-purple-50/70 hover:bg-purple-100/80 px-3 py-1.5 rounded-lg transition-all"
-          >
-            View Profile
-            <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        </div>
-      </div>
-    )
-  }
+  // Crew shown with the same card as Browse Crew (reel on hover, hashtags, View Full Profile)
+  const toCardCrew = (m: HomeCrewMember) => ({
+    id: m.id,
+    user: { name: m.user?.name || 'Film Professional', phoneVerified: (m.user as { phoneVerified?: boolean })?.phoneVerified },
+    photo: m.photo || m.user?.image || null,
+    city: m.city ?? null,
+    location: m.location ?? null,
+    primaryRoles: m.primaryRoles || [],
+    yearsExperience: m.yearsExperience != null ? `${m.yearsExperience}` : null,
+    firstProjectDate: m.firstProjectDate ? new Date(m.firstProjectDate).toISOString() : null,
+    showreelUrl: m.showreelUrl ?? null,
+    tags: crewTags({ projectTypes: m.projectTypes, customTags: m.customTags, pastProjects: m.pastProjects }),
+    availability: m.availability !== false,
+    availabilityStart: m.availabilityStart ? new Date(m.availabilityStart).toISOString() : null,
+    availabilityEnd: m.availabilityEnd ? new Date(m.availabilityEnd).toISOString() : null,
+    portfolioLinks: m.portfolioLinks ?? [],
+    subscriptionTier: m.subscriptionTier ?? '',
+    trialEnds: m.trialEnds ?? null,
+    hasProBadge: m.hasProBadge,
+  })
 
   return (
     <section className="py-12 md:py-16 bg-gradient-to-b from-white via-indigo-50/30 to-purple-50/20">
@@ -491,96 +397,63 @@ export function HomeDualFeed({ projects, crew }: HomeDualFeedProps) {
           </div>
         </div>
 
-        {/* ========================================================= */}
-        {/* DESKTOP VIEW: BALANCED 2-COLUMN GRID WITH ROW ALIGNMENT   */}
-        {/* Every row has 100% equal card height on both sides        */}
-        {/* ========================================================= */}
-        <div className="hidden lg:grid grid-cols-2 gap-x-8 lg:gap-x-10 gap-y-5 items-stretch">
-          
-          {/* Row 0: Column Headers */}
-          <div className="pb-3 border-b border-gray-200/80 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-                <Briefcase className="w-5 h-5" />
+        {/* DESKTOP: projects take about 30% of the width, crew the rest so more profiles fit per row */}
+        <div className="hidden lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,7fr)] gap-8 xl:gap-10 items-start">
+          <div className="space-y-4">
+            <div className="pb-3 border-b border-gray-200/80 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+                  <Briefcase className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Recent Projects</h3>
+                  <p className="text-xs text-gray-500">Productions hiring now</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg md:text-xl font-bold text-gray-900 flex items-center gap-2">
-                  Recent Projects
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                    Hiring Now
-                  </span>
-                </h3>
-                <p className="text-xs text-gray-500">Active productions looking for crew</p>
-              </div>
+              <Link href="/find-work" className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700 group">
+                All
+                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+              </Link>
             </div>
-            <Link 
-              href="/find-work" 
-              className="inline-flex items-center gap-1 text-xs md:text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors group"
-            >
-              Browse all
-              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
-
-          <div className="pb-3 border-b border-gray-200/80 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white shadow-md shadow-purple-500/20">
-                <Film className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-lg md:text-xl font-bold text-gray-900 flex items-center gap-2">
-                  Standout Film Crew
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-                    Verified
-                  </span>
-                </h3>
-                <p className="text-xs text-gray-500">Top talent ready for production hire</p>
-              </div>
-            </div>
-            <Link 
-              href="/browse-crew" 
-              className="inline-flex items-center gap-1 text-xs md:text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors group"
-            >
-              Browse all
-              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
-
-          {/* Rows 1..4: Synchronized Pairs (Height of Left = Height of Right) */}
-          {pairedRows.map(({ project, member }, index) => (
-            <React.Fragment key={index}>
-              <div className="h-full">
-                {renderProjectCard(project)}
-              </div>
-              <div className="h-full">
-                {renderCrewCard(member)}
-              </div>
-            </React.Fragment>
-          ))}
-
-          {/* Bottom Row: Perfectly Aligned Bottom Buttons */}
-          <div className="pt-3 text-center">
-            <Link href="/find-work">
-              <Button 
-                variant="outline" 
-                className="w-full sm:w-auto border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-semibold text-xs sm:text-sm rounded-xl py-2 px-6"
-              >
-                Explore All Open Projects ({projects.length > 0 ? projects.length : '20+'})
+            {displayProjects.map((p) => (
+              <div key={p.id}>{renderProjectCard(p)}</div>
+            ))}
+            <Link href="/find-work" className="block">
+              <Button variant="outline" className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-semibold text-sm rounded-xl py-2">
+                Explore all projects ({projects.length > 0 ? projects.length : '20+'})
               </Button>
             </Link>
           </div>
 
-          <div className="pt-3 text-center">
-            <Link href="/browse-crew">
-              <Button 
-                variant="outline" 
-                className="w-full sm:w-auto border-purple-200 text-purple-700 hover:bg-purple-50 font-semibold text-xs sm:text-sm rounded-xl py-2 px-6"
-              >
-                Explore All Film Crew ({crew.length > 0 ? crew.length : '1,200+'})
-              </Button>
-            </Link>
+          <div className="space-y-4">
+            <div className="pb-3 border-b border-gray-200/80 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white shadow-md shadow-purple-500/20">
+                  <Film className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg md:text-xl font-bold text-gray-900">Standout Film Crew</h3>
+                  <p className="text-xs text-gray-500">Top talent ready for production hire</p>
+                </div>
+              </div>
+              <Link href="/browse-crew" className="inline-flex items-center gap-1 text-xs md:text-sm font-semibold text-purple-600 hover:text-purple-700 group">
+                Browse all
+                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
+              {desktopCrew.map((c) => (
+                <CrewCard key={c.id} crew={toCardCrew(c)} />
+              ))}
+            </div>
+            <div className="text-center">
+              <Link href="/browse-crew">
+                <Button variant="outline" className="border-purple-200 text-purple-700 hover:bg-purple-50 font-semibold text-sm rounded-xl py-2 px-6">
+                  Explore all film crew ({crew.length > 0 ? crew.length : '1,200+'})
+                </Button>
+              </Link>
+            </div>
           </div>
-
         </div>
 
         {/* ========================================================= */}
@@ -655,9 +528,7 @@ export function HomeDualFeed({ projects, crew }: HomeDualFeedProps) {
               {/* Cards */}
               <div className="space-y-4">
                 {displayCrew.map((c) => (
-                  <div key={c.id}>
-                    {renderCrewCard(c)}
-                  </div>
+                  <CrewCard key={c.id} crew={toCardCrew(c)} />
                 ))}
               </div>
 

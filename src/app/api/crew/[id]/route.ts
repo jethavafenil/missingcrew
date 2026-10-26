@@ -3,6 +3,7 @@ import { crewProfileRepo, applicationRepo } from '@/lib/repo'
 import { getPublicCrewProfile } from '@/lib/cache/public'
 import { getSession } from '@/lib/auth/server'
 import { hasProBadge } from '@/lib/subscription/access'
+import { arePaidPlansEnabled } from '@/lib/settings'
 import { crewTags } from '@/lib/matching'
 import { vimeoId, youtubeId } from '@/lib/crew/profileFields'
 import { stripGuestProfile } from '@/lib/crew/guestView'
@@ -105,7 +106,7 @@ export async function GET(
       session?.user?.role === 'EMPLOYER' ||
       (session?.user?.id != null && session.user.id === crew.userId)
 
-    const proBadge = hasProBadge(crew)
+    const proBadge = hasProBadge(crew, new Date(), await arePaidPlansEnabled())
 
     // Showreel: the one the crew member chose, else the first video link in their portfolio.
     const videoLink = (crew.portfolioLinks ?? []).find((l) => typeof l === 'string' && (youtubeId(l) || vimeoId(l)))

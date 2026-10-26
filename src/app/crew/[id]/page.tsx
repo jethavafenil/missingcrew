@@ -9,6 +9,7 @@ import { ConnectionButton } from '@/components/network/ConnectionButton'
 import { HireButton } from '@/components/network/HireButton'
 import { SocialShare } from '@/components/ui/social-share'
 import { ShowreelPlayer } from '@/components/crew-view/ShowreelPlayer'
+import { RolePlaceholder } from '@/components/crew-view/RolePlaceholder'
 import { useSession } from '@/lib/auth/session-context'
 import { buildProfileShareMessage } from '@/lib/shareMessages'
 import { PROJECT_TYPES } from '@/lib/projectTypes'
@@ -269,7 +270,7 @@ export default function CrewProfilePage() {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={crew.photo} alt={crew.user.name} className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-6xl font-bold text-indigo-600">{crew.user.name.charAt(0).toUpperCase()}</span>
+                  <RolePlaceholder role={crew.primaryRoles?.[0]} />
                 )}
               </div>
             </div>

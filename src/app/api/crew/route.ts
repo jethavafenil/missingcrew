@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getPublicCrew } from '@/lib/cache/public'
 import { toIsoString } from '@/lib/utils'
 import { hasProBadge } from '@/lib/subscription/access'
+import { arePaidPlansEnabled } from '@/lib/settings'
 import { crewTags } from '@/lib/matching'
 import { vimeoId, youtubeId } from '@/lib/crew/profileFields'
 
@@ -50,6 +51,7 @@ export async function GET() {
   try {
     // Fetch all crew profiles with their associated user data, filtering by CREW role
     const crewProfiles = await getPublicCrew()
+    const paid = await arePaidPlansEnabled()
 
     // Format the data to match the expected structure in the BrowseCrew component
     type RawProfile = {
@@ -160,7 +162,7 @@ export async function GET() {
         pastProjects: pastProjects || [],
         contactWhatsApp: '',
         subscriptionTier: profile.subscriptionTier || '',
-        hasProBadge: hasProBadge(profile),
+        hasProBadge: hasProBadge(profile, new Date(), paid),
         budgetFlexible: !!profile.budgetFlexible,
         tags: crewTags({ projectTypes, primaryRoles, customTags: profile.customTags, pastProjects }),
         showreelUrl: profile.showreelUrl || portfolioLinks.find((l) => typeof l === 'string' && (youtubeId(l) || vimeoId(l))) || null,

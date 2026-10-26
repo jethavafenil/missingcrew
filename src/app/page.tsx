@@ -8,6 +8,8 @@ import { getFeaturedCrew, getFeaturedProjects } from '@/lib/cache/public'
 import { getSession } from '@/lib/auth/server'
 import { redirect } from 'next/navigation'
 import { HomeDualFeed } from '@/components/home/HomeDualFeed'
+import { arePaidPlansEnabled } from '@/lib/settings'
+import { hasProBadge } from '@/lib/subscription/access'
 
 // No page-level revalidate: the root layout resolves the session per request,
 // so this route renders dynamically. Featured data is still cached via
@@ -49,6 +51,7 @@ export default async function Home() {
   // Load featured projects and crew
   let projects: Project[] = []
   let crew: any[] = []
+  let plansOn = false
 
   try {
     // Fetch latest open projects (newest first)
@@ -82,7 +85,9 @@ export default async function Home() {
     })
 
     const dbCrew = await getFeaturedCrew()
-    crew = dbCrew
+    const paid = await arePaidPlansEnabled()
+    crew = dbCrew.map((c: any) => ({ ...c, hasProBadge: hasProBadge(c, new Date(), paid) }))
+    plansOn = paid
   } catch (err) {
     console.error('Error loading home data:', err)
   }
@@ -117,23 +122,26 @@ export default async function Home() {
             <p className="mt-4 md:mt-3 text-base md:text-lg text-indigo-100 max-w-2xl mx-auto px-4">
               Discover verified opportunities, showcase your portfolio, and get hired by top production houses.
             </p>
-            {/* Stats section - now with glassmorphism effect and responsive layout */}
-            <div className="mt-8 md:mt-10 lg:mt-14 grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 lg:gap-8 max-w-4xl mx-auto animate-fade-in-up animation-delay-1500 px-2">
-              {[
-                { value: "1,200+", label: "Talented Crew Members" },
-                { value: "450+", label: "Projects Completed" },
-                { value: "180+", label: "Production Companies" }
-              ].map((stat, index) => (
-                <div
-                  key={index}
-                  className="text-center p-4 md:p-5 lg:p-6 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 shadow-sm hover:shadow-md transition-all"
-                >
-                  <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2 md:mb-3">{stat.value}</div>
-                  <div className="text-xs sm:text-sm md:text-base text-indigo-100">{stat.label}</div>
-                </div>
-              ))}
-            </div>
           </div>
+        </div>
+      </section>
+
+      {/* Top jobs and crew come first; the numbers sit underneath */}
+      {/* Side-by-Side Dual Feed: Recent Projects on Left, Standout Crew on Right */}
+      <HomeDualFeed projects={projects} crew={crew} />
+
+      <section className="bg-gradient-to-br from-indigo-800 via-purple-800 to-blue-700 py-8 text-white">
+        <div className="container mx-auto grid max-w-4xl grid-cols-1 gap-4 px-4 sm:grid-cols-3 md:gap-6">
+          {[
+            { value: "1,200+", label: "Talented Crew Members" },
+            { value: "450+", label: "Projects Completed" },
+            { value: "180+", label: "Production Companies" }
+          ].map((stat, index) => (
+            <div key={index} className="rounded-xl border border-white/10 bg-white/5 p-4 text-center backdrop-blur-sm">
+              <div className="mb-1 text-2xl font-bold sm:text-3xl md:text-4xl">{stat.value}</div>
+              <div className="text-xs text-indigo-100 sm:text-sm md:text-base">{stat.label}</div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -234,9 +242,6 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Side-by-Side Dual Feed: Recent Projects on Left, Standout Crew on Right */}
-      <HomeDualFeed projects={projects} crew={crew} />
-
       {/* How it works */}
       <section className="py-8 md:py-12 bg-white">
         <div className="container mx-auto px-4">
@@ -281,7 +286,8 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Pricing Plans */}
+      {/* Pricing Plans: only once an admin has turned paid plans on */}
+      {plansOn && (
       <section className="py-8 md:py-10 bg-gradient-to-b from-indigo-50 to-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-6 md:mb-8">
@@ -294,28 +300,8 @@ export default async function Home() {
           </div>
         </div>
       </section>
+      )}
 
-      {/* CTA */}
-      <section className="py-8 md:py-12 bg-gradient-to-br from-indigo-800 via-purple-800 to-blue-700">
-        <div className="container mx-auto px-4 text-center">
-          <div className="max-w-3xl mx-auto">
-            <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 md:mb-4 px-2">Ready to Elevate Your Career?</h3>
-            <p className="text-indigo-100 text-base md:text-lg mb-6 md:mb-8 px-4">Join thousands of film professionals connecting with premium opportunities on MissingCrew.</p>
-            <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center px-4">
-              <Link href="/accounts?tab=signup&role=crew" className="w-full sm:w-auto">
-                <Button size="lg" className="bg-white text-indigo-700 hover:bg-indigo-50 font-semibold px-6 md:px-8 w-full sm:w-auto">
-                  Create Crew Profile
-                </Button>
-              </Link>
-              <Link href="/find-work" className="w-full sm:w-auto">
-                <Button size="lg" variant="outline" className="border-2 border-white text-indigo-700 hover:bg-white/10 font-semibold px-6 md:px-8 w-full sm:w-auto">
-                  Browse Projects
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   )
 }

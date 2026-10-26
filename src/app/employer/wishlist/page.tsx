@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { HireAllModal } from '@/components/hire/HireAllModal'
 import { MAX_HIRE_ALL } from '@/lib/hire/schema'
+import { RolePlaceholder } from '@/components/crew-view/RolePlaceholder'
 import { Heart, MapPin, Briefcase, DollarSign, Mail, Phone, RefreshCw, Search, ArrowLeft } from 'lucide-react'
 
 interface WishlistCrew {
@@ -172,8 +173,8 @@ export default function WishlistPage() {
                         {wishlist.crew.photo ? (
                           <AvatarImage src={wishlist.crew.photo} alt={wishlist.crew.user.name} />
                         ) : null}
-                        <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-lg">
-                          {wishlist.crew.user.name.charAt(0).toUpperCase()}
+                        <AvatarFallback className="overflow-hidden p-0">
+                          <RolePlaceholder role={wishlist.crew.primaryRoles?.[0]} />
                         </AvatarFallback>
                       </Avatar>
                       <div>

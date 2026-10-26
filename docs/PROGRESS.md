@@ -10,6 +10,27 @@ together with `docs/HANDOFF.md` (architecture) and
 
 ---
 
+## 2026-10-26 — Feedback round 2 — built, NOT yet committed
+
+- **Hashtags are premade only** (`TAG_GROUPS` in `src/lib/projectTags.ts` — edit that one list when the client sends theirs).
+  Producers pick up to 3 and crew up to 5 with the new `TagPicker` (tap chips, searchable). The server drops anything not on the
+  list (projects, crew profile, matching), so old hand-made tags simply stop showing.
+- **Multi-select crew filters**: roles, hashtags (searchable tick-boxes that stay open), project types, gender, languages as
+  chips; everything applies instantly; removable chips for every selected value above the results; hashtag click on a card adds/removes it.
+  (`src/lib/crewFilters.ts`, `MultiSelect`.) URL links like `?tag=Thriller` or `?roles=Editor,Gaffer` still work.
+- **Current engagement** disappears by itself: it is computed from the shoot dates on every visit (ended = moved to Credits).
+  A project that is only "closed" to applications is NOT treated as ended, because its shoot can still be running.
+- **Role label** (Crew / Producer / Admin) at the top right of the avatar and in its menu.
+- **Role pictures**: crew without a photo get a department picture (camera, lighting, sound, makeup, costume, art, direction,
+  post, ...) chosen from their main role (`src/lib/roleVisuals.ts`, `RolePlaceholder`). Drawn icons, not downloaded photos
+  (no copyright/hot-link risk); can be swapped for real artwork later in one file.
+- **Free mode** (migration `0018_site_settings`): default OFF = everything free, no trial, no pricing/upgrade prompts, unlimited
+  applications, PRO badge for everyone, payment endpoints return 403. Admin panel > Settings > "Free mode / Plans" turns trials and
+  paid plans on (optionally giving every crew member a fresh 2-month trial) and back off. Pages read `/api/settings/public`.
+- **Home page** (logged out): top jobs + crew now come right after the hero, the numbers moved below them; projects take ~30% and
+  crew ~70% (3 crew cards per row on wide screens, same card as Browse Crew); pricing section only when plans are on; the closing
+  "Ready to Elevate Your Career?" band removed (there was no newsletter form on the page, that band was the end section).
+
 ## 2026-10-25 — Test feedback round 1 — built, NOT yet committed
 
 - **Thumbnails**: if a showreel thumbnail fails to load (or there is none and no photo) the card and profile now show a neutral

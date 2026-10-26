@@ -9,6 +9,13 @@ import { NotificationBell } from './notifications/NotificationBell';
 import { BucketListButton } from './notifications/BucketListButton';
 import { Film, Menu, X, User, LogOut, Briefcase, Users, Search } from 'lucide-react';
 
+function roleBadge(role?: string | null): { label: string; className: string } | null {
+  if (role === 'CREW') return { label: 'Crew', className: 'bg-indigo-600' }
+  if (role === 'EMPLOYER') return { label: 'Producer', className: 'bg-emerald-600' }
+  if (role === 'ADMIN') return { label: 'Admin', className: 'bg-gray-800' }
+  return null
+}
+
 export default function Header() {
   const { data: session } = useSession();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -120,6 +127,12 @@ export default function Header() {
                 
                 {/* User Dropdown */}
                 <div className="relative" ref={dropdownRef}>
+                  {/* Who is signed in: Crew / Producer / Admin */}
+                  {roleBadge(session.user?.role) && (
+                    <span className={`pointer-events-none absolute -right-2 -top-2 z-10 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow ${roleBadge(session.user?.role)!.className}`}>
+                      {roleBadge(session.user?.role)!.label}
+                    </span>
+                  )}
                   <button
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                     className="focus:outline-none focus:ring-2 focus:ring-ring rounded-full"
@@ -147,6 +160,11 @@ export default function Header() {
                       <div className="px-4 py-3 border-b border-border">
                         <p className="text-sm font-semibold text-foreground">{session.user?.name}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{session.user?.email}</p>
+                        {roleBadge(session.user?.role) && (
+                          <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold text-white ${roleBadge(session.user?.role)!.className}`}>
+                            {roleBadge(session.user?.role)!.label} account
+                          </span>
+                        )}
                       </div>
                       <div className="py-2">
                         <Link

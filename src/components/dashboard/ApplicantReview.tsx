@@ -7,6 +7,7 @@ import { ChevronLeft, MapPin, Lock, ExternalLink, CheckCircle, Clock } from 'luc
 import { Button } from '@/components/ui/button'
 import { HireNowModal } from '@/components/hire/HireNowModal'
 import { ShowreelPlayer } from '@/components/crew-view/ShowreelPlayer'
+import { RolePlaceholder } from '@/components/crew-view/RolePlaceholder'
 import { swrFetcher } from '@/lib/swr'
 import { crewTags, matchScore } from '@/lib/matching'
 import { formatShootRange } from '@/lib/projects/format'
@@ -89,12 +90,14 @@ function matchTone(score: number): string {
   return score >= 80 ? 'bg-green-100 text-green-700' : score >= 55 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
 }
 
-function Avatar({ name, photo, size = 'h-12 w-12' }: { name: string; photo?: string | null; size?: string }) {
+function Avatar({ name, photo, role, size = 'h-12 w-12' }: { name: string; photo?: string | null; role?: string | null; size?: string }) {
   return photo ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={photo} alt={name} className={`${size} shrink-0 rounded-full object-cover`} />
   ) : (
-    <span className={`${size} flex shrink-0 items-center justify-center rounded-full bg-indigo-100 font-bold text-indigo-600`}>{name.charAt(0).toUpperCase()}</span>
+    <span className={`${size} block shrink-0 overflow-hidden rounded-full`}>
+      <RolePlaceholder role={role} />
+    </span>
   )
 }
 
@@ -225,7 +228,7 @@ export function ApplicantReview({ projects, updatingId, error, onStatus, onRefre
                 onClick={() => select(app.id)}
                 className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${active ? 'border-indigo-400 bg-indigo-50/60' : 'border-gray-200 bg-white hover:border-indigo-200'}`}
               >
-                <Avatar name={app.crew.user.name} photo={app.crew.photo} />
+                <Avatar name={app.crew.user.name} photo={app.crew.photo} role={app.crew.primaryRoles?.[0]} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-semibold text-gray-900">{app.crew.user.name}</span>
                   <span className="block truncate text-xs text-gray-500">{[app.crew.primaryRoles?.[0], app.crew.city].filter(Boolean).join(' · ')}</span>
@@ -324,7 +327,7 @@ function ApplicantDetail({
 
       <div className="flex flex-col gap-3 p-4">
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar name={app.crew.user.name} photo={app.crew.photo} size="h-16 w-16" />
+          <Avatar name={app.crew.user.name} photo={app.crew.photo} role={app.crew.primaryRoles?.[0]} size="h-16 w-16" />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="truncate text-xl font-bold text-gray-900">{app.crew.user.name}</h3>
