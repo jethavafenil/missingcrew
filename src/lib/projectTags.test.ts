@@ -32,11 +32,24 @@ describe('project schema tags', () => {
     projectName: 'X', projectType: 'Ads', rolesNeeded: ['Director'], location: 'Mumbai',
     description: 'd', questions: [], contactPreference: ['email'],
   }
-  it('accepts up to 3 tags (normalised) and rejects more', () => {
-    const ok = projectInputSchema.safeParse({ ...base, tags: ['#night shoot', 'Comedy', 'comedy'] })
+  it('accepts up to 3 premade tags (normalised), drops hand-made ones, rejects more than 3', () => {
+    const ok = projectInputSchema.safeParse({ ...base, tags: ['#night shoot', 'Comedy', 'comedy', 'my custom tag'] })
     expect(ok.success && ok.data.tags).toEqual(['NightShoot', 'Comedy'])
-    expect(projectInputSchema.safeParse({ ...base, tags: ['A1', 'B2', 'C3', 'D4'] }).success).toBe(false)
+    expect(projectInputSchema.safeParse({ ...base, tags: ['Thriller', 'Drama', 'Comedy', 'Horror'] }).success).toBe(false)
     const none = projectInputSchema.safeParse(base)
     expect(none.success && none.data.tags).toEqual([])
+  })
+})
+
+import { pickPremade, PREMADE_TAGS, premadeValue } from '@/lib/projectTags'
+
+describe('premade tag list', () => {
+  it('has unique, valid tag values', () => {
+    const values = PREMADE_TAGS.map(premadeValue)
+    expect(new Set(values.map((v) => v.toLowerCase())).size).toBe(values.length)
+    expect(values.every((v) => /^[A-Za-z0-9]+$/.test(v))).toBe(true)
+  })
+  it('picks only premade tags in canonical spelling', () => {
+    expect(pickPremade(['sci-fi', '#SCIFI', 'night shoot', 'nope', 5])).toEqual(['SciFi', 'NightShoot'])
   })
 })

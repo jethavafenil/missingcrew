@@ -3,8 +3,8 @@
 import { useMemo, useState } from 'react'
 import { departments } from '@/lib/departments'
 import { PROJECT_TYPES } from '@/lib/projectTypes'
-import { MAX_CREW_TAGS, sanitizeCrewTags } from '@/lib/matching'
-import { SUGGESTED_TAGS } from '@/lib/projectTags'
+import { MAX_CREW_TAGS } from '@/lib/matching'
+import { TagPicker } from '@/components/ui/tag-picker'
 
 interface PastProject {
   title: string
@@ -90,12 +90,7 @@ export function PortfolioStep({ data, onChange }: PortfolioStepProps) {
   })
 
   const [newLink, setNewLink] = useState('')
-  const [newTag, setNewTag] = useState('')
   const tags = data.customTags || []
-  const addTag = (raw: string) => {
-    onChange({ customTags: sanitizeCrewTags([...tags, raw]) })
-    setNewTag('')
-  }
 
   const addPortfolioLink = () => {
     if (newLink.trim() && !portfolioLinks.includes(newLink.trim())) {
@@ -233,50 +228,9 @@ export function PortfolioStep({ data, onChange }: PortfolioStepProps) {
         <p className="mt-1 text-sm text-gray-500">YouTube or Vimeo. It plays when producers hover your card and sits on top of your profile.</p>
       </div>
 
-      {/* Hashtags */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Your hashtags (up to {MAX_CREW_TAGS})
-        </label>
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2">
-            {tags.map((t) => (
-              <span key={t} className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full px-3 py-1 text-sm">
-                #{t}
-                <button type="button" onClick={() => onChange({ customTags: tags.filter((x) => x !== t) })} aria-label={`Remove ${t}`}>×</button>
-              </span>
-            ))}
-          </div>
-        )}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newTag}
-            onChange={(e) => setNewTag(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (newTag.trim()) addTag(newTag) } }}
-            placeholder="e.g. Thriller"
-            maxLength={30}
-            disabled={tags.length >= MAX_CREW_TAGS}
-            className="flex-1 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
-          />
-          <button
-            type="button"
-            onClick={() => newTag.trim() && addTag(newTag)}
-            disabled={tags.length >= MAX_CREW_TAGS}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
-          >
-            Add
-          </button>
-        </div>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {SUGGESTED_TAGS.filter((t) => !tags.some((x) => x.toLowerCase() === t.replace(/\s+/g, '').toLowerCase())).slice(0, 10).map((t) => (
-            <button key={t} type="button" disabled={tags.length >= MAX_CREW_TAGS} onClick={() => addTag(t)} className="text-xs text-gray-600 border border-gray-200 rounded-full px-2 py-0.5 hover:bg-gray-50 disabled:opacity-50">
-              #{t.replace(/\s+/g, '')}
-            </button>
-          ))}
-        </div>
-        <p className="mt-2 text-sm text-gray-500">Project types from your portfolio are added as hashtags automatically. Producers can find you by these.</p>
-      </div>
+      {/* Hashtags: premade list only */}
+      <TagPicker label={`Your hashtags (up to ${MAX_CREW_TAGS})`} value={tags} max={MAX_CREW_TAGS} onChange={(customTags) => onChange({ customTags })} />
+      <p className="-mt-3 text-sm text-gray-500">Project types from your portfolio are added as hashtags automatically. Producers can find you by these.</p>
 
       {/* IMDb Link */}
       <div>

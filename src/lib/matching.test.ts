@@ -17,12 +17,12 @@ describe('crewTags', () => {
 })
 
 describe('sanitizeCrewTags', () => {
-  it('normalises, de-duplicates and caps at 5', () => {
-    expect(sanitizeCrewTags(['a b', 'A B', '#x!', 'c', 'd', 'e', 'f'])).toEqual(['AB', 'X', 'C', 'D', 'E'])
+  it('keeps only premade tags, de-duplicated, capped at 5', () => {
+    expect(sanitizeCrewTags(['thriller', '#night shoot', 'my own tag', 'Thriller', 'Comedy', 'Drama', 'Action', 'Horror'])).toEqual(['Thriller', 'NightShoot', 'Comedy', 'Drama', 'Action'])
   })
-  it('ignores non-lists and non-strings', () => {
+  it('drops hand-made tags and ignores non-lists and non-strings', () => {
     expect(sanitizeCrewTags('x')).toEqual([])
-    expect(sanitizeCrewTags([1, null, 'ok'])).toEqual(['Ok'])
+    expect(sanitizeCrewTags([1, null, 'ok', 'zzz'])).toEqual([])
   })
 })
 

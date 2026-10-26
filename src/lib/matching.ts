@@ -2,7 +2,7 @@
 // applicant review. Everything is derived from data we already store, so crew do not
 // have to maintain tags by hand: project types from their portfolio become hashtags.
 
-import { MAX_TAG_LENGTH, normalizeTag, normalizeTags, typeTag } from '@/lib/projectTags'
+import { normalizeTag, normalizeTags, pickPremade, typeTag } from '@/lib/projectTags'
 
 export const MAX_CREW_TAGS = 5
 
@@ -47,13 +47,12 @@ function splitTypes(value?: string | null): string[] {
 // their own tags. No '#', CamelCase, de-duplicated.
 export function crewTags(crew: TaggableCrew): string[] {
   const types = [...(crew.projectTypes ?? []), ...pastProjectTypes(crew.pastProjects)].map(typeTag)
-  return normalizeTags([...types, ...(crew.customTags ?? [])])
+  return normalizeTags([...types, ...pickPremade(crew.customTags)])
 }
 
-// Crew-entered tags: normalised, no duplicates, capped.
+// Crew-chosen tags: premade list only, no duplicates, capped.
 export function sanitizeCrewTags(list: unknown): string[] {
-  if (!Array.isArray(list)) return []
-  return normalizeTags(list.filter((t): t is string => typeof t === 'string').map((t) => t.slice(0, MAX_TAG_LENGTH * 2))).slice(0, MAX_CREW_TAGS)
+  return pickPremade(list).slice(0, MAX_CREW_TAGS)
 }
 
 const lc = (v: string) => v.toLowerCase().trim()
