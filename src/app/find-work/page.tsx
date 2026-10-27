@@ -10,6 +10,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Filter, SlidersHorizontal, Grid3x3, LayoutGrid, X } from 'lucide-react'
 import { shootTimestamp } from '@/lib/projects/format'
+import { EMPTY_PROJECT_FILTERS, activeProjectFilterCount, filterProjects as applyProjectFilters, projectFilterChips, projectFiltersFromParams, type ProjectFilterState } from '@/lib/projectFilters'
+import { toggleIn } from '@/lib/crewFilters'
 
 interface Project {
   id: string
@@ -48,12 +50,7 @@ function FindWorkContent() {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 12
-  const [filters, setFilters] = useState({
-    role: '',
-    projectType: '',
-    location: '',
-    dateRange: ''
-  })
+  const [filters, setFilters] = useState<ProjectFilterState>({ ...EMPTY_PROJECT_FILTERS })
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -78,53 +75,7 @@ function FindWorkContent() {
   }
 
   const filterProjects = useCallback(() => {
-    let filtered = projects
-
-    if (filters.role) {
-      filtered = filtered.filter(project =>
-        project.rolesNeeded.includes(filters.role)
-      )
-    }
-
-    if (filters.projectType) {
-      filtered = filtered.filter(project =>
-        project.projectType === filters.projectType
-      )
-    }
-
-    if (filters.location) {
-      filtered = filtered.filter(project =>
-        project.location.toLowerCase().includes(filters.location.toLowerCase())
-      )
-    }
-
-    // Apply date range filter
-    if (filters.dateRange) {
-      const now = new Date()
-      filtered = filtered.filter(project => {
-        // Projects without dates yet don't match a date filter.
-        const startTs = shootTimestamp(project.shootStartDate)
-        if (startTs === null) return false
-        const startDate = new Date(startTs)
-        
-        switch (filters.dateRange) {
-          case 'this_week':
-            const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-            return startDate >= now && startDate <= weekEnd
-          case 'next_week':
-            const nextWeekStart = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-            const nextWeekEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
-            return startDate >= nextWeekStart && startDate <= nextWeekEnd
-          case 'this_month':
-            return startDate.getMonth() === now.getMonth() && startDate.getFullYear() === now.getFullYear()
-          case 'next_month':
-            const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1)
-            return startDate.getMonth() === nextMonth.getMonth() && startDate.getFullYear() === nextMonth.getFullYear()
-          default:
-            return true
-        }
-      })
-    }
+    const filtered = applyProjectFilters(projects, filters)
 
     // Apply sorting (projects without dates go last)
     const byStart = (dir: 1 | -1) => (a: Project, b: Project) => {
@@ -152,20 +103,11 @@ function FindWorkContent() {
     fetchProjects()
   }, [])
 
-  // Initialize filters from URL query params (role, projectType, location, dateRange)
+  // Initialize filters from URL query params (role(s), projectType(s), tag(s), location, dateRange)
   useEffect(() => {
-    const role = searchParams.get('role') || ''
-    const projectType = searchParams.get('projectType') || ''
-    const location = searchParams.get('location') || ''
-    const dateRange = searchParams.get('dateRange') || ''
-    if (role || projectType || location || dateRange) {
-      setFilters(prev => ({
-        ...prev,
-        role,
-        projectType,
-        location,
-        dateRange,
-      }))
+    const fromUrl = projectFiltersFromParams((name) => searchParams.get(name))
+    if (fromUrl.roles.length || fromUrl.projectTypes.length || fromUrl.tags.length || fromUrl.location || fromUrl.dateRange) {
+      setFilters(fromUrl)
     }
   }, [searchParams])
 
@@ -212,22 +154,10 @@ function FindWorkContent() {
     return pages
   }
 
-  const getActiveFilterCount = () => {
-    let count = 0
-    if (filters.role) count++
-    if (filters.projectType) count++
-    if (filters.location) count++
-    if (filters.dateRange) count++
-    return count
-  }
+  const getActiveFilterCount = () => activeProjectFilterCount(filters)
 
   const clearAllFilters = () => {
-    setFilters({
-      role: '',
-      projectType: '',
-      location: '',
-      dateRange: ''
-    })
+    setFilters({ ...EMPTY_PROJECT_FILTERS })
   }
 
   if (status === 'loading' || isLoading) {
@@ -314,43 +244,34 @@ function FindWorkContent() {
                   filters={filters} 
                   onFiltersChange={setFilters}
                   compact={true}
-                  showAdvanced={showAdvancedFilters}
                 />
-                <Dialog open={showAdvancedFilters} onOpenChange={setShowAdvancedFilters}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full mt-4 border-2 hover:border-indigo-400 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all">
-                      <SlidersHorizontal className="w-4 h-4 mr-2" />
-                      Advanced Filters
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white via-indigo-50/30 to-purple-50/30">
-                    <DialogHeader className="pb-4 border-b border-gray-200">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg">
-                          <SlidersHorizontal className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-indigo-900 to-purple-900 bg-clip-text text-transparent">Advanced Filters</DialogTitle>
-                          <p className="text-sm text-gray-600 mt-1">Find projects that match your skills and preferences</p>
-                        </div>
-                      </div>
-                    </DialogHeader>
-                    <div className="mt-6">
-                      <ProjectFilters 
-                        filters={filters} 
-                        onFiltersChange={setFilters}
-                        showAdvanced={true}
-                        compact={false}
-                      />
-                    </div>
-                  </DialogContent>
-                </Dialog>
               </div>
             </div>
           </aside>
 
           {/* Main Content */}
           <div className="flex-1 min-w-0">
+            {/* Selected filters: one click removes any of them */}
+            {projectFilterChips(filters).length > 0 && (
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                {projectFilterChips(filters).map((chip) => (
+                  <button
+                    key={chip.key}
+                    type="button"
+                    onClick={() => setFilters(chip.remove(filters))}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-800 hover:bg-indigo-100"
+                    aria-label={`Remove filter ${chip.label}`}
+                  >
+                    {chip.label}
+                    <span aria-hidden="true">×</span>
+                  </button>
+                ))}
+                <button type="button" onClick={clearAllFilters} className="text-sm font-medium text-gray-500 underline hover:text-gray-800">
+                  Clear all
+                </button>
+              </div>
+            )}
+
             {/* Toolbar */}
             <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

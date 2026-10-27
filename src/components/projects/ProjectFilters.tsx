@@ -1,164 +1,106 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useMemo } from 'react'
 import { LocationAutocomplete } from '@/components/ui/location-autocomplete'
+import { MultiSelect } from '@/components/ui/multi-select'
 import { departments } from '@/lib/departments'
 import { PROJECT_TYPES } from '@/lib/projectTypes'
+import { PREMADE_TAGS, premadeValue } from '@/lib/projectTags'
+import { EMPTY_PROJECT_FILTERS, type ProjectFilterState } from '@/lib/projectFilters'
+import { toggleIn } from '@/lib/crewFilters'
 
 interface ProjectFiltersProps {
-  filters: {
-    role: string
-    projectType: string
-    location: string
-    dateRange: string
-  }
-  onFiltersChange: (filters: { role: string; projectType: string; location: string; dateRange: string }) => void
+  filters: ProjectFilterState
+  onFiltersChange: (filters: ProjectFilterState) => void
   compact?: boolean
   showAdvanced?: boolean
 }
 
+const DATE_RANGES = [
+  { value: '', label: 'Any time' },
+  { value: 'this_week', label: 'This week' },
+  { value: 'next_week', label: 'Next week' },
+  { value: 'this_month', label: 'This month' },
+  { value: 'next_month', label: 'Next month' },
+]
 
-export function ProjectFilters({ filters, onFiltersChange, compact = false, showAdvanced: showAdvancedProp = false }: ProjectFiltersProps) {
-  const [showAdvanced, setShowAdvanced] = useState(showAdvancedProp)
+const box = 'rounded-lg border border-gray-200 bg-white/80 p-3'
+const labelClass = 'mb-2 block text-sm font-semibold text-gray-800'
+const input = 'w-full rounded-lg border-2 border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 hover:border-indigo-400'
 
-  // Update internal state when prop changes
-  useEffect(() => {
-    setShowAdvanced(showAdvancedProp)
-  }, [showAdvancedProp])
+function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={on}
+      className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${on ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-gray-300 bg-white text-gray-700 hover:border-indigo-400 hover:bg-indigo-50'}`}
+    >
+      {children}
+    </button>
+  )
+}
 
-  // Get all roles from departments
-  const allRoles = departments.flatMap(dept => dept.roles)
+// Roles, project types and hashtags are multi-select; everything applies as soon as it changes.
+export function ProjectFilters({ filters, onFiltersChange, compact = false }: ProjectFiltersProps) {
+  const set = <K extends keyof ProjectFilterState>(key: K, value: ProjectFilterState[K]) => onFiltersChange({ ...filters, [key]: value })
 
-const updateFilter = (key: string, value: string) => {
-    onFiltersChange({
-      ...filters,
-      [key]: value
-    })
-  }
+  const roleOptions = useMemo(() => Array.from(new Set(departments.flatMap((d) => d.roles))).map((r) => ({ value: r })), [])
+  const tagOptions = useMemo(() => PREMADE_TAGS.map((t) => ({ value: premadeValue(t), label: `#${premadeValue(t)}` })), [])
 
   return (
-    <div className={compact ? 'space-y-4' : 'bg-white/90 backdrop-blur-sm rounded-xl shadow-sm border border-gray-200 p-6 mb-6'}>
+    <div className={compact ? 'space-y-3' : 'mb-6 space-y-3 rounded-xl border border-gray-200 bg-white/90 p-5 shadow-sm backdrop-blur-sm'}>
       {!compact && (
-        <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900">Project Filters</h3>
-            <p className="text-sm text-gray-600 mt-0.5">Find the perfect project</p>
-          </div>
-          <button
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-medium rounded-lg transition-all shadow-sm hover:shadow-md"
-          >
-            {showAdvanced ? 'Hide Advanced' : 'Show Advanced'}
-          </button>
+        <div className="border-b border-gray-200 pb-3">
+          <h3 className="text-xl font-bold text-gray-900">Project Filters</h3>
+          <p className="text-sm text-gray-600">Tick several options in a list to see all of them</p>
         </div>
       )}
 
-      {/* Basic Filters */}
-      <div className={compact ? 'space-y-4' : 'grid grid-cols-1 md:grid-cols-2 gap-5 mb-6'}>
-        {/* Role Filter */}
-        <div className="bg-white/80 backdrop-blur-sm p-4 rounded-lg border border-gray-200 hover:border-indigo-300 transition-all">
-          <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
-            <span className="text-indigo-600">🎬</span> Role Needed
-          </label>
-          <select
-            value={filters.role}
-            onChange={(e) => updateFilter('role', e.target.value)}
-            className="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white hover:border-indigo-400"
-          >
-            <option value="">All Roles</option>
-            {allRoles.map(role => (
-              <option key={role} value={role}>{role}</option>
+      <div className={compact ? 'space-y-3' : 'grid grid-cols-1 gap-3 md:grid-cols-2'}>
+        <div className={box}>
+          <span className={labelClass}>🎬 Roles needed</span>
+          <MultiSelect label="Roles" options={roleOptions} value={filters.roles} onChange={(v) => set('roles', v)} placeholder="All roles" />
+        </div>
+
+        <div className={box}>
+          <span className={labelClass}># Hashtags</span>
+          <MultiSelect label="Hashtags" options={tagOptions} value={filters.tags} onChange={(v) => set('tags', v)} placeholder="Any hashtag" />
+        </div>
+
+        <div className={box}>
+          <span className={labelClass}>🎥 Project types</span>
+          <div className="flex flex-wrap gap-1.5">
+            {PROJECT_TYPES.map((t) => (
+              <Chip key={t} on={filters.projectTypes.includes(t)} onClick={() => set('projectTypes', toggleIn(filters.projectTypes, t))}>
+                {t}
+              </Chip>
             ))}
-          </select>
+          </div>
         </div>
 
-        {/* Project Type Filter */}
-        <div className="bg-white/80 backdrop-blur-sm p-4 rounded-lg border border-gray-200 hover:border-indigo-300 transition-all">
-          <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
-            <span className="text-indigo-600">🎥</span> Project Type
-          </label>
-          <select
-            value={filters.projectType}
-            onChange={(e) => updateFilter('projectType', e.target.value)}
-            className="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white hover:border-indigo-400"
-          >
-            <option value="">All Types</option>
-            {PROJECT_TYPES.map(type => (
-              <option key={type} value={type}>{type}</option>
+        <div className={box}>
+          <span className={labelClass}>📅 Shoot date</span>
+          <div className="flex flex-wrap gap-1.5">
+            {DATE_RANGES.map((d) => (
+              <Chip key={d.value} on={filters.dateRange === d.value} onClick={() => set('dateRange', d.value)}>
+                {d.label}
+              </Chip>
             ))}
-          </select>
+          </div>
         </div>
 
-        {/* Location Filter */}
-        <div className="bg-white/80 backdrop-blur-sm p-4 rounded-lg border border-gray-200 hover:border-indigo-300 transition-all">
-          <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
-            <span className="text-indigo-600">📍</span> Location
-          </label>
-          <LocationAutocomplete
-            label=""
-            value={filters.location}
-            onChange={(value) => updateFilter('location', value)}
-            placeholder="City or state"
-            className="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white hover:border-indigo-400"
-          />
-        </div>
-
-        {/* Date Range Filter */}
-        <div className="bg-white/80 backdrop-blur-sm p-4 rounded-lg border border-gray-200 hover:border-indigo-300 transition-all">
-          <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
-            <span className="text-indigo-600">📅</span> Date Range
-          </label>
-          <select
-            value={filters.dateRange}
-            onChange={(e) => updateFilter('dateRange', e.target.value)}
-            className="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white hover:border-indigo-400"
-          >
-            <option value="">Any Time</option>
-            <option value="this_week">This Week</option>
-            <option value="next_week">Next Week</option>
-            <option value="this_month">This Month</option>
-            <option value="next_month">Next Month</option>
-          </select>
+        <div className={`${box} md:col-span-2`}>
+          <span className={labelClass}>📍 Location</span>
+          <LocationAutocomplete label="" value={filters.location} onChange={(v) => set('location', v)} placeholder="City or state" className={input} />
         </div>
       </div>
 
-      {/* Advanced Filters */}
-      {showAdvanced && (
-        <div className={compact ? 'space-y-5 pt-4 border-t' : 'border-t pt-6 space-y-6'}>
-          {/* Budget Range - Future Enhancement */}
-          <div className="bg-white/80 backdrop-blur-sm p-5 rounded-lg border border-gray-200">
-            <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              <span className="text-indigo-600">💰</span> Budget Range
-            </label>
-            <div className="text-sm text-gray-600 italic p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-              🕒 Budget filtering will be available soon.
-            </div>
-          </div>
-          
-          {/* Additional filters placeholder */}
-          <div className="bg-white/80 backdrop-blur-sm p-5 rounded-lg border border-gray-200">
-            <div className="text-sm text-gray-600 italic p-3 bg-purple-50 rounded-lg border border-purple-200">
-              ✨ More advanced filtering options coming soon.
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Clear Filters */}
       {!compact && (
-        <div className="flex justify-between items-center mt-6 pt-5 border-t border-gray-200">
-          <button
-            onClick={() => onFiltersChange({
-              role: '',
-              projectType: '',
-              location: '',
-              dateRange: ''
-            })}
-            className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-all shadow-sm hover:shadow-md"
-          >
+        <div className="border-t border-gray-200 pt-4">
+          <button type="button" onClick={() => onFiltersChange({ ...EMPTY_PROJECT_FILTERS })} className="rounded-lg bg-gray-100 px-5 py-2.5 font-semibold text-gray-700 hover:bg-gray-200">
             Clear all filters
           </button>
-          <p className="text-xs text-gray-500">Tip: Combine filters to find the best matches</p>
         </div>
       )}
     </div>
