@@ -12,6 +12,7 @@ import { getFeaturedCrew, getFeaturedProjects } from '@/lib/cache/public'
 import { getSession } from '@/lib/auth/server'
 import { applicationRepo, crewProfileRepo, requesterFromSession } from '@/lib/repo'
 import { redirectIfWrongRole } from '@/lib/auth/role-guard'
+import { arePaidPlansEnabled } from '@/lib/settings'
 
 // No page-level revalidate: the root layout resolves the session per request,
 // so this route renders dynamically. Featured data is still cached via
@@ -39,6 +40,7 @@ interface Project {
 }
 
 export default async function CrewHome() {
+  const plansOn = await arePaidPlansEnabled()
   await redirectIfWrongRole('CREW')
   const session = await getSession()
   let appliedProjectIdsSet = new Set<string>()
@@ -367,7 +369,8 @@ export default async function CrewHome() {
         </div>
       </section>
 
-      {/* Pricing Plans */}
+      {/* Pricing Plans: only once an admin has turned paid plans on */}
+      {plansOn && (
       <section className="py-8 md:py-10 bg-gradient-to-b from-indigo-50 to-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-6 md:mb-8">
@@ -385,6 +388,7 @@ export default async function CrewHome() {
           </div>
         </div>
       </section>
+      )}
 
       {/* CTA */}
       <section className="py-8 md:py-12 bg-gradient-to-br from-indigo-800 via-purple-800 to-blue-700">

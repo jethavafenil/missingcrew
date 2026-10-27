@@ -185,7 +185,7 @@ export function HomeDualFeed({ projects, crew }: HomeDualFeedProps) {
 
   const displayProjects = projects && projects.length > 0 ? projects.slice(0, 4) : FALLBACK_PROJECTS
   const displayCrew = crew && crew.length > 0 ? crew.slice(0, 4) : FALLBACK_CREW
-  const desktopCrew = crew && crew.length > 0 ? crew.slice(0, 6) : FALLBACK_CREW
+  const desktopCrew = crew && crew.length > 0 ? crew.slice(0, 9) : FALLBACK_CREW
 
   const formatDate = (isoString?: string) => {
     if (!isoString) return ''

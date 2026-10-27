@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useSession } from '@/lib/auth/session-context';
-import { SOCIAL_LINKS, SUPPORT_EMAIL } from '@/lib/site-config';
-import { Film, Mail, MapPin, Facebook, Instagram, Linkedin, Youtube } from 'lucide-react';
+import { SUPPORT_EMAIL } from '@/lib/site-config';
+import { Film, Mail, MapPin } from 'lucide-react';
 
 type FooterLink = { href: string; label: string };
 
@@ -62,44 +62,6 @@ export default function Footer() {
             <p className="text-gray-400 mb-6 leading-relaxed">
               Connecting talented film crew members with exciting projects worldwide. Your next opportunity is just a click away.
             </p>
-            <div className="flex items-center gap-4">
-              <a 
-                href={SOCIAL_LINKS.instagram} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                aria-label="Instagram"
-                className="w-9 h-9 bg-gray-800 hover:bg-gradient-to-br hover:from-purple-600 hover:to-pink-600 rounded-lg flex items-center justify-center transition-all duration-200 group"
-              >
-                <Instagram className="h-4 w-4 text-gray-400 group-hover:text-white" />
-              </a>
-              <a 
-                href={SOCIAL_LINKS.facebook} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                aria-label="Facebook"
-                className="w-9 h-9 bg-gray-800 hover:bg-blue-600 rounded-lg flex items-center justify-center transition-all duration-200 group"
-              >
-                <Facebook className="h-4 w-4 text-gray-400 group-hover:text-white" />
-              </a>
-              <a 
-                href={SOCIAL_LINKS.linkedin} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                aria-label="LinkedIn"
-                className="w-9 h-9 bg-gray-800 hover:bg-blue-700 rounded-lg flex items-center justify-center transition-all duration-200 group"
-              >
-                <Linkedin className="h-4 w-4 text-gray-400 group-hover:text-white" />
-              </a>
-              <a 
-                href={SOCIAL_LINKS.youtube} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                aria-label="YouTube"
-                className="w-9 h-9 bg-gray-800 hover:bg-red-600 rounded-lg flex items-center justify-center transition-all duration-200 group"
-              >
-                <Youtube className="h-4 w-4 text-gray-400 group-hover:text-white" />
-              </a>
-            </div>
           </div>
 
           {/* Product Links */}
