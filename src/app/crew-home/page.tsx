@@ -152,23 +152,71 @@ export default async function CrewHome() {
             <p className="mt-4 md:mt-3 text-base md:text-lg text-indigo-100 max-w-2xl mx-auto px-4">
               Discover verified opportunities, showcase your portfolio, and get hired by top production houses.
             </p>
-            {/* Stats section - now with glassmorphism effect and responsive layout */}
-            <div className="mt-8 md:mt-10 lg:mt-14 grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 lg:gap-8 max-w-4xl mx-auto animate-fade-in-up animation-delay-1500 px-2">
-              {[
-                { value: "1,200+", label: "Talented Crew Members" },
-                { value: "450+", label: "Projects Completed" },
-                { value: "180+", label: "Production Companies" }
-              ].map((stat, index) => (
-                <div
-                  key={index}
-                  className="text-center p-4 md:p-5 lg:p-6 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 shadow-sm hover:shadow-md transition-all"
-                >
-                  <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2 md:mb-3">{stat.value}</div>
-                  <div className="text-xs sm:text-sm md:text-base text-indigo-100">{stat.label}</div>
-                </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Projects */}
+      <section className="py-8 md:py-12 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 md:mb-8 gap-3">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-1 w-1 rounded-full bg-indigo-600"></div>
+                <span className="text-sm font-semibold text-indigo-600 uppercase tracking-wider">Opportunities</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-gray-900 via-indigo-900 to-purple-900 bg-clip-text text-transparent">Featured Projects Hiring Now</h2>
+            </div>
+            <Link href="/find-work"><Button variant="outline" className="border-indigo-600 text-indigo-600 hover:bg-indigo-50 whitespace-nowrap">Browse all</Button></Link>
+          </div>
+          {projects.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {projects.map((project) => (
+                <ProjectCardWrapper
+                  key={project.id}
+                  project={project as any}
+                  initialHasApplied={appliedProjectIdsSet.has(project.id)}
+                  onApply={undefined}
+                />
               ))}
             </div>
+          ) : (
+            <p className="text-gray-600">No projects available right now.</p>
+          )}
+        </div>
+      </section>
+
+
+      {/* Top Crew */}
+      <section className="py-8 md:py-12">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-8 md:mb-12">
+            <div className="inline-flex items-center gap-2 mb-3">
+              <div className="h-px w-8 bg-gradient-to-r from-transparent to-purple-600"></div>
+              <span className="text-sm font-semibold text-purple-600 uppercase tracking-wider">Top Talent</span>
+              <div className="h-px w-8 bg-gradient-to-l from-transparent to-purple-600"></div>
+            </div>
+            <h2 className="text-2xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-indigo-900 bg-clip-text text-transparent px-2">Standout Crew</h2>
+            <p className="text-sm md:text-base text-gray-600 px-4 mt-2">Explore some of the most sought‑after professionals</p>
           </div>
+          {crew.length > 0 ? <CrewSlider crew={crew as any} /> : <FallbackCrewSlider />}
+        </div>
+      </section>
+
+
+      {/* The numbers sit below the live jobs and crew */}
+      <section className="bg-gradient-to-br from-indigo-800 via-purple-800 to-blue-700 py-8 text-white">
+        <div className="container mx-auto grid max-w-4xl grid-cols-1 gap-4 px-4 sm:grid-cols-3 md:gap-6">
+          {[
+            { value: "1,200+", label: "Talented Crew Members" },
+            { value: "450+", label: "Projects Completed" },
+            { value: "180+", label: "Production Companies" }
+          ].map((stat, index) => (
+            <div key={index} className="rounded-xl border border-white/10 bg-white/5 p-4 text-center backdrop-blur-sm">
+              <div className="mb-1 text-2xl font-bold sm:text-3xl md:text-4xl">{stat.value}</div>
+              <div className="text-xs text-indigo-100 sm:text-sm md:text-base">{stat.label}</div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -271,52 +319,6 @@ export default async function CrewHome() {
               ))}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Featured Projects */}
-      <section className="py-8 md:py-12 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 md:mb-8 gap-3">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="h-1 w-1 rounded-full bg-indigo-600"></div>
-                <span className="text-sm font-semibold text-indigo-600 uppercase tracking-wider">Opportunities</span>
-              </div>
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-gray-900 via-indigo-900 to-purple-900 bg-clip-text text-transparent">Featured Projects Hiring Now</h2>
-            </div>
-            <Link href="/find-work"><Button variant="outline" className="border-indigo-600 text-indigo-600 hover:bg-indigo-50 whitespace-nowrap">Browse all</Button></Link>
-          </div>
-          {projects.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {projects.map((project) => (
-                <ProjectCardWrapper
-                  key={project.id}
-                  project={project as any}
-                  initialHasApplied={appliedProjectIdsSet.has(project.id)}
-                  onApply={undefined}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-600">No projects available right now.</p>
-          )}
-        </div>
-      </section>
-
-      {/* Top Crew */}
-      <section className="py-8 md:py-12">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-8 md:mb-12">
-            <div className="inline-flex items-center gap-2 mb-3">
-              <div className="h-px w-8 bg-gradient-to-r from-transparent to-purple-600"></div>
-              <span className="text-sm font-semibold text-purple-600 uppercase tracking-wider">Top Talent</span>
-              <div className="h-px w-8 bg-gradient-to-l from-transparent to-purple-600"></div>
-            </div>
-            <h2 className="text-2xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-indigo-900 bg-clip-text text-transparent px-2">Standout Crew</h2>
-            <p className="text-sm md:text-base text-gray-600 px-4 mt-2">Explore some of the most sought‑after professionals</p>
-          </div>
-          {crew.length > 0 ? <CrewSlider crew={crew as any} /> : <FallbackCrewSlider />}
         </div>
       </section>
 
