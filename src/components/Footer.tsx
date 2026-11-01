@@ -52,8 +52,9 @@ export default function Footer() {
           {/* Brand Section */}
           <div className="lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center shadow-lg">
-                <Film className="h-6 w-6 text-white" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white p-1 shadow-lg">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo-512.png" alt="MissingCrew logo" width={44} height={44} className="h-full w-full object-contain" />
               </div>
               <span className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
                 MissingCrew

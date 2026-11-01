@@ -65,9 +65,8 @@ export default function Header() {
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
-                <Film className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-512.png" alt="MissingCrew logo" width={44} height={44} className="h-9 w-9 sm:h-11 sm:w-11 object-contain transition-transform duration-200 group-hover:scale-105" />
               <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent whitespace-nowrap">
                 MissingCrew
               </span>
