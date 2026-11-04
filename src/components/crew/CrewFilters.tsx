@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { departments } from '@/lib/departments'
 import { LocationAutocomplete } from '@/components/ui/location-autocomplete'
 import { MultiSelect } from '@/components/ui/multi-select'
-import { PROJECT_TYPES } from '@/lib/projectTypes'
+import { PROJECT_TYPE_OPTIONS } from '@/lib/projectTypes'
 import { PREMADE_TAGS, premadeValue } from '@/lib/projectTags'
 import { EMPTY_CREW_FILTERS, toggleIn, type CrewFilterState } from '@/lib/crewFilters'
 
@@ -81,13 +81,7 @@ export function CrewFilters({ filters, onFiltersChange, compact = false, showAdv
 
         <div className={box}>
           <span className={labelClass}>🎥 Project types</span>
-          <div className="flex flex-wrap gap-1.5">
-            {PROJECT_TYPES.map((t) => (
-              <Chip key={t} on={filters.projectTypes.includes(t)} onClick={() => set('projectTypes', toggleIn(filters.projectTypes, t))}>
-                {t}
-              </Chip>
-            ))}
-          </div>
+          <MultiSelect label="Project types" options={PROJECT_TYPE_OPTIONS} value={filters.projectTypes} onChange={(v) => set('projectTypes', v)} placeholder="Any project type" />
         </div>
 
         <div className={box}>

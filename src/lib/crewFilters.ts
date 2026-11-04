@@ -1,3 +1,5 @@
+import { canonicalProjectType } from '@/lib/projectTypes'
+
 // Filtering for the browse-crew page. Pure so the rules are unit-tested.
 // Lists (roles, project types, hashtags, genders) are multi-select: a crew member matches when
 // they have ANY of the selected values. Different filters are combined with AND.
@@ -83,7 +85,10 @@ export function filterCrew<T extends FilterableCrew>(list: T[], f: CrewFilterSta
   if (f.budgetMax) out = out.filter((c) => c.dailyBudgetMax && c.dailyBudgetMax <= parseInt(f.budgetMax))
   if (f.languages.length > 0) out = out.filter((c) => f.languages.every((l) => c.languages.includes(l)))
   if (f.hasPortfolio) out = out.filter((c) => c.portfolioLinks && c.portfolioLinks.length > 0)
-  if (f.projectTypes.length > 0) out = out.filter((c) => c.projectTypes.some((t) => f.projectTypes.includes(t)))
+  if (f.projectTypes.length > 0) {
+    const wanted = new Set(f.projectTypes.map(canonicalProjectType))
+    out = out.filter((c) => c.projectTypes.some((t) => wanted.has(canonicalProjectType(t))))
+  }
   if (f.tags.length > 0) {
     const wanted = new Set(f.tags.map((t) => lower(t.replace(/^#/, ''))))
     out = out.filter((c) => (c.tags ?? []).some((t) => wanted.has(lower(t))))

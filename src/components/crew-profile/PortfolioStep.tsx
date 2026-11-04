@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { departments } from '@/lib/departments'
-import { PROJECT_TYPES } from '@/lib/projectTypes'
+import { PROJECT_TYPE_OPTIONS, canonicalProjectType } from '@/lib/projectTypes'
+import { MultiSelect } from '@/components/ui/multi-select'
 import { MAX_CREW_TAGS } from '@/lib/matching'
 import { TagPicker } from '@/components/ui/tag-picker'
 
@@ -365,16 +366,14 @@ export function PortfolioStep({ data, onChange }: PortfolioStepProps) {
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Project Type</label>
-              <select
-                value={data.pastProjects?.[index]?.type || ''}
-                onChange={(e) => updatePastProject(index, 'type', e.target.value)}
-                className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option value="">Select type</option>
-                {PROJECT_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
+              <MultiSelect
+                label="Project type"
+                single
+                options={PROJECT_TYPE_OPTIONS}
+                value={data.pastProjects?.[index]?.type ? [canonicalProjectType(data.pastProjects[index].type as string)] : []}
+                onChange={(v) => updatePastProject(index, 'type', v[0] || '')}
+                placeholder="Select type"
+              />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Project Link (Optional)</label>

@@ -1,5 +1,8 @@
 'use client'
 
+import { MultiSelect } from '@/components/ui/multi-select'
+import { PROJECT_TYPE_OPTIONS, canonicalProjectType } from '@/lib/projectTypes'
+
 import { useState } from 'react'
 
 interface AvailabilityData {
@@ -101,31 +104,23 @@ export function AvailabilityStep({ data, onChange }: AvailabilityStepProps) {
         <label className="block text-sm font-medium text-gray-700 mb-3">
           Project Types You Work On *
         </label>
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            'Ads', 'Web Series', 'Feature Films', 'Documentary', 
-            'Music Video', 'TV Show', 'Short Film', 'Corporate Video'
-          ].map(type => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => {
-                const currentTypes = data.projectTypes || []
-                const newTypes = currentTypes.includes(type)
-                  ? currentTypes.filter(t => t !== type)
-                  : [...currentTypes, type]
-                onChange({ projectTypes: newTypes })
-              }}
-              className={`p-3 border rounded-lg text-left transition-colors ${
-                (data.projectTypes || []).includes(type)
-                  ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                  : 'border-gray-300 hover:border-gray-400'
-              }`}
-            >
-              {type}
-            </button>
-          ))}
-        </div>
+        <MultiSelect
+          label="Project types"
+          options={PROJECT_TYPE_OPTIONS}
+          value={(data.projectTypes || []).map(canonicalProjectType)}
+          onChange={(types) => onChange({ projectTypes: types })}
+          placeholder="Select the types you work on"
+        />
+        {(data.projectTypes || []).length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {(data.projectTypes || []).map((t) => (
+              <span key={t} className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-800">
+                {canonicalProjectType(t)}
+                <button type="button" aria-label={`Remove ${t}`} className="text-indigo-500 hover:text-indigo-800" onClick={() => onChange({ projectTypes: (data.projectTypes || []).filter((x) => x !== t) })}>&times;</button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Daily Budget Range */}

@@ -20,9 +20,10 @@ describe('normalizeTag(s)', () => {
 
 describe('displayHashtags', () => {
   it('derives the type tag first, then custom tags, without duplicates', () => {
-    expect(typeTag('Feature Films')).toBe('FeatureFilms')
-    expect(displayHashtags('Feature Films', ['Thriller', 'featurefilms'])).toEqual(['#FeatureFilms', '#Thriller'])
-    expect(displayHashtags('Ads, Music Video', [])).toEqual(['#Ads', '#MusicVideo'])
+    expect(typeTag('Feature Film')).toBe('FeatureFilm')
+    expect(typeTag('Feature Films')).toBe('FeatureFilm') // legacy name
+    expect(displayHashtags('Feature Film', ['Thriller', 'featurefilm'])).toEqual(['#FeatureFilm', '#Thriller'])
+    expect(displayHashtags('Ad Film, Music Video', [])).toEqual(['#AdFilm', '#MusicVideo'])
     expect(displayHashtags('', undefined)).toEqual(['#FilmProject'])
   })
 })

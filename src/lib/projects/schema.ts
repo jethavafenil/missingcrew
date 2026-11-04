@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { MAX_PROJECT_TAGS, pickPremade } from '@/lib/projectTags'
+import { MAX_PROJECT_TYPES, PROJECT_TYPES, joinProjectTypes, splitProjectTypes } from '@/lib/projectTypes'
 
 // Shared validation for creating/editing a project (POST and PUT routes).
 // Dates and budget are optional; blank form fields ('') count as "not set".
@@ -14,7 +15,29 @@ export const CONTACT_METHODS = ['email', 'phone', 'whatsapp'] as const
 export const projectInputSchema = z
   .object({
     projectName: z.string().trim().min(1, 'Project name is required').max(200),
-    projectType: z.string().trim().min(1, 'Please choose a project type').max(100),
+    // One or more types from the shared list, saved as "A, B" (legacy names are mapped to the new ones).
+    projectType: z
+      .string()
+      .trim()
+      .min(1, 'Please choose a project type')
+      .max(600)
+      .transform((v, ctx) => {
+        const types = Array.from(new Set(splitProjectTypes(v)))
+        if (types.length === 0) {
+          ctx.addIssue({ code: 'custom', message: 'Please choose a project type' })
+          return z.NEVER
+        }
+        if (types.length > MAX_PROJECT_TYPES) {
+          ctx.addIssue({ code: 'custom', message: `Choose up to ${MAX_PROJECT_TYPES} project types` })
+          return z.NEVER
+        }
+        const unknown = types.find((t) => !PROJECT_TYPES.includes(t))
+        if (unknown) {
+          ctx.addIssue({ code: 'custom', message: `"${unknown}" is not in the project type list` })
+          return z.NEVER
+        }
+        return joinProjectTypes(types)
+      }),
     rolesNeeded: z.array(z.string().trim().min(1)).min(1, 'Select at least one crew role').max(50),
     shootStartDate: optionalDate,
     shootEndDate: optionalDate,

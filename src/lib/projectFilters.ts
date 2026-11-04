@@ -4,6 +4,7 @@
 
 import { displayHashtags } from '@/lib/projectTags'
 import { shootTimestamp } from '@/lib/projects/format'
+import { canonicalProjectType, splitProjectTypes } from '@/lib/projectTypes'
 
 export interface ProjectFilterState {
   roles: string[]
@@ -25,7 +26,7 @@ export interface FilterableProject {
 
 const lower = (v: string) => v.toLowerCase()
 const roleName = (r: string | { role: string }) => (typeof r === 'string' ? r : r?.role)
-const typeParts = (t: string) => t.split(/[,/]+/).map((p) => p.trim()).filter(Boolean)
+const typeParts = (t: string) => splitProjectTypes(t)
 
 export function matchesDateRange(startDate: string | null, range: string, now: Date = new Date()): boolean {
   if (!range) return true
@@ -53,7 +54,10 @@ export function matchesDateRange(startDate: string | null, range: string, now: D
 export function filterProjects<T extends FilterableProject>(list: T[], f: ProjectFilterState, now: Date = new Date()): T[] {
   let out = list
   if (f.roles.length > 0) out = out.filter((p) => p.rolesNeeded.some((r) => f.roles.includes(roleName(r))))
-  if (f.projectTypes.length > 0) out = out.filter((p) => typeParts(p.projectType).some((t) => f.projectTypes.includes(t)))
+  if (f.projectTypes.length > 0) {
+    const wanted = new Set(f.projectTypes.map(canonicalProjectType))
+    out = out.filter((p) => typeParts(p.projectType).some((t) => wanted.has(t)))
+  }
   if (f.tags.length > 0) {
     const wanted = new Set(f.tags.map((t) => lower(t.replace(/^#/, ''))))
     out = out.filter((p) => displayHashtags(p.projectType, p.tags).some((h) => wanted.has(lower(h.replace(/^#/, '')))))

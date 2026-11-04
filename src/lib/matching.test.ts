@@ -8,7 +8,8 @@ describe('crewTags', () => {
       pastProjects: [{ type: 'Web Series' }, { type: 'Ads' }, { title: 'no type' }],
       customTags: ['thriller', '#Night Shoot', 'ads'],
     })
-    expect(tags).toEqual(['FeatureFilms', 'Ads', 'WebSeries', 'Thriller', 'NightShoot'])
+    // legacy names ("Feature Films", "Ads") count as the new ones ("Feature Film", "Ad Film")
+    expect(tags).toEqual(['FeatureFilm', 'AdFilm', 'WebSeries', 'Thriller', 'NightShoot'])
   })
   it('tolerates missing data', () => {
     expect(crewTags({})).toEqual([])

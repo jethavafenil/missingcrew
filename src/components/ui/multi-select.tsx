@@ -10,10 +10,13 @@ interface MultiSelectProps {
   onChange: (value: string[]) => void
   placeholder?: string
   searchable?: boolean
+  // pick exactly one (the list closes after a click) instead of ticking several
+  single?: boolean
+  max?: number
 }
 
 // Dropdown with checkboxes that stays open while you tick several options (fewer clicks).
-export function MultiSelect({ label, options, value, onChange, placeholder = 'Any', searchable = true }: MultiSelectProps) {
+export function MultiSelect({ label, options, value, onChange, placeholder = 'Any', searchable = true, single = false, max }: MultiSelectProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const box = useRef<HTMLDivElement>(null)
@@ -36,7 +39,15 @@ export function MultiSelect({ label, options, value, onChange, placeholder = 'An
 
   const q = query.trim().toLowerCase()
   const shown = useMemo(() => options.filter((o) => !q || (o.label ?? o.value).toLowerCase().includes(q)), [options, q])
-  const toggle = (v: string) => onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v])
+  const toggle = (v: string) => {
+    if (single) {
+      onChange(value.includes(v) ? [] : [v])
+      setOpen(false)
+      return
+    }
+    if (value.includes(v)) onChange(value.filter((x) => x !== v))
+    else if (!max || value.length < max) onChange([...value, v])
+  }
 
   return (
     <div ref={box} className="relative">
@@ -69,16 +80,18 @@ export function MultiSelect({ label, options, value, onChange, placeholder = 'An
           )}
           <ul className="max-h-60 overflow-y-auto py-1" role="listbox" aria-multiselectable="true">
             {shown.length === 0 && <li className="px-3 py-2 text-sm text-gray-500">Nothing found</li>}
-            {shown.map((o) => {
+            {shown.map((o, i) => {
               const on = value.includes(o.value)
+              const showGroup = !!o.group && (i === 0 || shown[i - 1].group !== o.group)
               return (
                 <li key={o.value} role="option" aria-selected={on}>
+                  {showGroup && <p className="bg-gray-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">{o.group}</p>}
                   <button
                     type="button"
                     onClick={() => toggle(o.value)}
                     className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-indigo-50 ${on ? 'bg-indigo-50/60 font-medium text-indigo-900' : 'text-gray-700'}`}
                   >
-                    <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${on ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'}`}>
+                    <span className={`flex h-4 w-4 shrink-0 items-center justify-center ${single ? 'rounded-full' : 'rounded'} border ${on ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'}`}>
                       {on && <Check className="h-3 w-3 text-white" />}
                     </span>
                     {o.label ?? o.value}
@@ -87,7 +100,7 @@ export function MultiSelect({ label, options, value, onChange, placeholder = 'An
               )
             })}
           </ul>
-          {value.length > 0 && (
+          {!single && value.length > 0 && (
             <div className="flex items-center justify-between border-t border-gray-100 px-3 py-2">
               <button type="button" onClick={() => onChange([])} className="text-xs font-medium text-gray-500 hover:text-red-600">
                 Clear

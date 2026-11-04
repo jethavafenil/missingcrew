@@ -1,3 +1,5 @@
+import { canonicalProjectType } from '@/lib/projectTypes'
+
 // Custom project hashtags: producers may add up to MAX_PROJECT_TAGS free-text tags
 // on top of the hashtag derived from the project type. Suggestions are only hints.
 
@@ -80,7 +82,7 @@ export function normalizeTags(list: string[]): string[] {
 // Hashtag derived from a project type: "Feature Films" -> "FeatureFilms".
 export function typeTag(type?: string | null): string {
   if (!type) return 'FilmProject'
-  return normalizeTag(type.replace(/[-_/,]+/g, ' ')) || 'FilmProject'
+  return normalizeTag(canonicalProjectType(type).replace(/[-_/,]+/g, ' ')) || 'FilmProject'
 }
 
 // Everything shown on a card: the type hashtag(s) first, then custom tags, no duplicates.

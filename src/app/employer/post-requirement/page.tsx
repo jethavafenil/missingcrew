@@ -8,7 +8,8 @@ import { Alert } from '@/components/ui/alert'
 import { departments } from '@/lib/departments'
 import { LocationAutocomplete } from '@/components/ui/location-autocomplete'
 import { todayInputValue } from '@/lib/utils'
-import { PROJECT_TYPES, DEFAULT_SCREENING_QUESTIONS } from '@/lib/projectTypes'
+import { PROJECT_TYPE_OPTIONS, MAX_PROJECT_TYPES, DEFAULT_SCREENING_QUESTIONS, joinProjectTypes, splitProjectTypes } from '@/lib/projectTypes'
+import { MultiSelect } from '@/components/ui/multi-select'
 import { MAX_PROJECT_TAGS } from '@/lib/projectTags'
 import { TagPicker } from '@/components/ui/tag-picker'
 
@@ -268,23 +269,30 @@ function PostRequirementClient() {
                 />
               </div>
 
-              {/* Project Type */}
+              {/* Project types: pick several from the list, type to search */}
               <div>
-                <label htmlFor="projectType" className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Project Type *
+                  <span className="text-gray-400 font-normal ml-1">(pick up to {MAX_PROJECT_TYPES}, type to search)</span>
                 </label>
-                <select
-                  id="projectType"
-                  value={formData.projectType}
-                  onChange={(e) => setFormData(prev => ({ ...prev, projectType: e.target.value }))}
-                  className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-white"
-                  required
-                >
-                  <option value="">Select project type</option>
-                  {PROJECT_TYPES.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
+                <MultiSelect
+                  label="Project types"
+                  options={PROJECT_TYPE_OPTIONS}
+                  value={splitProjectTypes(formData.projectType)}
+                  onChange={(types) => setFormData(prev => ({ ...prev, projectType: joinProjectTypes(types) }))}
+                  placeholder="Select project types"
+                  max={MAX_PROJECT_TYPES}
+                />
+                {splitProjectTypes(formData.projectType).length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {splitProjectTypes(formData.projectType).map(t => (
+                      <span key={t} className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-800">
+                        {t}
+                        <button type="button" aria-label={`Remove ${t}`} className="text-indigo-500 hover:text-indigo-800" onClick={() => setFormData(prev => ({ ...prev, projectType: joinProjectTypes(splitProjectTypes(prev.projectType).filter(x => x !== t)) }))}>&times;</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Production House */}
