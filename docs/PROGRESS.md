@@ -12,9 +12,8 @@ together with `docs/HANDOFF.md` (architecture) and
 
 ## 2026-11-05 — Logo, role-only sign-in, long project-type list — built, NOT yet committed
 
-- **Logo**: new MissingCrew mark in header, footer and tab icon. The JPEG's grey background was removed (transparent PNG) and the
-  header/footer use a clean *symbol-only* version (the A and falling triangles, without the tiny "MISSING/CREW" lettering that was
-  unreadable at 40px). `public/logo.png` keeps the full logo for big placements. Generator script is not in the repo; the PNGs are.
+- **Logo**: the client's full logo (transparent PNG, `public/logo.png`) is used in header, footer and tab icon. A symbol-only
+  version was tried and reverted at the client's request.
 - **Sign in / sign up show one account type**: if the visitor came as crew or as a producer (home page choice, header link, "Post a
   Job") only that "I'm Crew" / "I'm Hiring" button is shown and the "Switch account" link is gone. With no hint both still show.
 - **Project types** (migration `0019`): the client's list of 50 types (Feature Film, Ad Film, Instagram Reel, Wedding Film, ...)
