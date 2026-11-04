@@ -10,6 +10,22 @@ together with `docs/HANDOFF.md` (architecture) and
 
 ---
 
+## 2026-11-05 — Logo, role-only sign-in, long project-type list — built, NOT yet committed
+
+- **Logo**: new MissingCrew mark in header, footer and tab icon. The JPEG's grey background was removed (transparent PNG) and the
+  header/footer use a clean *symbol-only* version (the A and falling triangles, without the tiny "MISSING/CREW" lettering that was
+  unreadable at 40px). `public/logo.png` keeps the full logo for big placements. Generator script is not in the repo; the PNGs are.
+- **Sign in / sign up show one account type**: if the visitor came as crew or as a producer (home page choice, header link, "Post a
+  Job") only that "I'm Crew" / "I'm Hiring" button is shown and the "Switch account" link is gone. With no hint both still show.
+- **Project types** (migration `0019`): the client's list of 50 types (Feature Film, Ad Film, Instagram Reel, Wedding Film, ...)
+  replaces the old 8, grouped. Producers pick up to 5 (searchable dropdown with tick-boxes, saved as "A, B"); crew pick the types
+  they work on (multi) and the type of each past project (searchable single) from the same list; both filter pages use the same
+  searchable list. The server only accepts listed types. Old names were migrated (Ads -> Ad Film, Feature Films -> Feature Film,
+  Documentary -> Documentary Film, Corporate Video -> Corporate Film, TV Series -> Television Series, Commercial -> Ad Film) and the
+  code maps them too, so old data still matches. Hashtags for types follow the new names (#AdFilm, #FeatureFilm).
+- Note: most older e2e scripts (phase1/2, tags, roles, edit-fresh, hire) were lost when the scratch folder was cleaned; the profile,
+  more and free suites remain plus 183 unit tests. Worth rebuilding the older ones from the unit tests when time allows.
+
 ## 2026-10-26 — Feedback round 2 — built, NOT yet committed
 
 - **Hashtags are premade only** (`TAG_GROUPS` in `src/lib/projectTags.ts` — edit that one list when the client sends theirs).
