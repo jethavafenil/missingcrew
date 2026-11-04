@@ -34,6 +34,9 @@ function AccountsContent() {
       ? roleParam
       : intent === 'post-requirement' ? 'employer' : 'crew'
   const [isLoading, setIsLoading] = useState(false)
+  // Who is signing in is already known (the home page choice / the "Post a Job" link), so
+  // only that account type is shown. Without any hint both are offered.
+  const roleLocked = roleParam === 'employer' || roleParam === 'crew' || intent === 'post-requirement'
 
   // A referral link (?ref=<code>) is remembered until the new member finishes their profile.
   const refCode = searchParams.get('ref')
@@ -182,12 +185,12 @@ function AccountsContent() {
             <div
               role="group"
               aria-label="Account type"
-              className="mx-auto mb-8 grid max-w-md grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1"
+              className={`mx-auto mb-8 grid gap-1 rounded-xl bg-gray-100 p-1 ${roleLocked ? 'max-w-[14rem] grid-cols-1' : 'max-w-md grid-cols-2'}`}
             >
               {([
                 { value: 'crew', label: "I'm Crew", hint: 'Looking for work', icon: '🎬' },
                 { value: 'employer', label: "I'm Hiring", hint: 'Producer / Client', icon: '💼' },
-              ] as const).map((option) => (
+              ] as const).filter((option) => !roleLocked || option.value === role).map((option) => (
                 <button
                   key={option.value}
                   type="button"
@@ -228,15 +231,17 @@ function AccountsContent() {
                           </div>
                         </div>
                       </div>
+                      {!roleLocked && (
                       <div className="mt-3 text-xs text-gray-500">
                         Wrong account type?{' '}
                         <button
                           onClick={() => handleRoleChange(role === 'crew' ? 'employer' : 'crew')}
-                          className="text-indigo-600 hover:text-indigo-700 font-semibold"
+                          className="text-indigo-600 hover:text-indigo-800 font-semibold"
                         >
                           Switch to {role === 'crew' ? 'Employer' : 'Crew'}
                         </button>
                       </div>
+                      )}
                     </div>
                     {intent === 'post-requirement' && role === 'employer' && (
                       <div className="mb-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
