@@ -6,6 +6,7 @@ import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimiter'
 import { z } from 'zod'
 import { parseBody } from '@/lib/api/body'
 import { monthlyApplicationLimit } from '@/lib/subscription/access'
+import { pickAllowedLinks } from '@/lib/crew/profileLinks'
 import { arePaidPlansEnabled } from '@/lib/settings'
 
 // Ids are TEXT (legacy cuids + new uuids); this charset also rules out
@@ -76,9 +77,11 @@ export async function POST(
       )
     }
 
-    const { answers, notes } = await parseBody(request, z.object({
+    const { answers, notes, links } = await parseBody(request, z.object({
       answers: z.union([z.array(z.unknown()), z.record(z.string(), z.unknown())]).default([]),
       notes: z.string().max(5000).optional(),
+      // profile links to send with the application (checked against the crew member's own profile below)
+      links: z.array(z.string().max(300)).max(20).default([]),
     }))
     const { id } = await context.params
     const projectId = await resolveProjectId(id)
@@ -110,7 +113,8 @@ export async function POST(
         projectId,
         crewId: crewProfile.id,
         crewNotes: notes,
-        answers: answers as Record<string, unknown> | string[]
+        answers: answers as Record<string, unknown> | string[],
+        sharedLinks: pickAllowedLinks(links, crewProfile),
       }, requester)
     } catch (err) {
       // Two concurrent requests can both pass the check above; the unique

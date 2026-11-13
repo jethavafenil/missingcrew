@@ -27,8 +27,14 @@ function renderModal(overrides: Partial<Parameters<typeof ApplyModal>[0]> = {}) 
 }
 
 describe('ApplyModal', () => {
+  // The modal first asks for the crew member's profile links, then posts the application.
+  const profileResponse = () => new Response(JSON.stringify({ data: { portfolioLinks: ['https://vimeo.com/1', 'https://example.com/reel'], imdbLink: '', showreelUrl: '' } }), { status: 200 })
+  const applyCalls = () => vi.mocked(fetch).mock.calls.filter((c) => String(c[0]).includes('/apply'))
+  const mockApply = (res: Response) =>
+    vi.mocked(fetch).mockImplementation(async (input) => (String(input).includes('/api/crew/profile') ? profileResponse() : res.clone()))
+
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn())
+    vi.stubGlobal('fetch', vi.fn(async () => profileResponse()))
   })
   afterEach(() => {
     vi.unstubAllGlobals()
@@ -45,20 +51,23 @@ describe('ApplyModal', () => {
     expect(screen.getByPlaceholderText(/share why you're the perfect fit/i)).toBeInTheDocument()
   })
 
-  it('applies in one click without answering the optional questions', async () => {
+  it('applies in one click without answering the optional questions, sending all profile links', async () => {
     const user = userEvent.setup()
-    vi.mocked(fetch).mockResolvedValueOnce(new Response('{}', { status: 200 }))
+    mockApply(new Response('{}', { status: 200 }))
     renderModal()
+    await screen.findByText('vimeo.com')
     await user.click(screen.getByRole('button', { name: /apply now/i }))
 
     expect(await screen.findByText(/application submitted!/i)).toBeInTheDocument()
-    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string)
+    const body = JSON.parse(applyCalls()[0][1]!.body as string)
     expect(body.answers).toEqual(['', ''])
+    // every profile link is ticked by default, so one click sends them all
+    expect(body.links).toEqual(['https://vimeo.com/1', 'https://example.com/reel'])
   })
 
   it('submits answers + notes to the apply endpoint and shows the success state', async () => {
     const user = userEvent.setup()
-    vi.mocked(fetch).mockResolvedValueOnce(new Response('{}', { status: 200 }))
+    mockApply(new Response('{}', { status: 200 }))
     const { onSuccess } = renderModal()
 
     const answers = screen.getAllByPlaceholderText(/type your answer here/i)
@@ -72,7 +81,7 @@ describe('ApplyModal', () => {
       '/api/projects/proj-1/apply',
       expect.objectContaining({ method: 'POST' }),
     )
-    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string)
+    const body = JSON.parse(applyCalls()[0][1]!.body as string)
     expect(body.answers).toEqual(['Because I love film.', 'Ten years of camera work.'])
     expect(body.notes).toBe('Available immediately.')
 
@@ -82,9 +91,7 @@ describe('ApplyModal', () => {
 
   it('surfaces the API error message on failure', async () => {
     const user = userEvent.setup()
-    vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify({ error: 'You already applied to this project' }), { status: 409 }),
-    )
+    mockApply(new Response(JSON.stringify({ error: 'You already applied to this project' }), { status: 409 }))
     renderModal()
     const answers = screen.getAllByPlaceholderText(/type your answer here/i)
     await user.type(answers[0], 'a')
@@ -92,5 +99,17 @@ describe('ApplyModal', () => {
     await user.click(screen.getByRole('button', { name: /apply now/i }))
 
     expect(await screen.findByText(/already applied/i)).toBeInTheDocument()
+  })
+
+  it('sends only the profile links that stay ticked', async () => {
+    const user = userEvent.setup()
+    mockApply(new Response('{}', { status: 200 }))
+    renderModal()
+    await screen.findByText('vimeo.com')
+    await user.click(screen.getByLabelText(/example\.com/i))
+    await user.click(screen.getByRole('button', { name: /apply now/i }))
+    await screen.findByText(/application submitted!/i)
+    const body = JSON.parse(applyCalls()[0][1]!.body as string)
+    expect(body.links).toEqual(['https://vimeo.com/1'])
   })
 })

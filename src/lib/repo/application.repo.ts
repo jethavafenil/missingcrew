@@ -13,7 +13,7 @@ import {
 } from '@/lib/repo/types'
 import type { Requester } from '@/lib/repo/types'
 
-export const APP_COLS = 'id,project_id,crew_id,status,applied_at,employer_notes,crew_notes,answers'
+export const APP_COLS = 'id,project_id,crew_id,status,applied_at,employer_notes,crew_notes,answers,shared_links'
 
 const APP_WITH_CREW = `${APP_COLS},crew:crew_profiles(id,"userId",photo,city,budget_range_min,budget_range_max,"budgetFlexible",primary_roles,years_experience,location,available_to_travel,availability,availability_start,availability_end,project_types,daily_budget_min,daily_budget_max,languages,imdb_link,portfolio_links,past_projects,referred_by,contact_whatsapp,terms_agreed,subscription_tier,trial_ends,completed,gender,first_project_date,showreel_url,custom_tags,created_at,updated_at,user:users(id,name,email,phone,"phoneVerified"))`
 
@@ -116,6 +116,7 @@ export interface CreateApplicationInput {
   crewId: string
   answers: Record<string, unknown> | string[]
   crewNotes?: string | null
+  sharedLinks?: string[]
 }
 
 export async function create(input: CreateApplicationInput, _req: Requester): Promise<ApplicationRow> {
@@ -127,6 +128,7 @@ export async function create(input: CreateApplicationInput, _req: Requester): Pr
       status: 'PENDING',
       answers: input.answers,
       crew_notes: input.crewNotes ?? null,
+      shared_links: input.sharedLinks ?? [],
       applied_at: now().toISOString(),
     })
     .select(APP_COLS)

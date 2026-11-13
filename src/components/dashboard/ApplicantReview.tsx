@@ -21,6 +21,8 @@ export interface ReviewApplication {
   appliedAt: string
   status?: AppStatus
   answers: string[]
+  sharedLinks?: string[]
+  crewNotes?: string | null
   crew: {
     id: string
     photo?: string | null
@@ -421,6 +423,27 @@ function ApplicantDetail({
                 <dd className="font-semibold text-gray-900">{app.crew.city || app.crew.location || '—'}{detail?.availableToTravel ? ' (open to travel)' : ''}</dd>
               </div>
             </dl>
+            {app.crewNotes && app.crewNotes.trim() && (
+              <div>
+                <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-gray-500">Bid letter</p>
+                <p className="whitespace-pre-line rounded-lg bg-gray-50 p-3 text-sm text-gray-700">{app.crewNotes}</p>
+              </div>
+            )}
+            {(app.sharedLinks ?? []).length > 0 && (
+              <div>
+                <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-gray-500">Links sent with this application</p>
+                <ul className="space-y-1.5">
+                  {(app.sharedLinks ?? []).map((url) => (
+                    <li key={url}>
+                      <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 truncate rounded-lg border border-gray-200 p-2.5 text-sm text-indigo-700 hover:bg-indigo-50">
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{url}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <p className="flex items-center gap-1.5 text-xs text-gray-500">
               <Clock className="h-3.5 w-3.5" /> Applied {new Date(app.appliedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
             </p>

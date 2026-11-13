@@ -139,6 +139,8 @@ export interface ApplicationRow {
   employerNotes: string | null
   crewNotes: string | null
   answers: Record<string, unknown> | string[]
+  // links the crew member chose to send with this application
+  sharedLinks: string[]
 }
 
 export interface ApplicationWithProjectAndCrewRow extends ApplicationRow {
@@ -388,6 +390,7 @@ export function mapApplication(r: RawRow): ApplicationRow {
     employerNotes: (r.employer_notes as string) ?? null,
     crewNotes: (r.crew_notes as string) ?? null,
     answers: asJsonObj(r.answers),
+    sharedLinks: asStringList(r.shared_links),
   }
 }
 

@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { departments } from '@/lib/departments'
 import { PROJECT_TYPE_OPTIONS, canonicalProjectType } from '@/lib/projectTypes'
+import { MAX_PROFILE_LINKS, cleanLink } from '@/lib/crew/profileLinks'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { MAX_CREW_TAGS } from '@/lib/matching'
 import { TagPicker } from '@/components/ui/tag-picker'
@@ -91,11 +92,18 @@ export function PortfolioStep({ data, onChange }: PortfolioStepProps) {
   })
 
   const [newLink, setNewLink] = useState('')
+  const [linkError, setLinkError] = useState('')
   const tags = data.customTags || []
 
   const addPortfolioLink = () => {
-    if (newLink.trim() && !portfolioLinks.includes(newLink.trim())) {
-      const updatedLinks = [...portfolioLinks, newLink.trim()]
+    const link = cleanLink(newLink)
+    if (!link) {
+      setLinkError('Please enter a full link, for example https://vimeo.com/yourname')
+      return
+    }
+    setLinkError('')
+    if (portfolioLinks.length < MAX_PROFILE_LINKS && !portfolioLinks.includes(link)) {
+      const updatedLinks = [...portfolioLinks, link]
       setPortfolioLinks(updatedLinks)
       onChange({ portfolioLinks: updatedLinks })
       setNewLink('')
@@ -274,7 +282,7 @@ export function PortfolioStep({ data, onChange }: PortfolioStepProps) {
       {/* Portfolio Links */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-3">
-          Portfolio Links *
+          Profile links * <span className="font-normal text-gray-500">({portfolioLinks.length}/{MAX_PROFILE_LINKS})</span>
         </label>
         
         {/* Add New Link */}
@@ -285,17 +293,19 @@ export function PortfolioStep({ data, onChange }: PortfolioStepProps) {
             value={newLink}
             onChange={(e) => setNewLink(e.target.value)}
             className="flex-1 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
-            disabled={portfolioLinks.length >= 5}
+            disabled={portfolioLinks.length >= MAX_PROFILE_LINKS}
           />
           <button
             type="button"
             onClick={addPortfolioLink}
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            disabled={portfolioLinks.length >= 5}
+            disabled={portfolioLinks.length >= MAX_PROFILE_LINKS}
           >
             Add
           </button>
         </div>
+
+        {linkError && <p className="-mt-2 mb-3 text-sm text-red-600">{linkError}</p>}
 
         {/* Portfolio Links List */}
         <div className="space-y-2">
@@ -320,7 +330,7 @@ export function PortfolioStep({ data, onChange }: PortfolioStepProps) {
         )}
 
         <p className="mt-2 text-sm text-gray-500">
-          Add links to your Vimeo, YouTube, Instagram, personal website, etc.
+          Add up to {MAX_PROFILE_LINKS} links (Vimeo, YouTube, Instagram, your website...). When you apply to a job you choose which ones to send.
         </p>
       </div>
 

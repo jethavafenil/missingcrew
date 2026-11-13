@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/ToastProvider'
 import { X, Calendar, MapPin, Users, FileText, CheckCircle2, AlertCircle } from 'lucide-react'
 import { markProjectAppliedLocally } from '@/lib/crew/applied-projects'
 import { formatShootRange } from '@/lib/projects/format'
+import { collectProfileLinks, type ProfileLink } from '@/lib/crew/profileLinks'
 
 interface Project {
   id: string
@@ -33,6 +34,26 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<{ [key: number]: string }>({})
   const [showSuccess, setShowSuccess] = useState(false)
+
+  // Links from the crew member's profile; they choose which ones go with this application.
+  const [profileLinks, setProfileLinks] = useState<ProfileLink[] | null>(null)
+  const [chosenLinks, setChosenLinks] = useState<string[]>([])
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/crew/profile')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled) return
+        const links = collectProfileLinks(d?.data ?? {})
+        setProfileLinks(links)
+        setChosenLinks(links.map((l) => l.url)) // everything ticked by default: apply in one click
+      })
+      .catch(() => !cancelled && setProfileLinks([]))
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const toggleLink = (url: string) => setChosenLinks((prev) => (prev.includes(url) ? prev.filter((u) => u !== url) : [...prev, url]))
 
   // Close on escape key
   useEffect(() => {
@@ -64,7 +85,8 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
         },
         body: JSON.stringify({
           answers,
-          notes
+          notes,
+          links: chosenLinks,
         }),
       })
 
@@ -260,10 +282,51 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
             </div>
           )}
 
-          {/* Additional Notes */}
+          {/* Links from the profile: pick what to send with this application */}
+          <div className="mb-6">
+            <h3 className="font-semibold text-gray-900 mb-1">Links to include</h3>
+            <p className="text-xs text-gray-500 mb-3">Choose which of your profile links the producer sees with this application.</p>
+            {profileLinks === null ? (
+              <p className="text-sm text-gray-400">Loading your links…</p>
+            ) : profileLinks.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                You have no profile links yet.{' '}
+                <a href="/crew/profile-setup" className="text-indigo-600 underline">Add up to 10 in your profile</a>.
+              </p>
+            ) : (
+              <>
+                <ul className="space-y-2">
+                  {profileLinks.map((l) => (
+                    <li key={l.url}>
+                      <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 hover:border-indigo-300">
+                        <input
+                          type="checkbox"
+                          checked={chosenLinks.includes(l.url)}
+                          onChange={() => toggleLink(l.url)}
+                          disabled={isSubmitting}
+                          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600"
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium text-gray-900">{l.label}</span>
+                          <span className="block truncate text-xs text-gray-500">{l.url}</span>
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-2 flex gap-3 text-xs">
+                  <button type="button" className="text-indigo-600 hover:underline" onClick={() => setChosenLinks(profileLinks.map((l) => l.url))}>Select all</button>
+                  <button type="button" className="text-gray-500 hover:underline" onClick={() => setChosenLinks([])}>Select none</button>
+                  <span className="text-gray-400">{chosenLinks.length} of {profileLinks.length} selected</span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Bid letter / notes */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Additional Notes
+              Bid letter
               <span className="text-gray-400 font-normal ml-1">(Optional)</span>
             </label>
             <textarea

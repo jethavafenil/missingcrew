@@ -6,6 +6,7 @@ import { trialEndsFromNow } from '@/lib/subscription/access'
 import { parseFirstProject, parseGender, parseShowreel } from '@/lib/crew/profileFields'
 import { sanitizeCrewTags } from '@/lib/matching'
 import { isEmailLike, isValidReferralCode } from '@/lib/referral'
+import { MAX_PROFILE_LINKS, sanitizeProfileLinks } from '@/lib/crew/profileLinks'
 
 
 export async function POST(request: NextRequest) {
@@ -61,6 +62,11 @@ export async function POST(request: NextRequest) {
     if (!Array.isArray(portfolioLinks)) {
       portfolioLinks = []
     }
+    if (portfolioLinks.length > MAX_PROFILE_LINKS) {
+      return NextResponse.json({ error: `You can keep up to ${MAX_PROFILE_LINKS} profile links` }, { status: 400 })
+    }
+    // valid http(s) links only, no duplicates
+    portfolioLinks = sanitizeProfileLinks(portfolioLinks)
 
     // Validate and normalize IMDb profile link if provided
     const imdbRaw = typeof profileData.imdbLink === 'string' ? profileData.imdbLink.trim() : ''
