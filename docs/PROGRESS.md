@@ -10,6 +10,18 @@ together with `docs/HANDOFF.md` (architecture) and
 
 ---
 
+## 2026-11-13 — Join As Crew, location suggestions, profile links per application — built, NOT yet committed
+
+- Header button "Join Now" now reads **Join As Crew** (**Join As Producer** on the producer pages, so the label matches where it goes).
+- **Location suggestions were not working because no LocationIQ key was set anywhere** (the Location boxes call LocationIQ). They now go
+  through our own `/api/locations` route: the key is a *server* variable `LOCATIONIQ_API_KEY` (never sent to the browser), answers are
+  cached for a day and visitors are rate limited so the free plan (about 5,000 requests/day) lasts. Without a key the box still works as
+  plain text. **Needs: create a LocationIQ account, copy the Access Token, add `LOCATIONIQ_API_KEY` in Vercel (and `.env.local`).**
+- **Profile links**: a crew member keeps up to **10** links (validated http/https, no duplicates, server enforces the limit). When
+  applying, a "Links to include" list (profile links + showreel + IMDb + past-project links, all ticked by default) lets them choose
+  what goes with the application; the server only accepts links that are really on their profile. The producer sees the chosen
+  links and the bid letter in the applicant preview. Migration `0020` adds `applications.shared_links`.
+
 ## 2026-11-05 — Logo, role-only sign-in, long project-type list — built, NOT yet committed
 
 - **Logo**: the client's full logo (transparent PNG, `public/logo.png`) is used in header, footer and tab icon. A symbol-only

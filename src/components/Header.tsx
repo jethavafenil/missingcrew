@@ -219,7 +219,7 @@ export default function Header() {
                   href={joinHref}
                   className="inline-flex items-center justify-center whitespace-nowrap px-3.5 py-2 text-sm sm:px-5 sm:py-2.5 sm:text-base bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 font-medium shadow-md hover:shadow-lg transition-all duration-200"
                 >
-                  Join Now
+                  {selectedRole === 'employer' ? 'Join As Producer' : 'Join As Crew'}
                 </Link>
               </>
             )}
