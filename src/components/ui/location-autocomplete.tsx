@@ -1,7 +1,5 @@
 'use client'
 
-import { publicEnv } from '@/lib/public-env'
-
 import { useState, useRef, useEffect } from 'react'
 
 interface LocationAutocompleteProps {
@@ -55,79 +53,44 @@ export function LocationAutocomplete({
     }
   }, [])
 
-  // Handle location search using LocationIQ Autocomplete API
+  // Suggestions come from /api/locations (LocationIQ behind our server, key stays private).
+  // Debounced, and an older request is cancelled when the next letter is typed.
   const handleLocationSearch = (input: string) => {
-    if (!input.trim()) {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (input.trim().length < 2) {
+      abortControllerRef.current?.abort()
       setSuggestions([])
       setShowDropdown(false)
       return
     }
-
-    const apiKey = publicEnv.NEXT_PUBLIC_LOCATIONIQ_API_KEY
-    if (!apiKey) return // key not configured — no suggestions
-
-    // Debounce: LocationIQ's free tier allows ~2 req/sec, and firing on
-    // every keystroke triggers 429s.
-    if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      void fetchSuggestions(input, apiKey)
+      void fetchSuggestions(input.trim())
     }, 300)
   }
 
-  const fetchSuggestions = async (input: string, apiKey: string) => {
-    // Abort previous request if still pending
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-    }
-
+  const fetchSuggestions = async (input: string) => {
+    abortControllerRef.current?.abort()
+    const controller = new AbortController()
+    abortControllerRef.current = controller
     try {
       setIsLoading(true)
-      abortControllerRef.current = new AbortController()
-
-      // LocationIQ Autocomplete API
-      const response = await fetch(
-        `https://api.locationiq.com/v1/autocomplete?` +
-        `key=${apiKey}&` +
-        `q=${encodeURIComponent(input)}&` +
-        `limit=5&` +
-        `format=json&` +
-        `tag=place:city,place:town,place:village`, // Focus on cities
-        { signal: abortControllerRef.current.signal }
-      )
-
+      const response = await fetch(`/api/locations?q=${encodeURIComponent(input)}`, { signal: controller.signal })
       if (!response.ok) {
-        // Transient API errors (rate limit, invalid key) — show nothing
-        // rather than throwing a console error per keystroke.
-        if (response.status !== 429) {
-          console.error('LocationIQ request failed with status:', response.status)
-        }
         setSuggestions([])
         setShowDropdown(false)
         return
       }
-
       const data = await response.json()
-      if (Array.isArray(data)) {
-        // Remove duplicates based on place_id and display_name
-        const uniqueSuggestions = data.filter((suggestion, index, self) =>
-          index === self.findIndex(s =>
-            s.place_id === suggestion.place_id ||
-            cleanDisplayName(s.display_name).toLowerCase() === cleanDisplayName(suggestion.display_name).toLowerCase()
-          )
-        )
-        setSuggestions(uniqueSuggestions)
-        setShowDropdown(uniqueSuggestions.length > 0)
-      } else {
+      const list: LocationIQSuggestion[] = Array.isArray(data?.suggestions) ? data.suggestions : []
+      setSuggestions(list)
+      setShowDropdown(list.length > 0)
+    } catch (error: unknown) {
+      if ((error as Error).name !== 'AbortError') {
         setSuggestions([])
         setShowDropdown(false)
       }
-    } catch (error: unknown) {
-      if ((error as Error).name !== 'AbortError') {
-        console.error('Error fetching location suggestions:', error)
-      }
     } finally {
-      setIsLoading(false)
+      if (abortControllerRef.current === controller) setIsLoading(false)
     }
   }
 
