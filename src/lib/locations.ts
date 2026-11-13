@@ -8,13 +8,19 @@ export interface LocationSuggestion {
   lon: string
 }
 
-// "Delhi, Delhi, Delhi, India" -> "Delhi, India"
+// Parts that only make the name longer: postal codes and administrative areas.
+const NOISE = /(^\d+$)|((district|subdistrict|taluka|taluk|tehsil|tahsil|division|county)$)/i
+
+// "Mumbai, Mumbai Suburban District, Maharashtra, 400051, India" -> "Mumbai, Maharashtra, India"
+// (also "Delhi, Delhi, Delhi, India" -> "Delhi, India"). The first part (the place itself) is always kept.
 export function cleanDisplayName(displayName: string): string {
   const seen = new Set<string>()
   const parts: string[] = []
-  for (const raw of displayName.split(',')) {
-    const part = raw.trim()
+  const pieces = displayName.split(',')
+  for (let i = 0; i < pieces.length; i++) {
+    const part = pieces[i].trim()
     const key = part.toLowerCase()
+    if (i > 0 && NOISE.test(part)) continue
     if (part && !seen.has(key)) {
       seen.add(key)
       parts.push(part)

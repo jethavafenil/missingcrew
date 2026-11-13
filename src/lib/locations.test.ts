@@ -6,6 +6,12 @@ describe('cleanDisplayName', () => {
     expect(cleanDisplayName('Delhi, Delhi, Delhi, India')).toBe('Delhi, India')
     expect(cleanDisplayName('Surat, Gujarat, India')).toBe('Surat, Gujarat, India')
   })
+  it('drops postal codes and district names but keeps the place itself', () => {
+    expect(cleanDisplayName('Mumbai, Mumbai Suburban District, Maharashtra, 400051, India')).toBe('Mumbai, Maharashtra, India')
+    expect(cleanDisplayName('Surat, Katargam Taluka, Gujarat, 395008, India')).toBe('Surat, Gujarat, India')
+    expect(cleanDisplayName('Multai, Multai Tahsil, Madhya Pradesh, India')).toBe('Multai, Madhya Pradesh, India')
+    expect(cleanDisplayName('400051')).toBe('400051')
+  })
 })
 
 describe('normalizeLocationQuery', () => {
