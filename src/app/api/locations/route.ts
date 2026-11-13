@@ -32,10 +32,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Most users are in India: look there first and only widen the search when it finds little.
+    // Most users are in India: look there first and only widen the search when it finds nothing
+    // (a second round trip would make every suggestion slower).
     let res = await search('in')
     let suggestions = res.ok ? simplifySuggestions(await res.json()) : []
-    if (res.status === 404 || (res.ok && suggestions.length < 2)) {
+    if (res.status === 404 || (res.ok && suggestions.length === 0)) {
       const wide = await search()
       if (wide.ok) {
         const more = simplifySuggestions(await wide.json(), 8)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { cleanDisplayName, type LocationSuggestion } from '@/lib/locations'
 
 interface LocationAutocompleteProps {
   value: string
@@ -10,161 +11,175 @@ interface LocationAutocompleteProps {
   label?: string
 }
 
-interface LocationIQSuggestion {
-  place_id: string
-  display_name: string
-  lat: string
-  lon: string
-  type: string
+type SearchState = 'idle' | 'searching' | 'done' | 'failed'
+
+// Answers already fetched in this browser tab, so retyping or backspacing is instant.
+const answered = new Map<string, LocationSuggestion[]>()
+const CACHE_LIMIT = 60
+
+function remember(query: string, list: LocationSuggestion[]) {
+  if (answered.size >= CACHE_LIMIT) answered.delete(answered.keys().next().value as string)
+  answered.set(query, list)
 }
 
 export function LocationAutocomplete({
   value,
   onChange,
-  placeholder = "Enter city, country...",
-  className = "",
-  label
+  placeholder = 'Enter city, country...',
+  className = '',
+  label,
 }: LocationAutocompleteProps) {
-  const [suggestions, setSuggestions] = useState<LocationIQSuggestion[]>([])
-  const [showDropdown, setShowDropdown] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const abortControllerRef = useRef<AbortController | null>(null)
+  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([])
+  const [state, setState] = useState<SearchState>('idle')
+  const [open, setOpen] = useState(false)
+  const boxRef = useRef<HTMLDivElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Close dropdown when clicking outside
+  // Close when clicking outside or pressing Escape
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false)
-      }
+    const close = (e: MouseEvent | TouchEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false)
     }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', close)
+    document.addEventListener('touchstart', close)
+    document.addEventListener('keydown', esc)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('touchstart', close)
+      document.removeEventListener('keydown', esc)
+    }
   }, [])
 
   // Cancel any in-flight request and pending debounce on unmount
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
-      abortControllerRef.current?.abort()
+      abortRef.current?.abort()
     }
   }, [])
 
-  // Suggestions come from /api/locations (LocationIQ behind our server, key stays private).
-  // Debounced, and an older request is cancelled when the next letter is typed.
-  const handleLocationSearch = (input: string) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (input.trim().length < 2) {
-      abortControllerRef.current?.abort()
+  const fetchSuggestions = async (query: string) => {
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    try {
+      const response = await fetch(`/api/locations?q=${encodeURIComponent(query)}`, { signal: controller.signal })
+      if (!response.ok) throw new Error(`status ${response.status}`)
+      const data = await response.json()
+      if (data?.error) throw new Error(String(data.error))
+      const list: LocationSuggestion[] = Array.isArray(data?.suggestions) ? data.suggestions : []
+      if (data?.configured !== false) remember(query.toLowerCase(), list)
+      if (abortRef.current !== controller) return
+      setSuggestions(list)
+      setState('done')
+    } catch (error: unknown) {
+      if ((error as Error).name === 'AbortError') return
+      if (abortRef.current !== controller) return
       setSuggestions([])
-      setShowDropdown(false)
+      setState('failed')
+    }
+  }
+
+  // Suggestions come from /api/locations (LocationIQ behind our server, key stays private).
+  // The "Searching..." row shows right away; the request follows after a short pause in typing.
+  const search = (input: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    const query = input.trim()
+    if (query.length < 2) {
+      abortRef.current?.abort()
+      setSuggestions([])
+      setState('idle')
+      setOpen(false)
       return
     }
-    debounceRef.current = setTimeout(() => {
-      void fetchSuggestions(input.trim())
-    }, 300)
-  }
-
-  const fetchSuggestions = async (input: string) => {
-    abortControllerRef.current?.abort()
-    const controller = new AbortController()
-    abortControllerRef.current = controller
-    try {
-      setIsLoading(true)
-      const response = await fetch(`/api/locations?q=${encodeURIComponent(input)}`, { signal: controller.signal })
-      if (!response.ok) {
-        setSuggestions([])
-        setShowDropdown(false)
-        return
-      }
-      const data = await response.json()
-      const list: LocationIQSuggestion[] = Array.isArray(data?.suggestions) ? data.suggestions : []
-      setSuggestions(list)
-      setShowDropdown(list.length > 0)
-    } catch (error: unknown) {
-      if ((error as Error).name !== 'AbortError') {
-        setSuggestions([])
-        setShowDropdown(false)
-      }
-    } finally {
-      if (abortControllerRef.current === controller) setIsLoading(false)
+    setOpen(true)
+    const cached = answered.get(query.toLowerCase())
+    if (cached) {
+      abortRef.current?.abort()
+      setSuggestions(cached)
+      setState('done')
+      return
     }
+    setState('searching')
+    debounceRef.current = setTimeout(() => void fetchSuggestions(query), 250)
   }
 
-  // Clean up location display name (remove duplicates like "Delhi, Delhi, Delhi")
-  const cleanDisplayName = (displayName: string): string => {
-    const parts = displayName.split(', ')
-    const uniqueParts: string[] = []
-    const seen = new Set<string>()
-    
-    for (const part of parts) {
-      const normalized = part.trim().toLowerCase()
-      if (!seen.has(normalized)) {
-        seen.add(normalized)
-        uniqueParts.push(part.trim())
-      }
-    }
-    
-    return uniqueParts.join(', ')
-  }
-
-  // Handle location selection
-  const handleLocationSelect = (displayName: string) => {
-    const cleaned = cleanDisplayName(displayName)
-    onChange(cleaned)
+  const select = (displayName: string) => {
+    onChange(cleanDisplayName(displayName))
     setSuggestions([])
-    setShowDropdown(false)
+    setState('idle')
+    setOpen(false)
   }
+
+  const searching = state === 'searching'
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {label}
-        </label>
-      )}
+    <div className="relative" ref={boxRef}>
+      {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
       <input
-        ref={inputRef}
         type="text"
         value={value}
+        autoComplete="off"
+        aria-busy={searching}
+        aria-autocomplete="list"
         onChange={(e) => {
           onChange(e.target.value)
-          handleLocationSearch(e.target.value)
+          search(e.target.value)
         }}
         onFocus={() => {
-          if (value && suggestions.length > 0) {
-            setShowDropdown(true)
-          }
+          if (state !== 'idle' && value.trim().length >= 2) setOpen(true)
         }}
         placeholder={placeholder}
         className={className}
       />
-      
-      {/* Location Dropdown */}
-      {showDropdown && (suggestions.length > 0 || isLoading) && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-          {isLoading ? (
-            <div className="px-4 py-3 text-sm text-gray-500 text-center">
-              Loading...
+
+      {/* Spinner inside the box while places are being searched */}
+      {searching && (
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" aria-hidden="true">
+          <svg className="h-4 w-4 animate-spin text-indigo-500" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+          </svg>
+        </span>
+      )}
+
+      {open && state !== 'idle' && (
+        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg" role="listbox">
+          {searching && (
+            <div className="flex items-center justify-center gap-2 px-4 py-3 text-sm text-gray-500" role="status">
+              <svg className="h-4 w-4 animate-spin text-indigo-500" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+              Searching places...
             </div>
-          ) : (
-            suggestions.map((suggestion, index) => (
+          )}
+
+          {state === 'done' &&
+            suggestions.map((s, index) => (
               <button
-                key={`${suggestion.place_id}-${index}`}
+                key={`${s.place_id}-${index}`}
                 type="button"
-                onClick={() => handleLocationSelect(suggestion.display_name)}
-                className="w-full text-left px-4 py-2 hover:bg-indigo-50 text-gray-700 flex items-start text-sm"
+                role="option"
+                aria-selected="false"
+                onClick={() => select(s.display_name)}
+                className="flex w-full items-start px-4 py-2 text-left text-sm text-gray-700 hover:bg-indigo-50"
               >
-                <svg className="w-4 h-4 mr-2 mt-0.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span>{cleanDisplayName(suggestion.display_name)}</span>
+                <span>{cleanDisplayName(s.display_name)}</span>
               </button>
-            ))
+            ))}
+
+          {state === 'done' && suggestions.length === 0 && (
+            <div className="px-4 py-3 text-sm text-gray-500">No matching place found. You can keep what you typed.</div>
+          )}
+          {state === 'failed' && (
+            <div className="px-4 py-3 text-sm text-gray-500">Could not load suggestions right now. You can type the place yourself.</div>
           )}
         </div>
       )}
