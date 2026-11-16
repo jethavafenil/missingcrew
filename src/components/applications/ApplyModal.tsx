@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/ToastProvider'
 import { X, Calendar, MapPin, Users, FileText, CheckCircle2, AlertCircle } from 'lucide-react'
 import { markProjectAppliedLocally } from '@/lib/crew/applied-projects'
 import { formatShootRange } from '@/lib/projects/format'
-import { collectProfileLinks, type ProfileLink } from '@/lib/crew/profileLinks'
+import { ProfileGate, useCrewReadiness } from '@/components/crew/ProfileGate'
 
 interface Project {
   id: string
@@ -36,24 +36,15 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
   const [showSuccess, setShowSuccess] = useState(false)
 
   // Links from the crew member's profile; they choose which ones go with this application.
-  const [profileLinks, setProfileLinks] = useState<ProfileLink[] | null>(null)
-  const [chosenLinks, setChosenLinks] = useState<string[]>([])
-  useEffect(() => {
-    let cancelled = false
-    fetch('/api/crew/profile')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (cancelled) return
-        const links = collectProfileLinks(d?.data ?? {})
-        setProfileLinks(links)
-        setChosenLinks(links.map((l) => l.url)) // everything ticked by default: apply in one click
-      })
-      .catch(() => !cancelled && setProfileLinks([]))
-    return () => {
-      cancelled = true
-    }
-  }, [])
-  const toggleLink = (url: string) => setChosenLinks((prev) => (prev.includes(url) ? prev.filter((u) => u !== url) : [...prev, url]))
+  // Photo, 10-digit mobile number and city are required before applying (the server checks too).
+  const { readiness, failed: readinessFailed } = useCrewReadiness()
+  const profileLinks = readiness ? readiness.links : readinessFailed ? [] : null
+  const gaps = readiness?.core ?? []
+  const blocked = gaps.length > 0
+  const [chosenLinks, setChosenLinks] = useState<string[] | null>(null)
+  // everything ticked by default: apply in one click
+  const chosen = chosenLinks ?? (profileLinks ? profileLinks.map((l) => l.url) : [])
+  const toggleLink = (url: string) => setChosenLinks(chosen.includes(url) ? chosen.filter((u) => u !== url) : [...chosen, url])
 
   // Close on escape key
   useEffect(() => {
@@ -86,7 +77,7 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
         body: JSON.stringify({
           answers,
           notes,
-          links: chosenLinks,
+          links: chosen,
         }),
       })
 
@@ -188,6 +179,16 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
 
         {/* Scrollable Content */}
         <div className="overflow-y-auto max-h-[calc(90vh-200px)] p-6">
+
+          {blocked && (
+            <div className="mb-6">
+              <ProfileGate
+                gaps={gaps}
+                title="Complete your profile to apply"
+                text="Producers only see applications from profiles with a photo, a mobile number and a city."
+              />
+            </div>
+          )}
 
           {/* Project Details */}
           <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-5 rounded-xl mb-6 border border-gray-200">
@@ -301,7 +302,7 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
                       <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 hover:border-indigo-300">
                         <input
                           type="checkbox"
-                          checked={chosenLinks.includes(l.url)}
+                          checked={chosen.includes(l.url)}
                           onChange={() => toggleLink(l.url)}
                           disabled={isSubmitting}
                           className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600"
@@ -317,7 +318,7 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
                 <div className="mt-2 flex gap-3 text-xs">
                   <button type="button" className="text-indigo-600 hover:underline" onClick={() => setChosenLinks(profileLinks.map((l) => l.url))}>Select all</button>
                   <button type="button" className="text-gray-500 hover:underline" onClick={() => setChosenLinks([])}>Select none</button>
-                  <span className="text-gray-400">{chosenLinks.length} of {profileLinks.length} selected</span>
+                  <span className="text-gray-400">{chosen.length} of {profileLinks.length} selected</span>
                 </div>
               </>
             )}
@@ -358,7 +359,7 @@ export function ApplyModal({ project, onClose, onSuccess }: ApplyModalProps) {
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || blocked || (readiness === undefined && !readinessFailed)}
                 className="flex-1 sm:flex-none bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg"
               >
                 {isSubmitting ? (

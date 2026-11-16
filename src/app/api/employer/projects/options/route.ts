@@ -24,6 +24,7 @@ export const GET = handle(async () => {
         shootStartDate: p.shootStartDate,
         shootEndDate: p.shootEndDate,
         productionHouse: p.productionHouse,
+        projectCode: p.projectCode,
       })),
   }
 })

@@ -28,10 +28,19 @@ function renderModal(overrides: Partial<Parameters<typeof ApplyModal>[0]> = {}) 
 
 describe('ApplyModal', () => {
   // The modal first asks for the crew member's profile links, then posts the application.
-  const profileResponse = () => new Response(JSON.stringify({ data: { portfolioLinks: ['https://vimeo.com/1', 'https://example.com/reel'], imdbLink: '', showreelUrl: '' } }), { status: 200 })
+  const readinessBody = (core: string[] = []) => ({
+    hasProfile: true,
+    core,
+    full: core,
+    links: [
+      { url: 'https://vimeo.com/1', kind: 'portfolio', label: 'vimeo.com' },
+      { url: 'https://example.com/reel', kind: 'portfolio', label: 'example.com' },
+    ],
+  })
+  const profileResponse = () => new Response(JSON.stringify(readinessBody()), { status: 200 })
   const applyCalls = () => vi.mocked(fetch).mock.calls.filter((c) => String(c[0]).includes('/apply'))
   const mockApply = (res: Response) =>
-    vi.mocked(fetch).mockImplementation(async (input) => (String(input).includes('/api/crew/profile') ? profileResponse() : res.clone()))
+    vi.mocked(fetch).mockImplementation(async (input) => (String(input).includes('/api/crew/readiness') ? profileResponse() : res.clone()))
 
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn(async () => profileResponse()))
@@ -111,5 +120,21 @@ describe('ApplyModal', () => {
     await screen.findByText(/application submitted!/i)
     const body = JSON.parse(applyCalls()[0][1]!.body as string)
     expect(body.links).toEqual(['https://vimeo.com/1'])
+  })
+
+  it('blocks applying and asks to complete the profile when photo, phone or city is missing', async () => {
+    const user = userEvent.setup()
+    vi.mocked(fetch).mockImplementation(async (input) =>
+      String(input).includes('/api/crew/readiness') ? new Response(JSON.stringify(readinessBody(['photo', 'phone'])), { status: 200 }) : new Response('{}', { status: 200 }),
+    )
+    renderModal()
+    expect(await screen.findByText(/complete your profile to apply/i)).toBeInTheDocument()
+    expect(screen.getByText(/add a profile photo/i)).toBeInTheDocument()
+    expect(screen.getByText(/10-digit mobile number/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /complete my profile/i })).toHaveAttribute('href', expect.stringContaining('/crew/profile-setup'))
+    const apply = screen.getByRole('button', { name: /apply now/i })
+    expect(apply).toBeDisabled()
+    await user.click(apply)
+    expect(applyCalls()).toHaveLength(0)
   })
 })

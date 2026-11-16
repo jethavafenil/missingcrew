@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { useProjectStatus } from '@/lib/crew/applied-projects'
 import { formatBudget, formatShootRange } from '@/lib/projects/format'
 import { displayHashtags } from '@/lib/projectTags'
+import { ProjectFacts } from '@/components/projects/ProjectFacts'
 
 interface Project {
   id: string
@@ -24,6 +25,10 @@ interface Project {
   budgetMax?: number | null
   budgetFixed?: boolean | null
   productionHouse?: string | null
+  projectCode?: string | null
+  productionStatus?: string | null
+  shootDuration?: string | null
+  shootDurationCustom?: string | null
   tags?: string[]
   location: string
   description: string
@@ -236,6 +241,14 @@ export function ProjectCard({
                 <h3 className="text-base sm:text-lg font-bold bg-gradient-to-r from-indigo-900 via-purple-900 to-pink-900 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent group-hover:from-indigo-600 group-hover:via-purple-600 group-hover:to-pink-600 transition-all duration-300 leading-snug">
                   {project.projectName}
                 </h3>
+
+                <ProjectFacts
+                  className="mt-2"
+                  projectCode={project.projectCode}
+                  productionStatus={project.productionStatus}
+                  shootDuration={project.shootDuration}
+                  shootDurationCustom={project.shootDurationCustom}
+                />
 
                 {/* Hashtags */}
                 <div className="flex flex-wrap items-center gap-1.5 mt-2">

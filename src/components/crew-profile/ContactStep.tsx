@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { PhoneVerification } from './PhoneVerification'
 import { recalledReferral } from '@/lib/referral'
+import { toE164India } from '@/lib/phone'
 import { usePaidPlansEnabled } from '@/lib/useSiteSettings'
 
 interface ContactData {
@@ -147,7 +148,7 @@ export function ContactStep({ data, onChange }: ContactStepProps) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <PhoneVerification
-              phoneNumber={data.phone}
+              phoneNumber={toE164India(data.phone)}
               onVerificationComplete={handleVerificationComplete}
             />
             <button

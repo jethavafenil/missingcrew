@@ -7,6 +7,7 @@ import { MAX_PROFILE_LINKS, cleanLink } from '@/lib/crew/profileLinks'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { MAX_CREW_TAGS } from '@/lib/matching'
 import { TagPicker } from '@/components/ui/tag-picker'
+import { showreelStatus } from '@/lib/crew/profileDraft'
 
 interface PastProject {
   title: string
@@ -28,6 +29,7 @@ interface PortfolioData {
 interface PortfolioStepProps {
   data: Partial<PortfolioData>
   onChange: (data: Partial<PortfolioData>) => void
+  saveState?: 'idle' | 'saving' | 'saved' | 'error'
 }
 
 // Lightweight searchable role component
@@ -78,7 +80,8 @@ function RoleSearch({ value, onSelect }: { value: string; onSelect: (role: strin
   )
 }
 
-export function PortfolioStep({ data, onChange }: PortfolioStepProps) {
+export function PortfolioStep({ data, onChange, saveState = 'idle' }: PortfolioStepProps) {
+  const reel = showreelStatus(data.showreelUrl)
   // Convert portfolioLinks to a consistent format (array of strings)
   const [portfolioLinks, setPortfolioLinks] = useState<string[]>(() => {
     if (!data.portfolioLinks) return []
@@ -232,9 +235,27 @@ export function PortfolioStep({ data, onChange }: PortfolioStepProps) {
           placeholder="https://www.youtube.com/watch?v=..."
           value={data.showreelUrl || ''}
           onChange={(e) => onChange({ showreelUrl: e.target.value })}
-          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+          aria-invalid={reel.state === 'invalid'}
+          className={`mt-1 block w-full border rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 ${reel.state === 'invalid' ? 'border-red-500' : 'border-gray-300'}`}
         />
-        <p className="mt-1 text-sm text-gray-500">YouTube or Vimeo. It plays when producers hover your card and sits on top of your profile.</p>
+        {reel.state === 'invalid' ? (
+          <p className="mt-1 text-sm text-red-600" role="alert">{reel.message}</p>
+        ) : reel.state === 'empty' ? (
+          <p className="mt-1 text-sm text-gray-500">YouTube or Vimeo. It plays when producers hover your card and sits on top of your profile.</p>
+        ) : (
+          <div className="mt-2 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 p-2" aria-live="polite">
+            {reel.state === 'video' && reel.thumbnail ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={reel.thumbnail} alt="Showreel preview" className="h-14 w-24 shrink-0 rounded object-cover" />
+            ) : null}
+            <div className="min-w-0 text-sm">
+              <p className="truncate font-medium text-gray-800">{reel.url}</p>
+              <p className={saveState === 'error' ? 'text-red-600' : 'text-green-700'}>
+                {saveState === 'saving' ? 'Saving…' : saveState === 'error' ? 'Could not save yet' : 'Link added and saved'}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Hashtags: premade list only */}

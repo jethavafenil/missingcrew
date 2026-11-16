@@ -12,8 +12,8 @@ import {
 export const HIRE_COLS = 'id,employer_id,crew_id,project_id,role,message,status,created_at,responded_at'
 
 const WITH_RELATIONS =
-  `${HIRE_COLS},` +
-  'project:projects(id,project_name,project_type,location,shoot_start_date,shoot_end_date,production_house),' +
+  `${HIRE_COLS},agreement,` +
+  'project:projects(id,project_name,project_type,location,shoot_start_date,shoot_end_date,production_house,project_code,shoot_duration,shoot_duration_custom,production_status,budget_min,budget_max,budget_fixed),' +
   'employer:employer_profiles(id,"userId",company_name,user:users(id,name,email)),' +
   'crew:crew_profiles(id,"userId",photo,primary_roles,user:users(id,name,email))'
 
@@ -39,6 +39,13 @@ function toWithRelations(raw: Raw): HireRequestWithRelations {
           shootStartDate: asDate(p.shoot_start_date),
           shootEndDate: asDate(p.shoot_end_date),
           productionHouse: (p.production_house as string | null) ?? null,
+          projectCode: (p.project_code as string | null) ?? null,
+          shootDuration: (p.shoot_duration as string | null) ?? null,
+          shootDurationCustom: (p.shoot_duration_custom as string | null) ?? null,
+          productionStatus: (p.production_status as string | null) ?? null,
+          budgetMin: p.budget_min == null ? null : Number(p.budget_min),
+          budgetMax: p.budget_max == null ? null : Number(p.budget_max),
+          budgetFixed: p.budget_fixed == null ? null : p.budget_fixed === true,
         }
       : undefined,
     employer: e
@@ -141,4 +148,17 @@ export async function reopenCancelled(id: string, input: { role?: string | null;
     .maybeSingle()
   throwOnError('hireRequest.reopenCancelled', error)
   return data ? mapHireRequest(data as unknown as Raw) : null
+}
+
+// Writes the agreement once. A second call (two tabs, a retry) leaves the first one untouched.
+export async function saveAgreement(id: string, agreement: unknown): Promise<boolean> {
+  const { data, error } = await getServiceClient()
+    .from('hire_requests')
+    .update({ agreement })
+    .eq('id', id)
+    .is('agreement', null)
+    .select('id')
+    .maybeSingle()
+  throwOnError('hireRequest.saveAgreement', error)
+  return !!data
 }

@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { parseBody } from '@/lib/api/body'
 import { monthlyApplicationLimit } from '@/lib/subscription/access'
 import { pickAllowedLinks } from '@/lib/crew/profileLinks'
+import { coreGaps, gapMessage } from '@/lib/crew/readiness'
 import { arePaidPlansEnabled } from '@/lib/settings'
 
 // Ids are TEXT (legacy cuids + new uuids); this charset also rules out
@@ -58,6 +59,15 @@ export async function POST(
       return NextResponse.json(
         { error: 'Complete your profile before applying' },
         { status: 400 }
+      )
+    }
+
+    // Photo, a 10-digit mobile number and a city are required before anyone can apply.
+    const gaps = coreGaps({ photo: crewProfile.photo, phone: crewProfile.user?.phone, city: crewProfile.city })
+    if (gaps.length > 0) {
+      return NextResponse.json(
+        { error: `Complete your profile before applying: ${gapMessage(gaps)}.`, code: 'PROFILE_INCOMPLETE', gaps },
+        { status: 403 }
       )
     }
 

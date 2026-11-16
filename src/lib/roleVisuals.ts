@@ -20,6 +20,7 @@ export type RoleKey =
   | 'general'
 
 const DEPARTMENT_KEYS: Array<[string, RoleKey]> = [
+  ['acting', 'casting'],
   ['direction', 'direction'],
   ['camera', 'camera'],
   ['lighting', 'lighting'],

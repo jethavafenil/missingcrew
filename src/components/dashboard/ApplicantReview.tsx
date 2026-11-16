@@ -12,6 +12,7 @@ import { swrFetcher } from '@/lib/swr'
 import { crewTags, matchScore } from '@/lib/matching'
 import { formatShootRange } from '@/lib/projects/format'
 import { displayHashtags } from '@/lib/projectTags'
+import { ProjectFacts } from '@/components/projects/ProjectFacts'
 import type { Credit } from '@/lib/crew/credits'
 
 type AppStatus = 'PENDING' | 'SHORTLISTED' | 'REJECTED' | 'HIRED'
@@ -51,6 +52,10 @@ export interface ReviewProject {
   shootEndDate: string | null
   rolesNeeded: string[]
   tags?: string[]
+  projectCode?: string | null
+  productionStatus?: string | null
+  shootDuration?: string | null
+  shootDurationCustom?: string | null
   budgetMin?: number | null
   budgetMax?: number | null
   questions: string[]
@@ -183,6 +188,13 @@ export function ApplicantReview({ projects, updatingId, error, onStatus, onRefre
             </span>
             <span>{formatShootRange(project.shootStartDate, project.shootEndDate)}</span>
           </p>
+          <ProjectFacts
+            className="mt-1.5"
+            projectCode={project.projectCode}
+            productionStatus={project.productionStatus}
+            shootDuration={project.shootDuration}
+            shootDurationCustom={project.shootDurationCustom}
+          />
           <p className="mt-1 flex flex-wrap gap-1.5">
             {displayHashtags(project.projectType, project.tags).map((t) => (
               <span key={t} className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">

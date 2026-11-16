@@ -20,6 +20,7 @@ interface ProjectOption {
   shootStartDate: string | null
   shootEndDate: string | null
   productionHouse: string | null
+  projectCode?: string | null
 }
 
 interface HireNowModalProps {
@@ -48,6 +49,8 @@ export function HireNowModal({ open, onOpenChange, crewId, crewName, crewRoles, 
   const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
+  // second step: "This will send an agreement to the crew member" - confirm before anything is sent
+  const [confirming, setConfirming] = useState(false)
   const initialised = useRef(false)
 
   const project = projects.find((p) => p.id === projectId)
@@ -91,17 +94,26 @@ export function HireNowModal({ open, onOpenChange, crewId, crewName, crewRoles, 
   const reset = () => {
     setError('')
     setSent(false)
+    setConfirming(false)
     setEdited(false)
     initialised.current = false
     setProjectId('')
   }
 
-  const submit = async (e: React.FormEvent) => {
+  // Step 1: the form only asks for confirmation.
+  const review = (e: React.FormEvent) => {
     e.preventDefault()
     if (!project) {
       setError('Please choose a project first')
       return
     }
+    setError('')
+    setConfirming(true)
+  }
+
+  // Step 2: the producer confirmed, send it.
+  const submit = async () => {
+    if (!project) return
     setSending(true)
     setError('')
     try {
@@ -112,6 +124,7 @@ export function HireNowModal({ open, onOpenChange, crewId, crewName, crewRoles, 
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body.error || 'Could not send the request. Please try again.')
+      setConfirming(false)
       setSent(true)
       onSent?.()
     } catch (err) {
@@ -138,7 +151,7 @@ export function HireNowModal({ open, onOpenChange, crewId, crewName, crewRoles, 
           <div className="space-y-4 py-2 text-center">
             <p className="text-lg font-semibold text-green-700">Request sent!</p>
             <p className="text-sm text-gray-600">
-              {crewName} will get a notification and an email. You will be told when they accept or decline.
+              {crewName} will get a notification and an email. When they accept, the agreement is signed and you will be told.
             </p>
             <Button onClick={() => onOpenChange(false)} className="w-full">Done</Button>
           </div>
@@ -154,8 +167,32 @@ export function HireNowModal({ open, onOpenChange, crewId, crewName, crewRoles, 
               Post a project
             </Link>
           </div>
+        ) : confirming && project ? (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+              <p className="font-semibold text-emerald-900">This will send an agreement to the crew member.</p>
+              <p className="mt-1 text-sm text-emerald-800">
+                {crewName} will be asked to accept it. Once they do, the project officially starts and the agreement is signed by both of you.
+              </p>
+            </div>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+              <dt className="text-gray-500">Project</dt>
+              <dd className="font-medium text-gray-900">{project.projectName}{project.projectCode ? ` (${project.projectCode})` : ''}</dd>
+              <dt className="text-gray-500">Role</dt>
+              <dd className="font-medium text-gray-900">{role || 'To be agreed'}</dd>
+            </dl>
+            {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" disabled={sending} onClick={() => setConfirming(false)}>
+                Back
+              </Button>
+              <Button type="button" disabled={sending} onClick={submit} className="bg-emerald-600 hover:bg-emerald-700">
+                {sending ? 'Sending…' : 'Yes, send agreement'}
+              </Button>
+            </div>
+          </div>
         ) : (
-          <form onSubmit={submit} className="space-y-4">
+          <form onSubmit={review} className="space-y-4">
             <div>
               <label htmlFor="hire-project" className="mb-1 block text-sm font-semibold text-gray-700">Project</label>
               <select id="hire-project" value={projectId} onChange={(e) => setProjectId(e.target.value)} className={fieldClass} required>
@@ -195,10 +232,10 @@ export function HireNowModal({ open, onOpenChange, crewId, crewName, crewRoles, 
 
             {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
-            <Button type="submit" disabled={sending || !message.trim()} className="h-12 w-full bg-emerald-600 text-base hover:bg-emerald-700">
-              {sending ? 'Sending…' : 'Send hire request'}
+            <Button type="submit" disabled={!message.trim()} className="h-12 w-full bg-emerald-600 text-base hover:bg-emerald-700">
+              Continue
             </Button>
-            <p className="text-center text-xs text-gray-500">The request goes to {crewName} for approval.</p>
+            <p className="text-center text-xs text-gray-500">You will be asked to confirm before anything is sent.</p>
           </form>
         )}
       </DialogContent>

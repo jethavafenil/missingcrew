@@ -5,6 +5,13 @@ interface Department {
 
 export const departments: Department[] = [
   {
+    department: "Acting",
+    roles: [
+      "Actor",
+      "Actress"
+    ]
+  },
+  {
     department: "Direction Department",
     roles: [
       "Director",

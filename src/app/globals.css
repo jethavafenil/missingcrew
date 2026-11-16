@@ -133,3 +133,11 @@
   padding-right: 5px;
 }
 
+
+/* Printing a page (for example an agreement) leaves out the site header and footer. */
+@media print {
+  header,
+  footer {
+    display: none !important;
+  }
+}

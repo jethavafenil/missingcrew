@@ -8,6 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { swrFetcher } from '@/lib/swr'
 import { formatShootRange } from '@/lib/projects/format'
 import { slugifyName } from '@/lib/utils'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ProfileGate, useCrewReadiness } from '@/components/crew/ProfileGate'
+import { FileText } from 'lucide-react'
 
 type Status = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED'
 
@@ -18,7 +21,7 @@ interface CrewViewRequest {
   message: string
   createdAt: string
   producerName: string
-  project?: { id: string; projectName: string; location: string; shootStartDate: string | null; shootEndDate: string | null; productionHouse: string | null }
+  project?: { id: string; projectName: string; location: string; shootStartDate: string | null; shootEndDate: string | null; productionHouse: string | null; projectCode?: string | null }
 }
 
 interface EmployerViewRequest {
@@ -28,7 +31,7 @@ interface EmployerViewRequest {
   message: string
   createdAt: string
   crew?: { id: string; name: string; primaryRoles: string[] }
-  project?: { id: string; projectName: string }
+  project?: { id: string; projectName: string; projectCode?: string | null }
 }
 
 const STATUS_STYLE: Record<Status, string> = {
@@ -45,6 +48,9 @@ export function HireRequestsPanel({ viewer }: { viewer: 'CREW' | 'EMPLOYER' }) {
   })
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  // the request the crew member is about to accept (asks for confirmation first)
+  const [accepting, setAccepting] = useState<CrewViewRequest | null>(null)
+  const { readiness, loading: readinessLoading } = useCrewReadiness(viewer === 'CREW' && accepting !== null)
   const requests = data?.requests ?? []
 
   const answer = async (id: string, status: 'ACCEPTED' | 'DECLINED' | 'CANCELLED') => {
@@ -58,6 +64,7 @@ export function HireRequestsPanel({ viewer }: { viewer: 'CREW' | 'EMPLOYER' }) {
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body.error || 'Could not update the request')
+      setAccepting(null)
       await mutate()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update the request')
@@ -103,6 +110,7 @@ export function HireRequestsPanel({ viewer }: { viewer: 'CREW' | 'EMPLOYER' }) {
                     {c.project?.projectName}
                     {c.role ? ` · ${c.role}` : ''}
                   </p>
+                  {c.project?.projectCode && <p className="font-mono text-xs text-gray-500">{c.project.projectCode}</p>}
                   {c.project && (
                     <p className="text-xs text-gray-500">
                       {c.project.location} · {formatShootRange(c.project.shootStartDate, c.project.shootEndDate)}
@@ -113,9 +121,14 @@ export function HireRequestsPanel({ viewer }: { viewer: 'CREW' | 'EMPLOYER' }) {
                 <Badge className={STATUS_STYLE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
               </div>
               <p className="mt-3 whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">{c.message}</p>
+              {c.status === 'ACCEPTED' && (
+                <Link href={`/agreements/${c.id}`} className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-700 hover:underline">
+                  <FileText className="h-4 w-4" aria-hidden="true" /> View agreement
+                </Link>
+              )}
               {c.status === 'PENDING' && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Button size="sm" disabled={busy} onClick={() => answer(c.id, 'ACCEPTED')} className="bg-emerald-600 hover:bg-emerald-700">
+                  <Button size="sm" disabled={busy} onClick={() => setAccepting(c)} className="bg-emerald-600 hover:bg-emerald-700">
                     Accept
                   </Button>
                   <Button size="sm" variant="outline" disabled={busy} onClick={() => answer(c.id, 'DECLINED')}>
@@ -142,10 +155,16 @@ export function HireRequestsPanel({ viewer }: { viewer: 'CREW' | 'EMPLOYER' }) {
                   {e.project?.projectName}
                   {e.role ? ` · ${e.role}` : ''}
                 </p>
+                {e.project?.projectCode && <p className="font-mono text-xs text-gray-500">{e.project.projectCode}</p>}
               </div>
               <Badge className={STATUS_STYLE[e.status]}>{STATUS_LABEL[e.status]}</Badge>
             </div>
             <p className="mt-3 whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">{e.message}</p>
+            {e.status === 'ACCEPTED' && (
+              <Link href={`/agreements/${e.id}`} className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-700 hover:underline">
+                <FileText className="h-4 w-4" aria-hidden="true" /> View agreement
+              </Link>
+            )}
             {e.status === 'PENDING' && (
               <div className="mt-3">
                 <Button size="sm" variant="outline" disabled={busy} onClick={() => answer(e.id, 'CANCELLED')}>
@@ -156,6 +175,49 @@ export function HireRequestsPanel({ viewer }: { viewer: 'CREW' | 'EMPLOYER' }) {
           </div>
         )
       })}
+
+      {/* Accepting starts the project and signs the agreement, so it asks first */}
+      <Dialog open={accepting !== null} onOpenChange={(open) => !open && busyId === null && setAccepting(null)}>
+        <DialogContent className="w-[94vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Accept this hire request?</DialogTitle>
+            <DialogDescription>
+              {accepting?.project?.projectName}
+              {accepting?.role ? ` · ${accepting.role}` : ''}
+              {accepting?.project?.projectCode ? ` · ${accepting.project.projectCode}` : ''}
+            </DialogDescription>
+          </DialogHeader>
+
+          {readinessLoading || !readiness ? (
+            <p className="py-4 text-center text-sm text-gray-500">Checking your profile…</p>
+          ) : readiness.full.length > 0 ? (
+            <ProfileGate
+              gaps={readiness.full}
+              title="Complete your full profile first"
+              text="Before you accept, your profile needs to be complete so the producer sees who they are hiring."
+            />
+          ) : (
+            <p className="rounded-lg bg-emerald-50 p-4 text-sm font-medium text-emerald-900">
+              This will officially start the project and sign an agreement.
+            </p>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" disabled={busyId !== null} onClick={() => setAccepting(null)}>
+              Cancel
+            </Button>
+            {readiness && readiness.full.length === 0 && (
+              <Button
+                disabled={busyId !== null}
+                onClick={() => accepting && answer(accepting.id, 'ACCEPTED')}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {busyId !== null ? 'Signing…' : 'Accept and sign agreement'}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

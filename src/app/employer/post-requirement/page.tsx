@@ -12,6 +12,7 @@ import { PROJECT_TYPE_OPTIONS, MAX_PROJECT_TYPES, DEFAULT_SCREENING_QUESTIONS, j
 import { MultiSelect } from '@/components/ui/multi-select'
 import { MAX_PROJECT_TAGS } from '@/lib/projectTags'
 import { TagPicker } from '@/components/ui/tag-picker'
+import { CUSTOM_DURATION_UNITS, PRODUCTION_STATUSES, SHOOT_DURATIONS, buildCustomDuration, customDurationError, parseCustomDuration } from '@/lib/projects/details'
 
 function PostRequirementClient() {
   const { data: session, status } = useSession()
@@ -35,6 +36,10 @@ function PostRequirementClient() {
     budgetMax: '',
     budgetFixed: false,
     productionHouse: '',
+    shootDuration: '',
+    customDurationValue: '',
+    customDurationUnit: 'days',
+    productionStatus: '',
     tags: [] as string[],
     description: '',
     questions: [...DEFAULT_SCREENING_QUESTIONS] as string[],
@@ -86,6 +91,10 @@ function PostRequirementClient() {
           budgetMax: project.budgetMax != null ? String(project.budgetMax) : '',
           budgetFixed: !!project.budgetFixed,
           productionHouse: project.productionHouse || '',
+          shootDuration: project.shootDuration || '',
+          customDurationValue: parseCustomDuration(project.shootDurationCustom)?.value?.toString() ?? '',
+          customDurationUnit: parseCustomDuration(project.shootDurationCustom)?.unit ?? 'days',
+          productionStatus: project.productionStatus || '',
           tags: Array.isArray(project.tags) ? project.tags : [],
           description: project.description || '',
           questions: Array.isArray(project.questions) ? project.questions : [],
@@ -153,8 +162,15 @@ function PostRequirementClient() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
     setError('')
+
+    // A custom shoot duration needs a whole number and a unit.
+    const customDuration = formData.shootDuration === 'custom' ? buildCustomDuration(formData.customDurationValue, formData.customDurationUnit) : null
+    if (formData.shootDuration === 'custom' && !customDuration) {
+      setError(customDurationError())
+      return
+    }
+    setIsLoading(true)
 
     try {
       const url = projectId 
@@ -172,6 +188,7 @@ function PostRequirementClient() {
           // Blank optional fields are sent as empty so the server treats them as "not set".
           budgetMax: formData.budgetFixed ? formData.budgetMin : formData.budgetMax,
           questions: formData.questions.map(q => q.trim()).filter(Boolean),
+          shootDurationCustom: customDuration ?? '',
         }),
       })
 
@@ -436,6 +453,71 @@ function PostRequirementClient() {
                   min={formData.shootStartDate || (projectId ? undefined : todayInputValue())}
                   className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
                 />
+              </div>
+            </div>
+
+            {/* Shoot duration and project status */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="shootDuration" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Shoot duration
+                  <span className="text-gray-400 font-normal ml-1">(Optional)</span>
+                </label>
+                <select
+                  id="shootDuration"
+                  value={formData.shootDuration}
+                  onChange={(e) => setFormData(prev => ({ ...prev, shootDuration: e.target.value }))}
+                  className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-gray-900 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                >
+                  <option value="">Select shoot duration</option>
+                  {SHOOT_DURATIONS.map(d => (
+                    <option key={d.value} value={d.value}>{d.label}</option>
+                  ))}
+                </select>
+                {formData.shootDuration === 'custom' && (
+                  <div className="mt-3 flex gap-3">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={365}
+                      step={1}
+                      aria-label="Custom duration number"
+                      placeholder="e.g. 10"
+                      value={formData.customDurationValue}
+                      onChange={(e) => setFormData(prev => ({ ...prev, customDurationValue: e.target.value }))}
+                      className="w-32 border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                    <select
+                      aria-label="Custom duration unit"
+                      value={formData.customDurationUnit}
+                      onChange={(e) => setFormData(prev => ({ ...prev, customDurationUnit: e.target.value }))}
+                      className="flex-1 border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-gray-900 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      {CUSTOM_DURATION_UNITS.map(u => (
+                        <option key={u} value={u}>{u.charAt(0).toUpperCase() + u.slice(1)}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label htmlFor="productionStatus" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Project status
+                  <span className="text-gray-400 font-normal ml-1">(Optional)</span>
+                </label>
+                <select
+                  id="productionStatus"
+                  value={formData.productionStatus}
+                  onChange={(e) => setFormData(prev => ({ ...prev, productionStatus: e.target.value }))}
+                  className="block w-full border border-gray-300 rounded-lg shadow-sm px-4 py-3 text-gray-900 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                >
+                  <option value="">Select project status</option>
+                  {PRODUCTION_STATUSES.map(s => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">Helps crew know how firm the project is.</p>
               </div>
             </div>
 

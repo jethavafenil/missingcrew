@@ -13,6 +13,10 @@ interface Project {
   budgetMax?: number | null
   budgetFixed?: boolean | null
   productionHouse?: string | null
+  projectCode?: string | null
+  productionStatus?: string | null
+  shootDuration?: string | null
+  shootDurationCustom?: string | null
   tags?: string[]
   location: string
   description: string

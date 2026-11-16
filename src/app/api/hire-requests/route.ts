@@ -32,6 +32,7 @@ function toCrewView(r: HireRequestWithRelations) {
       shootStartDate: r.project.shootStartDate,
       shootEndDate: r.project.shootEndDate,
       productionHouse: r.project.productionHouse,
+      projectCode: r.project.projectCode,
     },
   }
 }
@@ -45,7 +46,7 @@ function toEmployerView(r: HireRequestWithRelations) {
     createdAt: r.createdAt,
     respondedAt: r.respondedAt,
     crew: r.crew && { id: r.crew.id, name: r.crew.user?.name ?? 'Crew member', photo: r.crew.photo, primaryRoles: r.crew.primaryRoles },
-    project: r.project && { id: r.project.id, projectName: r.project.projectName },
+    project: r.project && { id: r.project.id, projectName: r.project.projectName, projectCode: r.project.projectCode },
   }
 }
 

@@ -26,10 +26,18 @@ export function parseFirstProject(raw: unknown, now: Date = new Date()): Parsed<
   return { ok: true, value: date }
 }
 
+// A link pasted without "https://" (youtu.be/abc, www.youtube.com/watch?v=abc) gets it added.
+// An explicit http:// is left alone so it can be refused.
+export function withHttps(raw: string): string {
+  const value = raw.trim()
+  if (!value || /^[a-z][a-z0-9+.-]*:\/\//i.test(value)) return value
+  return /^[\w-]+(\.[\w-]+)+(\/|\?|#|$)/.test(value) ? `https://${value}` : value
+}
+
 export function parseShowreel(raw: unknown): Parsed<string | null> {
   if (raw == null || raw === '') return { ok: true, value: null }
   if (typeof raw !== 'string') return { ok: false, error: 'Showreel link is invalid' }
-  const value = raw.trim()
+  const value = withHttps(raw)
   if (value.length > 300) return { ok: false, error: 'Showreel link is too long' }
   let url: URL
   try {

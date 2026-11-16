@@ -15,7 +15,7 @@ import {
 import type { Requester } from '@/lib/repo/types'
 
 export const PROJECT_COLS =
-  'id,employer_id,project_name,project_type,roles_needed,shoot_start_date,shoot_end_date,location,budget_per_role,budget_min,budget_max,budget_fixed,production_house,tags,description,questions,contact_preference,status,created_at,updated_at'
+  'id,employer_id,project_name,project_type,roles_needed,shoot_start_date,shoot_end_date,location,budget_per_role,budget_min,budget_max,budget_fixed,production_house,tags,project_code,shoot_duration,shoot_duration_custom,production_status,description,questions,contact_preference,status,created_at,updated_at'
 
 export const PROJECT_WITH_EMPLOYER = `${PROJECT_COLS},employer:employer_profiles(id,"userId",company_name,company_website,completed,created_at,updated_at,user:users(id,name,email,image,phone,"phoneVerified"))`
 
@@ -158,6 +158,9 @@ export interface CreateProjectInput {
   budgetFixed?: boolean
   productionHouse?: string | null
   tags?: string[]
+  shootDuration?: string | null
+  shootDurationCustom?: string | null
+  productionStatus?: string | null
   description: string
   questions: Record<string, unknown> | string[]
   contactPreference: Record<string, unknown> | string[]
@@ -181,6 +184,9 @@ export async function create(input: CreateProjectInput, _req: Requester): Promis
       budget_fixed: input.budgetFixed ?? false,
       production_house: input.productionHouse ?? null,
       tags: input.tags ?? [],
+      shoot_duration: input.shootDuration ?? null,
+      shoot_duration_custom: input.shootDurationCustom ?? null,
+      production_status: input.productionStatus ?? null,
       description: input.description,
       questions: input.questions,
       contact_preference: input.contactPreference,
@@ -207,6 +213,9 @@ export interface UpdateProjectInput {
   budgetFixed?: boolean
   productionHouse?: string | null
   tags?: string[]
+  shootDuration?: string | null
+  shootDurationCustom?: string | null
+  productionStatus?: string | null
   description?: string
   questions?: Record<string, unknown> | string[]
   contactPreference?: Record<string, unknown> | string[]
@@ -227,6 +236,9 @@ export async function update(id: string, input: UpdateProjectInput, _req: Reques
   if (input.budgetFixed !== undefined) patch.budget_fixed = input.budgetFixed
   if (input.productionHouse !== undefined) patch.production_house = input.productionHouse
   if (input.tags !== undefined) patch.tags = input.tags
+  if (input.shootDuration !== undefined) patch.shoot_duration = input.shootDuration
+  if (input.shootDurationCustom !== undefined) patch.shoot_duration_custom = input.shootDurationCustom
+  if (input.productionStatus !== undefined) patch.production_status = input.productionStatus
   if (input.description !== undefined) patch.description = input.description
   if (input.questions !== undefined) patch.questions = input.questions
   if (input.contactPreference !== undefined) patch.contact_preference = input.contactPreference

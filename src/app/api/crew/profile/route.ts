@@ -7,6 +7,8 @@ import { parseFirstProject, parseGender, parseShowreel } from '@/lib/crew/profil
 import { sanitizeCrewTags } from '@/lib/matching'
 import { isEmailLike, isValidReferralCode } from '@/lib/referral'
 import { MAX_PROFILE_LINKS, sanitizeProfileLinks } from '@/lib/crew/profileLinks'
+import { MOBILE_MESSAGE, toNationalMobile } from '@/lib/phone'
+import { fullGaps, gapMessage } from '@/lib/crew/readiness'
 
 
 export async function POST(request: NextRequest) {
@@ -128,6 +130,38 @@ export async function POST(request: NextRequest) {
       imdbLink: imdbLink
     }
 
+    // Mobile number: exactly 10 digits (a pasted +91 number is reduced to its 10 digits).
+    let nationalPhone: string | undefined
+    if (phone !== undefined && phone !== null) {
+      const raw = typeof phone === 'string' ? phone.trim() : ''
+      if (raw === '') nationalPhone = ''
+      else {
+        nationalPhone = toNationalMobile(raw)
+        if (!nationalPhone) return NextResponse.json({ error: MOBILE_MESSAGE, code: 'INVALID_PHONE' }, { status: 400 })
+      }
+    }
+
+    // First check if a profile already exists (with the member's saved mobile number)
+    const existingProfile = await crewProfileRepo.findByUserIdWithUser(session.user.id)
+
+    // Saving the profile as complete needs photo, 10-digit mobile number, city and a primary role,
+    // whether they arrive in this request or were saved earlier.
+    if (completed === true) {
+      const gaps = fullGaps({
+        photo: profileData.photo !== undefined ? profileData.photo : existingProfile?.photo,
+        phone: nationalPhone !== undefined ? nationalPhone : existingProfile?.user?.phone,
+        city: profileData.city !== undefined ? profileData.city : existingProfile?.city,
+        primaryRoles: profileData.primaryRoles !== undefined ? profileData.primaryRoles : existingProfile?.primaryRoles,
+        completed: true,
+      })
+      if (gaps.length > 0) {
+        return NextResponse.json(
+          { error: `To finish your profile: ${gapMessage(gaps)}.`, code: 'PROFILE_INCOMPLETE', gaps },
+          { status: 400 },
+        )
+      }
+    }
+
     // Update User and CrewProfile separately to avoid transaction timeout
     let crewProfile;
 
@@ -138,7 +172,7 @@ export async function POST(request: NextRequest) {
       phoneVerified?: boolean;
     } = {}
     if (name !== undefined) userUpdateData.name = name
-    if (phone !== undefined) userUpdateData.phone = phone
+    if (nationalPhone !== undefined) userUpdateData.phone = nationalPhone
     if (phoneVerified !== undefined) userUpdateData.phoneVerified = phoneVerified
 
     if (Object.keys(userUpdateData).length > 0) {
@@ -149,10 +183,6 @@ export async function POST(request: NextRequest) {
     // Remove id from create data if it exists to avoid conflicts
     const { id: _, ...createData } = completeProfileData
 
-    // First check if a profile already exists
-    const existingProfile = await crewProfileRepo.findByUserId(session.user.id, requester)
-
-    // Log the profile data for debugging
 
     // Check if this is a new profile completion with referral
     const isCompletingWithReferral = completed && 
@@ -201,7 +231,7 @@ export async function POST(request: NextRequest) {
 
     if (existingProfile) {
       // Update existing profile - remove user data from update
-      const { user, completed, ...profileDataWithoutUser } = completeProfileData
+      const { user, ...profileDataWithoutUser } = completeProfileData
 
       // Convert arrays to JSON format for Prisma
       // Build updateData from only provided keys to avoid resetting fields inadvertently
@@ -220,6 +250,9 @@ export async function POST(request: NextRequest) {
         else updateData[key] = (profileDataWithoutUser as any)[key]
       }
 
+
+      // "Complete Profile" on the last step marks the profile complete (it used to be dropped here)
+      if (completed === true) updateData.completed = true
 
       // Profiles that somehow have no trial yet get the standard trial (referrer gets the bonus)
       if (!existingProfile.trialEnds) {
@@ -248,6 +281,7 @@ export async function POST(request: NextRequest) {
 
       // All new users get the standard trial (referrer gets the bonus)
       createDataWithArrays.trialEnds = trialEndsFromNow()
+      if (completed === true) (createDataWithArrays as Record<string, unknown>).completed = true
 
       crewProfile = await crewProfileRepo.create(
         {
@@ -333,7 +367,7 @@ export async function GET() {
           data: {
             ...crewProfile,
             name: crewProfile.user?.name,
-            phone: crewProfile.user?.phone,
+            phone: toNationalMobile(crewProfile.user?.phone),
             phoneVerified: crewProfile.user?.phoneVerified ?? false,
             primaryRoles: primaryRoles,
             projectTypes: projectTypes,

@@ -112,6 +112,11 @@ export interface ProjectRow {
   budgetFixed: boolean
   productionHouse: string | null
   tags: string[]
+  // unique, human-friendly ID shown everywhere (MC-000123); set by the database
+  projectCode: string
+  shootDuration: string | null
+  shootDurationCustom: string | null
+  productionStatus: string | null
   description: string
   questions: Record<string, unknown> | string[]
   contactPreference: Record<string, unknown> | string[]
@@ -371,6 +376,10 @@ export function mapProject(r: RawRow): ProjectRow {
     budgetFixed: r.budget_fixed === true,
     productionHouse: (r.production_house as string | null) ?? null,
     tags: asStringList(r.tags),
+    projectCode: (r.project_code as string) ?? '',
+    shootDuration: (r.shoot_duration as string | null) ?? null,
+    shootDurationCustom: (r.shoot_duration_custom as string | null) ?? null,
+    productionStatus: (r.production_status as string | null) ?? null,
     description: r.description as string,
     questions: asJsonObj(r.questions),
     contactPreference: asJsonObj(r.contact_preference),
@@ -486,6 +495,8 @@ export interface HireRequestRow {
   status: HireRequestStatus
   createdAt: Date
   respondedAt: Date | null
+  // frozen agreement written when the crew member accepts (see src/lib/agreements)
+  agreement: unknown | null
 }
 
 export interface HireRequestWithRelations extends HireRequestRow {
@@ -497,6 +508,13 @@ export interface HireRequestWithRelations extends HireRequestRow {
     shootStartDate: Date | null
     shootEndDate: Date | null
     productionHouse: string | null
+    projectCode: string | null
+    shootDuration: string | null
+    shootDurationCustom: string | null
+    productionStatus: string | null
+    budgetMin: number | null
+    budgetMax: number | null
+    budgetFixed: boolean | null
   }
   employer?: { id: string; userId: string; companyName: string; user?: { id: string; name: string | null; email: string } }
   crew?: { id: string; userId: string; photo: string | null; primaryRoles: string[]; user?: { id: string; name: string | null; email: string } }
@@ -513,5 +531,6 @@ export function mapHireRequest(r: RawRow): HireRequestRow {
     status: r.status as HireRequestStatus,
     createdAt: asDate(r.created_at)!,
     respondedAt: asDate(r.responded_at),
+    agreement: r.agreement ?? null,
   }
 }

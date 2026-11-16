@@ -10,7 +10,10 @@ import { AvailabilityStep } from '@/components/crew-profile/AvailabilityStep'
 import { PortfolioStep } from '@/components/crew-profile/PortfolioStep'
 import { ContactStep } from '@/components/crew-profile/ContactStep'
 import { Button } from '@/components/ui/button'
-import { Check, ChevronLeft, ChevronRight, Save, Sparkles } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Save, Sparkles, AlertCircle } from 'lucide-react'
+import { GAP_LABELS, coreGaps, fullGaps } from '@/lib/crew/readiness'
+import { buildDraft } from '@/lib/crew/profileDraft'
+import { isSafeReturnPath } from '@/lib/utils'
 
 // Define the complete form data type
 interface CrewProfileFormData {
@@ -76,6 +79,12 @@ export default function CrewProfileSetup() {
   const [isLoading, setIsLoading] = useState(false)
   const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout>()
   const [referralApplied, setReferralApplied] = useState(false)
+  // required fields that are still empty are marked once the member tries to continue
+  const [showErrors, setShowErrors] = useState(false)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [saveError, setSaveError] = useState('')
+  const [submitError, setSubmitError] = useState('')
+  const [problems, setProblems] = useState<Record<string, string>>({})
 
   // Fetch user profile data on mount
   useEffect(() => {
@@ -130,92 +139,73 @@ export default function CrewProfileSetup() {
     }
   }, [session, status, router])
 
-  const saveProgress = useCallback(async () => {
-    if (!session?.user?.id) return
-
-    try {
-      // Only save if we have meaningful data to save
-      if (Object.keys(formData).length === 0) return
-
-      // Prepare data for saving
-      const dataToSave = {
-        ...formData,
-        // If availability dates are set, ensure availableToTravel is true so the Dashboard toggle reflects it
-        ...(formData.availabilityStart || formData.availabilityEnd ? { availableToTravel: true } : {}),
-        userId: session.user.id,
-        step: currentStep,
-        // Ensure arrays are properly formatted
-        portfolioLinks: formData.portfolioLinks || [],
-        projectTypes: formData.projectTypes || [],
-        primaryRoles: formData.primaryRoles || [],
-        languages: formData.languages || [],
-        // Handle past projects
-        pastProjects: formData.pastProjects || null,
-        // Convert empty strings to null for numeric fields
-        dailyBudgetMin: formData.dailyBudgetMin !== undefined && formData.dailyBudgetMin !== null ?
-          formData.dailyBudgetMin : null,
-        dailyBudgetMax: formData.dailyBudgetMax !== undefined && formData.dailyBudgetMax !== null ?
-          formData.dailyBudgetMax : null,
-        budgetRangeMin: formData.budgetRangeMin !== undefined && formData.budgetRangeMin !== null ?
-          formData.budgetRangeMin : null,
-        budgetRangeMax: formData.budgetRangeMax !== undefined && formData.budgetRangeMax !== null ?
-          formData.budgetRangeMax : null
-      }
-
-      console.log('Saving progress with data:', dataToSave)
-
-      const response = await fetch('/api/crew/profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dataToSave),
-      })
-
-    if (!response.ok) {
-      // Try to parse error data, but handle the case where response might be empty
-      const errorData: { error: string } = { error: 'Failed to save progress' }
-      let responseText = ''
-
-      try {
-        responseText = await response.text()
-        if (responseText) {
-          try {
-            const parsedData = JSON.parse(responseText)
-            // If the parsed data is an object with an error property, use it
-            if (parsedData && typeof parsedData === 'object' && 'error' in parsedData) {
-              errorData.error = parsedData.error
-            } else if (typeof parsedData === 'string') {
-              // If it's a string, use it as the error message
-              errorData.error = parsedData
-            }
-          } catch (e) {
-            // If JSON parsing fails, use the raw text as the error message
-            errorData.error = responseText || 'Unknown server error'
-          }
-        } else {
-          // If response is empty, provide a more descriptive error
-          errorData.error = 'Empty response from server'
-        }
-      } catch (e) {
-        // If reading response fails, use a default error message
-        console.error('Failed to read error response:', e)
-        errorData.error = 'Failed to read server response'
-      }
-
-      console.error('Failed to save progress. Server response:', errorData)
-      throw new Error(errorData.error)
+  // What still blocks moving on from a step (the server checks the same rules again).
+  const blockersFor = (step: number): string[] => {
+    const out: string[] = []
+    if (step === 1) {
+      if (!(formData.name || '').trim()) out.push('Add your full name')
+      for (const g of coreGaps({ photo: formData.photo, phone: formData.phone, city: formData.city })) out.push(GAP_LABELS[g])
     }
-
-    // Parse the successful response to ensure it's valid
-    const responseData = await response.json()
-    console.log('Progress saved successfully:', responseData)
-  } catch (error) {
-    console.error('Error saving progress:', error)
+    if (step === 2) {
+      if (!formData.primaryRoles || formData.primaryRoles.length === 0) out.push(GAP_LABELS.roles)
+    }
+    return out
   }
-}, [formData, currentStep, session?.user?.id])
+  const blockers = blockersFor(currentStep)
 
-  // Auto-save functionality
+  // Sends the profile. Half-typed optional values (a 6-digit phone, a link still being pasted)
+  // are left out so they can never stop the rest from saving.
+  const postProfile = useCallback(async (extra: Record<string, unknown>) => {
+    const { data, problems: draftProblems } = buildDraft(formData as Record<string, unknown>)
+    setProblems(draftProblems as Record<string, string>)
+    const body = {
+      ...data,
+      // If availability dates are set, ensure availableToTravel is true so the Dashboard toggle reflects it
+      ...(formData.availabilityStart || formData.availabilityEnd ? { availableToTravel: true } : {}),
+      userId: session?.user?.id,
+      portfolioLinks: (data.portfolioLinks as unknown[]) || [],
+      projectTypes: formData.projectTypes || [],
+      primaryRoles: formData.primaryRoles || [],
+      languages: formData.languages || [],
+      pastProjects: formData.pastProjects || null,
+      dailyBudgetMin: formData.dailyBudgetMin ?? null,
+      dailyBudgetMax: formData.dailyBudgetMax ?? null,
+      budgetRangeMin: formData.budgetRangeMin ?? null,
+      budgetRangeMax: formData.budgetRangeMax ?? null,
+      ...extra,
+    }
+    const response = await fetch('/api/crew/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!response.ok) {
+      let message = 'Could not save your profile'
+      try {
+        const parsed = await response.json()
+        if (parsed && typeof parsed.error === 'string') message = parsed.error
+      } catch {
+        // keep the generic message
+      }
+      throw new Error(message)
+    }
+    return draftProblems
+  }, [formData, session?.user?.id])
+
+  const saveProgress = useCallback(async () => {
+    if (!session?.user?.id || Object.keys(formData).length === 0) return
+    setSaveState('saving')
+    try {
+      await postProfile({ step: currentStep })
+      setSaveError('')
+      setSaveState('saved')
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Could not save your profile')
+      setSaveState('error')
+    }
+  }, [formData, currentStep, session?.user?.id, postProfile])
+
+  // Auto-save: shortly after the last change
   useEffect(() => {
     if (Object.keys(formData).length > 0) {
       if (autoSaveTimer) {
@@ -224,7 +214,7 @@ export default function CrewProfileSetup() {
 
       const timer = setTimeout(async () => {
         await saveProgress()
-      }, 2000)
+      }, 1000)
 
       setAutoSaveTimer(timer)
     }
@@ -235,99 +225,49 @@ export default function CrewProfileSetup() {
   }
 
   const nextStep = () => {
+    // Required fields stop the step here (no jump to the next one) and are marked in red
+    if (blockers.length > 0) {
+      setShowErrors(true)
+      return
+    }
+    setShowErrors(false)
     if (currentStep < STEPS.length) {
       setCurrentStep(currentStep + 1)
     }
   }
 
   const prevStep = () => {
+    setShowErrors(false)
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1)
     }
   }
 
   const handleSubmit = async () => {
+    setSubmitError('')
+    const gaps = fullGaps({ photo: formData.photo, phone: formData.phone, city: formData.city, primaryRoles: formData.primaryRoles, completed: true })
+    if (!(formData.name || '').trim() || gaps.length > 0) {
+      // go back to the step that has the missing item
+      const core = gaps.some((g) => g === 'photo' || g === 'phone' || g === 'city') || !(formData.name || '').trim()
+      setCurrentStep(core ? 1 : 2)
+      setShowErrors(true)
+      return
+    }
     setIsLoading(true)
     try {
-      // Create a copy of formData and add the completed flag
-      const dataToSubmit = {
-        ...formData,
-        // If availability dates are set, ensure availableToTravel is true so the Dashboard toggle reflects it
-        ...(formData.availabilityStart || formData.availabilityEnd ? { availableToTravel: true } : {}),
-        userId: session?.user?.id,
-        completed: true,
-        // Ensure arrays are properly formatted
-        portfolioLinks: formData.portfolioLinks || [],
-        projectTypes: formData.projectTypes || [],
-        primaryRoles: formData.primaryRoles || [],
-        languages: formData.languages || [],
-        // Handle past projects
-        pastProjects: formData.pastProjects || null,
-        // Convert empty strings to null for numeric fields
-        dailyBudgetMin: formData.dailyBudgetMin !== undefined && formData.dailyBudgetMin !== null ?
-          formData.dailyBudgetMin : null,
-        dailyBudgetMax: formData.dailyBudgetMax !== undefined && formData.dailyBudgetMax !== null ?
-          formData.dailyBudgetMax : null,
-        budgetRangeMin: formData.budgetRangeMin !== undefined && formData.budgetRangeMin !== null ?
-          formData.budgetRangeMin : null,
-        budgetRangeMax: formData.budgetRangeMax !== undefined && formData.budgetRangeMax !== null ?
-          formData.budgetRangeMax : null
-      }
-
-      console.log('Submitting profile data:', dataToSubmit)
-
-      const response = await fetch('/api/crew/profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dataToSubmit),
-      })
-
-      if (!response.ok) {
-        // Try to parse error data, but handle the case where response might be empty
-        const errorData: { error: string } = { error: 'Failed to submit profile' }
-        let responseText = ''
-
-        try {
-          responseText = await response.text()
-          if (responseText) {
-            try {
-              const parsedData = JSON.parse(responseText)
-              // If the parsed data is an object with an error property, use it
-              if (parsedData && typeof parsedData === 'object' && 'error' in parsedData) {
-                errorData.error = parsedData.error
-              } else if (typeof parsedData === 'string') {
-                // If it's a string, use it as the error message
-                errorData.error = parsedData
-              }
-            } catch (e) {
-              // If JSON parsing fails, use the raw text as the error message
-              errorData.error = responseText || 'Unknown server error'
-            }
-          } else {
-            // If response is empty, provide a more descriptive error
-            errorData.error = 'Empty response from server'
-          }
-        } catch (e) {
-          // If reading response fails, use a default error message
-          console.error('Failed to read error response:', e)
-          errorData.error = 'Failed to read server response'
-        }
-
-        console.error('Failed to submit profile. Server response:', errorData)
-        throw new Error(errorData.error)
-      }
+      await postProfile({ completed: true })
 
       // Check if referral was applied
       if (formData.referredBy && formData.referredBy.trim() !== '') {
         setReferralApplied(true)
       }
 
-      // Redirect to dashboard with a success message
-      router.push('/dashboard?profile=completed')
+      // Back to where they came from (a job they wanted to apply to), else the dashboard
+      const back = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('returnUrl') : null
+      router.push(isSafeReturnPath(back) ? (back as string) : '/dashboard?profile=completed')
     } catch (error) {
       console.error('Error submitting profile:', error)
+      setSubmitError(error instanceof Error ? error.message : 'Could not save your profile')
     } finally {
       setIsLoading(false)
     }
@@ -419,6 +359,7 @@ export default function CrewProfileSetup() {
             <BasicInfoStep
               data={formData}
               onChange={updateFormData}
+              showErrors={showErrors}
             />
           )}
           {currentStep === 2 && (
@@ -452,6 +393,7 @@ export default function CrewProfileSetup() {
                 showreelUrl: formData.showreelUrl,
                 customTags: formData.customTags || []
               }}
+              saveState={saveState}
               onChange={updateFormData}
             />
           )}
@@ -461,6 +403,21 @@ export default function CrewProfileSetup() {
               onChange={updateFormData}
             />
           )}
+
+          {/* What is still missing (shown after the member tries to continue) */}
+          {showErrors && blockers.length > 0 && (
+            <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
+              <p className="flex items-center gap-2 font-semibold">
+                <AlertCircle className="h-4 w-4" aria-hidden="true" /> Complete these to continue
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-6">
+                {blockers.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {submitError && <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{submitError}</p>}
 
           {/* Navigation Buttons */}
           <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
@@ -505,12 +462,26 @@ export default function CrewProfileSetup() {
           </div>
         </div>
 
-        {/* Auto-save Indicator */}
-        <div className="text-center mt-6">
-          <div className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-md border border-gray-200">
-            <Save className="h-4 w-4 text-green-600" />
-            <span className="text-sm font-medium text-gray-700">Auto-save enabled</span>
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+        {/* Auto-save status */}
+        <div className="text-center mt-6" aria-live="polite">
+          <div className="inline-flex max-w-full items-center gap-2 bg-white px-4 py-2 rounded-full shadow-md border border-gray-200">
+            {saveState === 'error' ? (
+              <>
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+                <span className="text-sm font-medium text-red-700">Not saved: {saveError}</span>
+              </>
+            ) : saveState === 'saving' ? (
+              <>
+                <Save className="h-4 w-4 text-indigo-600" />
+                <span className="text-sm font-medium text-gray-700">Saving…</span>
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-medium text-gray-700">{saveState === 'saved' ? 'All changes saved' : 'Auto-save is on'}</span>
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -10,6 +10,16 @@ together with `docs/HANDOFF.md` (architecture) and
 
 ---
 
+## 2026-11-16 — Project details, agreements, required crew profile — built, NOT yet committed
+
+- **Job post**: new department **Acting** (Actor, Actress) for roles needed and crew primary roles; **Shoot duration** (1-3 days / 4-7 days / 1-2 weeks / 3-4 weeks / Custom number + days/weeks/months); **Project status** (Confirmed / Funding secured / In development / Awaiting approval). Both are optional on the server. Shown on project cards, project page, dashboards.
+- **Project ID**: every project has a unique `MC-000001` style code (`projects.project_code`, sequence, backfilled). Migration `0021` (applied).
+- **Hire / agreement**: Hire modals ask "This will send an agreement to the crew member" first; crew accept asks "This will officially start the project and sign an agreement". Accepting freezes an agreement snapshot (`hire_requests.agreement`, number `AGR-<projectCode>-xxxx`) viewable and printable at `/agreements/<hireId>` by the two parties and admins only (link on accepted rows, notification, producer email). **The wording in `src/lib/agreements/template.ts` is a DRAFT: client/legal must supply final text (bump `AGREEMENT_VERSION`).**
+- **Crew profile must-haves**: photo, 10-digit mobile, city. The wizard blocks NEXT, the server blocks apply (403 `PROFILE_INCOMPLETE`), completing the profile, and accepting a hire (also needs a primary role). One shared rule set in `src/lib/crew/readiness.ts`. Phone is exactly 10 digits (+91 shown as prefix, helper text removed; old +91 numbers display as 10 digits).
+- **Showreel**: paste shows a thumbnail/preview and a saved status; autosave drops half-typed optional values so one invalid field never blocks saving, and shows a real save status.
+- **Bugs fixed**: the profile route never saved `completed=true` (dropped since the first commit).
+- Tests: 225 unit tests; e2e suites updated (test crew now seeded with photo/phone/city) plus new `e2e-newfeatures` (23 checks).
+
 ## 2026-11-13 — Join As Crew, location suggestions, profile links per application — built, NOT yet committed
 
 - Header button "Join Now" now reads **Join As Crew** (**Join As Producer** on the producer pages, so the label matches where it goes).

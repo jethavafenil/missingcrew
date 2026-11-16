@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { MAX_PROJECT_TAGS, pickPremade } from '@/lib/projectTags'
 import { MAX_PROJECT_TYPES, PROJECT_TYPES, joinProjectTypes, splitProjectTypes } from '@/lib/projectTypes'
+import { PRODUCTION_STATUS_VALUES, SHOOT_DURATION_VALUES, customDurationError, parseCustomDuration } from '@/lib/projects/details'
 
 // Shared validation for creating/editing a project (POST and PUT routes).
 // Dates and budget are optional; blank form fields ('') count as "not set".
@@ -46,6 +47,11 @@ export const projectInputSchema = z
     budgetMax: optionalAmount,
     budgetFixed: z.boolean().optional().default(false),
     productionHouse: z.preprocess(blankToUndefined, z.string().trim().max(150).optional()),
+    // How long the shoot runs (a preset, or "custom" with a value such as "10 days") - optional.
+    shootDuration: z.preprocess(blankToUndefined, z.enum(SHOOT_DURATION_VALUES, { error: 'Choose a shoot duration from the list' }).optional()),
+    shootDurationCustom: z.preprocess(blankToUndefined, z.string().trim().max(20).optional()),
+    // Where the project stands - optional.
+    productionStatus: z.preprocess(blankToUndefined, z.enum(PRODUCTION_STATUS_VALUES, { error: 'Choose a project status from the list' }).optional()),
     // Up to 3 hashtags, only from the premade list (anything else is dropped).
     tags: z
       .array(z.string())
@@ -69,6 +75,10 @@ export const projectInputSchema = z
     message: 'Maximum budget must be at least the minimum budget',
     path: ['budgetMax'],
   })
+  .refine((v) => v.shootDuration !== 'custom' || parseCustomDuration(v.shootDurationCustom) !== null, {
+    message: customDurationError(),
+    path: ['shootDurationCustom'],
+  })
   .refine((v) => !v.budgetFixed || v.budgetMin != null, {
     message: 'Enter the fixed budget amount',
     path: ['budgetMin'],
@@ -82,6 +92,10 @@ export const projectInputSchema = z
     budgetMin: v.budgetMin ?? null,
     budgetMax: v.budgetFixed ? (v.budgetMin ?? null) : (v.budgetMax ?? null),
     productionHouse: v.productionHouse ?? null,
+    shootDuration: v.shootDuration ?? null,
+    // the custom value only belongs to the "custom" choice
+    shootDurationCustom: v.shootDuration === 'custom' ? (v.shootDurationCustom ?? null) : null,
+    productionStatus: v.productionStatus ?? null,
   }))
 
 export type ProjectInput = z.infer<typeof projectInputSchema>

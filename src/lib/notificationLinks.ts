@@ -12,8 +12,12 @@ export function notificationLink(type: string, data: unknown, role: Role): strin
   switch (type) {
     case 'HIRE_REQUEST':
       return '/dashboard?tab=requests'
-    case 'HIRE_RESPONSE':
-      return '/employer/dashboard?tab=hire'
+    case 'HIRE_RESPONSE': {
+      // an accepted hire opens its agreement (both parties are told)
+      const hireId = typeof d.hireRequestId === 'string' && SAFE_ID.test(d.hireRequestId) ? d.hireRequestId : null
+      if (d.status === 'ACCEPTED' && hireId) return `/agreements/${hireId}`
+      return producer ? '/employer/dashboard?tab=hire' : '/dashboard?tab=requests'
+    }
     case 'APPLICATION_RECEIVED':
       return '/employer/dashboard?tab=applications'
     case 'APPLICATION_STATUS_CHANGED':

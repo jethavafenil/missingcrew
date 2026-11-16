@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { MapPin, Calendar, Users, CheckCircle, ArrowLeft, Building2, Film, AlertCircle, TrendingUp } from 'lucide-react'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { ApplyModal } from '@/components/applications/ApplyModal'
+import { ProjectFacts } from '@/components/projects/ProjectFacts'
 import { useProjectStatus } from '@/lib/crew/applied-projects'
 import { formatBudget, formatShootDate } from '@/lib/projects/format'
 
@@ -25,6 +26,10 @@ interface Project {
   budgetMax?: number | null
   budgetFixed?: boolean | null
   productionHouse?: string | null
+  projectCode?: string | null
+  productionStatus?: string | null
+  shootDuration?: string | null
+  shootDurationCustom?: string | null
   tags?: string[]
   location: string
   description: string
@@ -196,6 +201,13 @@ export default function ProjectDetailsPage() {
                 <h1 className="text-3xl font-bold text-white mb-2">
                   {project.projectName}
                 </h1>
+                <ProjectFacts
+                  className="mb-3 [&_span]:!bg-white/15 [&_span]:!text-white [&_span]:!border-white/20"
+                  projectCode={project.projectCode}
+                  productionStatus={project.productionStatus}
+                  shootDuration={project.shootDuration}
+                  shootDurationCustom={project.shootDurationCustom}
+                />
                 <div className="flex items-center gap-4 text-indigo-100">
                   <span className="flex items-center gap-1 text-sm">
                     <Building2 className="h-4 w-4" />

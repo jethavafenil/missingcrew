@@ -36,6 +36,10 @@ export async function GET() {
 
       return {
         id: project.id,
+        projectCode: project.projectCode || '',
+        shootDuration: project.shootDuration ?? null,
+        shootDurationCustom: project.shootDurationCustom ?? null,
+        productionStatus: project.productionStatus ?? null,
         projectName: project.projectName || '',
         projectType: project.projectType || '',
         rolesNeeded: rolesNeeded || [],

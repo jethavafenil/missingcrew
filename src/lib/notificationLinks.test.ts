@@ -5,6 +5,11 @@ describe('notificationLink', () => {
   it('sends hire requests to the crew requests tab and answers to the producer hire tab', () => {
     expect(notificationLink('HIRE_REQUEST', null, 'CREW')).toBe('/dashboard?tab=requests')
     expect(notificationLink('HIRE_RESPONSE', null, 'EMPLOYER')).toBe('/employer/dashboard?tab=hire')
+    expect(notificationLink('HIRE_RESPONSE', { hireRequestId: 'h-1', status: 'DECLINED' }, 'EMPLOYER')).toBe('/employer/dashboard?tab=hire')
+    // an accepted hire opens its agreement, for both sides
+    expect(notificationLink('HIRE_RESPONSE', { hireRequestId: 'h-1', status: 'ACCEPTED' }, 'EMPLOYER')).toBe('/agreements/h-1')
+    expect(notificationLink('HIRE_RESPONSE', { hireRequestId: 'h-1', status: 'ACCEPTED' }, 'CREW')).toBe('/agreements/h-1')
+    expect(notificationLink('HIRE_RESPONSE', { hireRequestId: '../x', status: 'ACCEPTED' }, 'CREW')).toBe('/dashboard?tab=requests')
   })
   it('sends applications to the right side', () => {
     expect(notificationLink('APPLICATION_RECEIVED', { projectId: 'p1' }, 'EMPLOYER')).toBe('/employer/dashboard?tab=applications')

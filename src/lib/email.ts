@@ -177,14 +177,14 @@ export function createDirectMessageEmail(crewName: string, producerName: string,
 }
 
 // Hire flow: the producer hears the crew member's answer.
-export function createHireResponseEmail(producerName: string, crewName: string, projectName: string, accepted: boolean) {
+export function createHireResponseEmail(producerName: string, crewName: string, projectName: string, accepted: boolean, agreementPath?: string) {
   const subject = accepted
     ? `${crewName} accepted your hire request for ${projectName}`
     : `${crewName} declined your hire request for ${projectName}`
   const html = layout(accepted ? 'Hire request accepted' : 'Hire request declined', `
       <p>Hi ${escapeHtml(producerName)},</p>
       <p><strong>${escapeHtml(crewName)}</strong> has <strong>${accepted ? 'accepted' : 'declined'}</strong> your hire request for <strong>${escapeHtml(projectName)}</strong>.</p>
-      ${accepted ? '<p>They are now confirmed on the project and the credit will appear on their profile.</p>' : '<p>You can browse more crew members and send another request.</p>'}`,
-    { label: accepted ? 'Open dashboard' : 'Browse crew', href: `${siteUrl()}${accepted ? '/employer/dashboard' : '/browse-crew'}` })
+      ${accepted ? '<p>They are now confirmed on the project, the agreement is signed, and the credit will appear on their profile.</p>' : '<p>You can browse more crew members and send another request.</p>'}`,
+    { label: accepted ? (agreementPath ? 'View agreement' : 'Open dashboard') : 'Browse crew', href: `${siteUrl()}${accepted ? (agreementPath ?? '/employer/dashboard') : '/browse-crew'}` })
   return { subject, html }
 }

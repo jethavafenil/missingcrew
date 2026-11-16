@@ -1,12 +1,14 @@
 import { after } from 'next/server'
 import { z } from 'zod'
-import { applicationRepo, hireRequestRepo, notificationRepo } from '@/lib/repo'
+import { applicationRepo, crewProfileRepo, hireRequestRepo, notificationRepo } from '@/lib/repo'
 import { ApiError } from '@/lib/api/errors'
 import { handle } from '@/lib/api/handler'
 import { parseBody } from '@/lib/api/body'
 import { requireAuth } from '@/lib/api/auth'
 import { createHireResponseEmail, sendEmail } from '@/lib/email'
 import { respondHireRequestSchema } from '@/lib/hire/schema'
+import { fullGaps, gapMessage } from '@/lib/crew/readiness'
+import { ensureAgreement } from '@/lib/agreements/service'
 
 // PUT /api/hire-requests/[id]
 //   crew (the invited member): ACCEPTED | DECLINED
@@ -28,6 +30,22 @@ export const PUT = handle(async (request, context) => {
   if (isCrewOwner && status === 'CANCELLED') throw new ApiError(403, 'Only the producer can cancel a request', 'FORBIDDEN')
   if (isProducerOwner && status !== 'CANCELLED') throw new ApiError(403, 'Only the crew member can accept or decline', 'FORBIDDEN')
 
+  // Accepting starts the project and signs the agreement, so the crew member's profile must be
+  // complete first (photo, 10-digit mobile number, city, a role, all steps finished).
+  if (isCrewOwner && status === 'ACCEPTED') {
+    const profile = await crewProfileRepo.findByIdWithUser(hire.crewId)
+    const gaps = fullGaps({
+      photo: profile?.photo,
+      phone: profile?.user?.phone,
+      city: profile?.city,
+      primaryRoles: profile?.primaryRoles,
+      completed: profile?.completed,
+    })
+    if (gaps.length > 0) {
+      throw new ApiError(403, `Complete your profile before accepting: ${gapMessage(gaps)}.`, 'PROFILE_INCOMPLETE', { gaps })
+    }
+  }
+
   const updated = await hireRequestRepo.respond(hire.id, status)
   if (!updated) throw new ApiError(409, 'This request has already been answered', 'ALREADY_ANSWERED')
 
@@ -40,6 +58,13 @@ export const PUT = handle(async (request, context) => {
     } else {
       const app = await applicationRepo.create({ projectId: hire.projectId, crewId: hire.crewId, answers: [], crewNotes: null }, requester)
       await applicationRepo.update(app.id, { status: 'HIRED' }, requester)
+    }
+    // The agreement is written now, with the terms and project details as they are at this moment.
+    try {
+      await ensureAgreement({ ...hire, status: 'ACCEPTED', respondedAt: updated.respondedAt })
+    } catch (error) {
+      // The booking is already confirmed; the agreement is created again the first time it is opened.
+      console.error('Agreement creation failed:', error)
     }
   }
 
@@ -54,17 +79,31 @@ export const PUT = handle(async (request, context) => {
         userId: hire.employer.userId,
         type: 'HIRE_RESPONSE',
         title: accepted ? 'Hire request accepted' : 'Hire request declined',
-        message: `${crewName} ${accepted ? 'accepted' : 'declined'} your hire request for ${projectName}.`,
+        message: `${crewName} ${accepted ? 'accepted' : 'declined'} your hire request for ${projectName}.${accepted ? ' The agreement is signed and ready to view.' : ''}`,
         data: { hireRequestId: hire.id, projectId: hire.projectId, status },
       }, requester)
     } catch (error) {
       console.error('Hire response notification failed:', error)
     }
+    // The crew member gets a record of what they just signed
+    if (accepted && hire.crew?.userId) {
+      try {
+        await notificationRepo.create({
+          userId: hire.crew.userId,
+          type: 'HIRE_RESPONSE',
+          title: 'Agreement signed',
+          message: `You accepted ${projectName}. The agreement is signed and ready to view.`,
+          data: { hireRequestId: hire.id, projectId: hire.projectId, status },
+        }, requester)
+      } catch (error) {
+        console.error('Agreement notification failed:', error)
+      }
+    }
     if (hire.employer.user?.email) {
       const to = hire.employer.user.email
       after(async () => {
         try {
-          const { subject, html } = createHireResponseEmail(producerName, crewName, projectName, accepted)
+          const { subject, html } = createHireResponseEmail(producerName, crewName, projectName, accepted, accepted ? `/agreements/${hire.id}` : undefined)
           await sendEmail({ to, subject, html })
         } catch (error) {
           console.error('Hire response email failed:', error)

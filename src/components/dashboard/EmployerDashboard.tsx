@@ -17,6 +17,7 @@ import { slugifyName } from '@/lib/utils'
 import { swrFetcher } from '@/lib/swr'
 import { formatShootRange } from '@/lib/projects/format'
 import { ApplicantReview, type ReviewProject } from '@/components/dashboard/ApplicantReview'
+import { ProjectFacts } from '@/components/projects/ProjectFacts'
 import { HireRequestsPanel } from '@/components/hire/HireRequestsPanel'
 
 interface EmployerUserData {
@@ -48,6 +49,10 @@ interface Project {
   description: string
   questions: string[]
   status: string
+  projectCode?: string | null
+  productionStatus?: string | null
+  shootDuration?: string | null
+  shootDurationCustom?: string | null
   applications: Array<{
     id: string
     crew: {
@@ -593,6 +598,13 @@ export function EmployerDashboard({ user, userData }: EmployerDashboardProps) {
                                       {project.status}
                                     </Badge>
                                   </div>
+                                  <ProjectFacts
+                                    className="mb-2"
+                                    projectCode={project.projectCode}
+                                    productionStatus={project.productionStatus}
+                                    shootDuration={project.shootDuration}
+                                    shootDurationCustom={project.shootDurationCustom}
+                                  />
 
                                   <div className="flex flex-wrap items-center gap-2 mb-3">
                                     <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">

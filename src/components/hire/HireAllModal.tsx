@@ -18,6 +18,7 @@ interface ProjectOption {
   shootStartDate: string | null
   shootEndDate: string | null
   productionHouse: string | null
+  projectCode?: string | null
 }
 
 interface Result {
@@ -49,6 +50,7 @@ export function HireAllModal({ open, onOpenChange, crew, onDone }: Props) {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [results, setResults] = useState<Result[] | null>(null)
+  const [confirming, setConfirming] = useState(false)
   const initialised = useRef(false)
 
   useEffect(() => {
@@ -78,14 +80,21 @@ export function HireAllModal({ open, onOpenChange, crew, onDone }: Props) {
   const reset = () => {
     setError('')
     setResults(null)
+    setConfirming(false)
     setEdited(false)
     initialised.current = false
     setProjectId('')
   }
 
-  const submit = async (e: React.FormEvent) => {
+  const review = (e: React.FormEvent) => {
     e.preventDefault()
     if (!project) return setError('Please choose a project first')
+    setError('')
+    setConfirming(true)
+  }
+
+  const submit = async () => {
+    if (!project) return
     setSending(true)
     setError('')
     try {
@@ -96,6 +105,7 @@ export function HireAllModal({ open, onOpenChange, crew, onDone }: Props) {
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body.error || 'Could not send the requests. Please try again.')
+      setConfirming(false)
       setResults(body.results as Result[])
       onDone?.()
     } catch (err) {
@@ -147,8 +157,32 @@ export function HireAllModal({ open, onOpenChange, crew, onDone }: Props) {
           </div>
         ) : crew.length > MAX_HIRE_ALL ? (
           <p className="py-4 text-sm text-red-700">You can hire up to {MAX_HIRE_ALL} people at once. Untick a few and try again.</p>
+        ) : confirming && project ? (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+              <p className="font-semibold text-emerald-900">
+                This will send an agreement to {crew.length === 1 ? 'the crew member' : `each of the ${crew.length} crew members`}.
+              </p>
+              <p className="mt-1 text-sm text-emerald-800">
+                Each person is asked to accept. When they do, the project officially starts for them and their agreement is signed.
+              </p>
+            </div>
+            <p className="text-sm text-gray-700">
+              <span className="font-medium">{project.projectName}</span>
+              {project.projectCode ? ` (${project.projectCode})` : ''}: {crew.map((c) => c.name).join(', ')}
+            </p>
+            {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" disabled={sending} onClick={() => setConfirming(false)}>
+                Back
+              </Button>
+              <Button type="button" disabled={sending} onClick={submit} className="bg-emerald-600 hover:bg-emerald-700">
+                {sending ? 'Sending…' : `Yes, send ${crew.length === 1 ? 'agreement' : 'agreements'}`}
+              </Button>
+            </div>
+          </div>
         ) : (
-          <form onSubmit={submit} className="space-y-4">
+          <form onSubmit={review} className="space-y-4">
             <p className="text-sm text-gray-600">{crew.map((c) => c.name).join(', ')}</p>
             <div>
               <label htmlFor="hall-project" className="mb-1 block text-sm font-semibold text-gray-700">Project</label>
@@ -177,8 +211,8 @@ export function HireAllModal({ open, onOpenChange, crew, onDone }: Props) {
               <p className="mt-1 text-right text-xs text-gray-400">{message.length}/{MAX_HIRE_MESSAGE}</p>
             </div>
             {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-            <Button type="submit" disabled={sending || !message.trim()} className="h-12 w-full bg-emerald-600 text-base hover:bg-emerald-700">
-              {sending ? 'Sending…' : `Send ${crew.length} hire request${crew.length === 1 ? '' : 's'}`}
+            <Button type="submit" disabled={!message.trim()} className="h-12 w-full bg-emerald-600 text-base hover:bg-emerald-700">
+              Continue
             </Button>
           </form>
         )}

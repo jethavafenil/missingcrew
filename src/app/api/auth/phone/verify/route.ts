@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/server'
 import { getOTP, delOTP } from '@/lib/otpStore'
 import { userRepo, requesterFromSession } from '@/lib/repo'
+import { toNationalMobile } from '@/lib/phone'
 import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimiter'
 import { z } from 'zod'
 import { parseBody } from '@/lib/api/body'
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Persist verification on user
-    await userRepo.updateUser(session.user.id, { phone: phoneNumber, phoneVerified: true }, requesterFromSession(session))
+    await userRepo.updateUser(session.user.id, { phone: toNationalMobile(phoneNumber) || phoneNumber, phoneVerified: true }, requesterFromSession(session))
 
     return NextResponse.json({ success: true, message: 'Phone verified' })
   } catch (err: any) {
