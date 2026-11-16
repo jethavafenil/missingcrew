@@ -14,6 +14,7 @@ import { ApplyModal } from '@/components/applications/ApplyModal'
 import { ProjectFacts } from '@/components/projects/ProjectFacts'
 import { useProjectStatus } from '@/lib/crew/applied-projects'
 import { formatBudget, formatShootDate } from '@/lib/projects/format'
+import { formatShootDuration } from '@/lib/projects/details'
 
 interface Project {
   id: string
@@ -244,7 +245,7 @@ export default function ProjectDetailsPage() {
                   <Calendar className="h-4 w-4 text-purple-600" />
                   <p className="text-xs font-medium text-purple-600">Duration</p>
                 </div>
-                <p className="text-sm font-semibold text-gray-900">{projectDuration !== null ? `${projectDuration} days` : 'Flexible'}</p>
+                <p className="text-sm font-semibold text-gray-900">{formatShootDuration(project.shootDuration, project.shootDurationCustom) ?? (projectDuration !== null ? `${projectDuration} days` : 'Flexible')}</p>
               </div>
               <div className="bg-gradient-to-br from-pink-50 to-pink-100/50 p-4 rounded-xl border border-pink-200">
                 <div className="flex items-center gap-2 mb-1">

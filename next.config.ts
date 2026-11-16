@@ -12,7 +12,7 @@ const contentSecurityPolicy = [
   "script-src 'self' 'unsafe-inline' https://js.stripe.com https://checkout.razorpay.com https://maps.googleapis.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
-  `img-src 'self' data: blob: https://images.unsplash.com https://lh3.googleusercontent.com${supabaseHostname ? ` https://${supabaseHostname}` : ''}`,
+  `img-src 'self' data: blob: https://images.unsplash.com https://img.youtube.com https://lh3.googleusercontent.com${supabaseHostname ? ` https://${supabaseHostname}` : ''}`,
   "media-src 'self' blob: https:",
   "frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://api.razorpay.com https://www.youtube.com https://player.vimeo.com",
   `connect-src 'self' https: wss:${supabaseHostname ? ` https://${supabaseHostname} wss://${supabaseHostname}` : ''}`,

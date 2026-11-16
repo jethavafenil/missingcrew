@@ -246,7 +246,7 @@ export function PortfolioStep({ data, onChange, saveState = 'idle' }: PortfolioS
           <div className="mt-2 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 p-2" aria-live="polite">
             {reel.state === 'video' && reel.thumbnail ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={reel.thumbnail} alt="Showreel preview" className="h-14 w-24 shrink-0 rounded object-cover" />
+              <img src={reel.thumbnail} alt="Showreel preview" onError={(ev) => { ev.currentTarget.style.display = 'none' }} className="h-14 w-24 shrink-0 rounded object-cover" />
             ) : null}
             <div className="min-w-0 text-sm">
               <p className="truncate font-medium text-gray-800">{reel.url}</p>
