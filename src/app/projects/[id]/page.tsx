@@ -12,7 +12,8 @@ import { MapPin, Calendar, Users, CheckCircle, ArrowLeft, Building2, Film, Alert
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { ApplyModal } from '@/components/applications/ApplyModal'
 import { ProjectFacts } from '@/components/projects/ProjectFacts'
-import { useProjectStatus } from '@/lib/crew/applied-projects'
+import { useProjectStatus, markProjectRetractedLocally } from '@/lib/crew/applied-projects'
+import { RetractApplicationButton } from '@/components/applications/RetractApplicationButton'
 import { formatBudget, formatShootDate } from '@/lib/projects/format'
 import { formatShootDuration } from '@/lib/projects/details'
 
@@ -57,6 +58,8 @@ export default function ProjectDetailsPage() {
   const [error, setError] = useState<string | null>(null)
   const { hasApplied, setHasApplied } = useProjectStatus(project?.id || '')
   const [showApplyModal, setShowApplyModal] = useState(false)
+  // 'PENDING' until the producer acts: only then can the application be retracted
+  const [applicationStatus, setApplicationStatus] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -80,6 +83,7 @@ export default function ProjectDetailsPage() {
           if (checkResponse.ok) {
             const result = await checkResponse.json()
             setHasApplied(result.hasApplied || false)
+            setApplicationStatus(result.status ?? null)
           }
         }
       } catch (err) {
@@ -400,6 +404,7 @@ export default function ProjectDetailsPage() {
                 </p>
               </div>
               {hasApplied ? (
+                <div className="flex flex-col items-center gap-2 sm:items-end">
                 <Button
                   variant="outline"
                   disabled
@@ -408,6 +413,18 @@ export default function ProjectDetailsPage() {
                   <CheckCircle className="h-5 w-5 mr-2" />
                   Application Submitted
                 </Button>
+                {applicationStatus === 'PENDING' && project && (
+                  <RetractApplicationButton
+                    projectId={project.id}
+                    projectName={project.projectName}
+                    onRetracted={() => {
+                      markProjectRetractedLocally(project.id, session?.user?.id)
+                      setHasApplied(false)
+                      setApplicationStatus(null)
+                    }}
+                  />
+                )}
+                </div>
               ) : (
                 <Button
                   onClick={() => {
@@ -448,6 +465,7 @@ export default function ProjectDetailsPage() {
             onClose={() => setShowApplyModal(false)}
             onSuccess={() => {
               setHasApplied(true)
+              setApplicationStatus('PENDING')
             }}
           />
         )}

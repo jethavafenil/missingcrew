@@ -105,7 +105,13 @@ export default function Footer() {
               <li>
                 <Link href="/terms" className="text-gray-400 hover:text-indigo-400 transition-colors duration-200 flex items-center gap-2 group">
                   <span className="w-1.5 h-1.5 bg-gray-600 group-hover:bg-indigo-400 rounded-full transition-colors duration-200"></span>
-                  Terms & Privacy
+                  Terms & Conditions
+                </Link>
+              </li>
+              <li>
+                <Link href="/privacy" className="text-gray-400 hover:text-indigo-400 transition-colors duration-200 flex items-center gap-2 group">
+                  <span className="w-1.5 h-1.5 bg-gray-600 group-hover:bg-indigo-400 rounded-full transition-colors duration-200"></span>
+                  Privacy Policy
                 </Link>
               </li>
             </ul>
@@ -146,11 +152,11 @@ export default function Footer() {
               &copy; {currentYear} MissingCrew. All rights reserved.
             </p>
             <div className="flex items-center gap-6 text-sm">
-              <Link href="/terms" className="text-gray-400 hover:text-indigo-400 transition-colors duration-200">
+              <Link href="/privacy" className="text-gray-400 hover:text-indigo-400 transition-colors duration-200">
                 Privacy Policy
               </Link>
               <Link href="/terms" className="text-gray-400 hover:text-indigo-400 transition-colors duration-200">
-                Terms of Service
+                Terms and Conditions
               </Link>
               <Link href="/contact" className="text-gray-400 hover:text-indigo-400 transition-colors duration-200">
                 Support

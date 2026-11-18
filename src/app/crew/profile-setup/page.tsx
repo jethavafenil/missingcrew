@@ -14,6 +14,9 @@ import { Check, ChevronLeft, ChevronRight, Save, Sparkles, AlertCircle } from 'l
 import { GAP_LABELS, coreGaps, fullGaps } from '@/lib/crew/readiness'
 import { buildDraft } from '@/lib/crew/profileDraft'
 import { isSafeReturnPath } from '@/lib/utils'
+import { profileCompletion, COMPLETION_LABELS } from '@/lib/crew/completion'
+import { MissingFieldsForm, type MissingKey } from '@/components/crew-profile/MissingFieldsForm'
+import Link from 'next/link'
 
 // Define the complete form data type
 interface CrewProfileFormData {
@@ -85,6 +88,13 @@ export default function CrewProfileSetup() {
   const [saveError, setSaveError] = useState('')
   const [submitError, setSubmitError] = useState('')
   const [problems, setProblems] = useState<Record<string, string>>({})
+  // "Complete your profile" link from the dashboard (?missing=1): only what is still empty is asked
+  const [missingMode, setMissingMode] = useState(false)
+  const [missingList, setMissingList] = useState<MissingKey[]>([])
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => {
+    setMissingMode(new URLSearchParams(window.location.search).get('missing') === '1')
+  }, [])
 
   // Fetch user profile data on mount
   useEffect(() => {
@@ -121,8 +131,14 @@ export default function CrewProfileSetup() {
         if (!data.pastProjects) data.pastProjects = []
 
         setFormData(data)
+        // fixed once, so fields do not vanish while the member types in them
+        const list: MissingKey[] = [...profileCompletion(data).missing]
+        if (!data.completed && !data.termsAgreed) list.push('terms')
+        setMissingList(list)
       } catch (error) {
         console.error('Error fetching profile data:', error)
+      } finally {
+        setLoaded(true)
       }
     }
 
@@ -271,6 +287,70 @@ export default function CrewProfileSetup() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const finishMissing = async () => {
+    setSubmitError('')
+    const gaps = fullGaps({ photo: formData.photo, phone: formData.phone, city: formData.city, primaryRoles: formData.primaryRoles, completed: true })
+    const stillEmpty = missingList.some((k) => (k === 'photo' && !formData.photo) || (k === 'city' && !(formData.city || '').trim()) || (k === 'roles' && !(formData.primaryRoles || []).length))
+    const needTerms = missingList.includes('terms') && !formData.termsAgreed
+    if (stillEmpty || needTerms || (gaps.length > 0 && gaps.some((g) => g !== 'steps'))) {
+      setShowErrors(true)
+      return
+    }
+    setIsLoading(true)
+    try {
+      // a profile that was never finished is finished now (the terms were accepted); others stay as they are
+      await postProfile(formData.termsAgreed ? { completed: true } : {})
+      const back = new URLSearchParams(window.location.search).get('returnUrl')
+      router.push(isSafeReturnPath(back) ? (back as string) : '/dashboard')
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Could not save your profile')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (missingMode && status !== 'loading') {
+    const left = missingList.filter((k) => k !== 'terms').length
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-purple-50/30 py-8">
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Finish your profile</h1>
+            <p className="mt-2 text-gray-600">
+              {!loaded
+                ? 'Loading your profile...'
+                : missingList.length === 0
+                ? 'Everything is filled in.'
+                : `Just ${left > 0 ? `${left} item${left === 1 ? '' : 's'}` : 'one step'} left: ${missingList.filter((k) => k !== 'terms').map((k) => COMPLETION_LABELS[k as keyof typeof COMPLETION_LABELS].toLowerCase()).join(', ') || 'accept the terms'}.`}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-lg sm:p-8">
+            {loaded && (
+              <MissingFieldsForm
+                missing={missingList}
+                data={formData}
+                onChange={(patch) => setFormData((prev: CrewProfileFormData) => ({ ...prev, ...patch }))}
+                showErrors={showErrors}
+              />
+            )}
+            {submitError && <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{submitError}</p>}
+            <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Link href="/crew/profile-setup" className="text-center text-sm text-indigo-700 hover:underline">
+                Edit my whole profile instead
+              </Link>
+              <Button type="button" onClick={finishMissing} disabled={isLoading || !loaded} className="h-11 bg-indigo-600 hover:bg-indigo-700">
+                {isLoading ? 'Saving…' : 'Save and finish'}
+              </Button>
+            </div>
+          </div>
+          <div className="text-center mt-4 text-sm text-gray-600" aria-live="polite">
+            {saveState === 'error' ? <span className="text-red-700">Not saved: {saveError}</span> : saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'All changes saved' : 'Changes are saved as you go'}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (status === 'loading') {

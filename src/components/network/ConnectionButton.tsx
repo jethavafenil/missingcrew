@@ -68,7 +68,7 @@ export function ConnectionButton({ userId, currentUserId, onSuccess }: Connectio
 
   const handleConnect = async () => {
     if (userId === currentUserId) {
-      setError('Cannot connect with yourself')
+      setError('You cannot network with yourself')
       return
     }
 
@@ -96,7 +96,7 @@ export function ConnectionButton({ userId, currentUserId, onSuccess }: Connectio
     try {
       const data = await response.json()
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'Failed to send connection request')
+        throw new Error(data.error || data.message || 'Failed to send the network request')
       }
       setStatus('pending')
       onSuccess?.()
@@ -120,7 +120,7 @@ export function ConnectionButton({ userId, currentUserId, onSuccess }: Connectio
     return (
       <Button variant="outline" disabled className="gap-2">
         <UserCheck className="h-4 w-4" />
-        Connected
+        In your network
       </Button>
     )
   }
@@ -129,7 +129,7 @@ export function ConnectionButton({ userId, currentUserId, onSuccess }: Connectio
     return (
       <Button variant="outline" disabled className="gap-2">
         <Clock className="h-4 w-4" />
-        Request Sent
+        Request sent
       </Button>
     )
   }
@@ -142,7 +142,7 @@ export function ConnectionButton({ userId, currentUserId, onSuccess }: Connectio
         className="gap-2 bg-indigo-600 hover:bg-indigo-700"
       >
         <UserPlus className="h-4 w-4" />
-        {status === 'loading' ? 'Sending...' : 'Connect'}
+        {status === 'loading' ? 'Sending...' : 'Network with crew'}
       </Button>
       {error && (
         <p className="text-xs text-red-600 mt-1">{error}</p>

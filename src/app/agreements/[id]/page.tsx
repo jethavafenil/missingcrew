@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { CheckCircle2, ChevronLeft } from 'lucide-react'
+import { CheckCircle2, ChevronLeft, Mail, MapPin, Phone } from 'lucide-react'
 import { getSession } from '@/lib/auth/server'
 import { hireRequestRepo } from '@/lib/repo'
 import { ensureAgreement } from '@/lib/agreements/service'
+import { fillFields } from '@/lib/agreements/build'
 import { PrintButton } from '@/components/agreements/PrintButton'
 
 export const dynamic = 'force-dynamic'
@@ -14,17 +15,7 @@ const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/
 const dateTime = (iso: string) =>
   new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) + ' IST'
 
-const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : null)
-
-function Row({ label, value }: { label: string; value: string | null | undefined }) {
-  if (!value) return null
-  return (
-    <div className="grid grid-cols-1 gap-0.5 py-2 sm:grid-cols-[11rem_1fr] sm:gap-4">
-      <dt className="text-sm text-gray-500">{label}</dt>
-      <dd className="text-sm font-medium text-gray-900">{value}</dd>
-    </div>
-  )
-}
+const dateOnly = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })
 
 // The agreement of an accepted hire: only the producer and the crew member of that hire (and
 // admins) can open it. It shows the frozen copy made when the crew member accepted.
@@ -57,8 +48,8 @@ export default async function AgreementPage({ params }: { params: Promise<{ id: 
     )
   }
 
-  const p = agreement.project
-  const dates = p.startDate && p.endDate && day(p.startDate) !== day(p.endDate) ? `${day(p.startDate)} – ${day(p.endDate)}` : day(p.startDate) ?? day(p.endDate)
+  const f = agreement.fields
+  const fill = (t: string) => fillFields(t, f)
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 print:max-w-none print:p-0">
@@ -69,74 +60,117 @@ export default async function AgreementPage({ params }: { params: Promise<{ id: 
         <PrintButton />
       </div>
 
-      <article className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-10 print:rounded-none print:border-0 print:p-0 print:shadow-none">
-        <header className="border-b border-gray-200 pb-5">
-          <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">MissingCrew</p>
-          <h1 className="mt-1 text-2xl font-bold text-gray-900 sm:text-3xl">{agreement.title}</h1>
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
-            <span>
-              Agreement no. <span className="font-mono font-semibold text-gray-900">{agreement.number}</span>
-            </span>
-            <span className="inline-flex items-center gap-1 font-semibold text-emerald-700">
+      <article className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm print:rounded-none print:border-0 print:shadow-none">
+        <div className="h-2 bg-gradient-to-r from-[#05529a] via-[#1975ca] to-[#ffab2e]" aria-hidden="true" />
+
+        <div className="p-6 sm:p-10">
+          <header className="border-b border-gray-200 pb-6">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Missing Crew" className="mb-4 h-10 w-auto" />
+            <h1 className="text-2xl font-bold leading-tight text-[#05529a] sm:text-3xl">
+              {agreement.title}
+              <span className="block text-lg font-semibold text-gray-700 sm:text-xl">{fill('{{site.name}}')}</span>
+            </h1>
+            <dl className="mt-4 grid gap-1 text-sm text-gray-700 sm:grid-cols-[11rem_1fr]">
+              <dt className="font-semibold">Agreement ID:</dt>
+              <dd className="font-mono">{f['agreement.id']}</dd>
+              <dt className="font-semibold">Date of Agreement:</dt>
+              <dd>{dateOnly(f['agreement.date'])}</dd>
+              <dt className="font-semibold">Platform:</dt>
+              <dd>{f['site.domain']}</dd>
+            </dl>
+            <p className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700">
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Signed by both parties
-            </span>
-          </div>
-        </header>
+            </p>
+          </header>
 
-        <section className="mt-6">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">Parties</h2>
-          <dl className="mt-1 divide-y divide-gray-100">
-            <Row label="Producer" value={agreement.producer.company && agreement.producer.company !== agreement.producer.name ? `${agreement.producer.name} (${agreement.producer.company})` : agreement.producer.name} />
-            <Row label="Crew member" value={agreement.crew.name} />
-            <Row label="Role" value={agreement.role} />
-          </dl>
-        </section>
+          <p className="mt-6 text-sm leading-relaxed text-gray-700">
+            This agreement records the mutual understanding and commitment between the Employer and the Crew Member for the professional engagement
+            described below. Both parties agree to the terms and conditions set out in this document.
+          </p>
 
-        <section className="mt-6">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">Project</h2>
-          <dl className="mt-1 divide-y divide-gray-100">
-            <Row label="Project" value={p.name} />
-            <Row label="Project ID" value={p.code} />
-            <Row label="Type" value={p.type} />
-            <Row label="Production house" value={p.productionHouse} />
-            <Row label="Location" value={p.location} />
-            <Row label="Shoot dates" value={dates} />
-            <Row label="Shoot duration" value={p.duration} />
-            <Row label="Project status" value={p.status} />
-            <Row label="Budget shown on the project" value={p.budget} />
-          </dl>
-        </section>
+          {agreement.sections.map((section) => (
+            <section key={section.title} className="mt-8 break-inside-avoid-page">
+              <h2 className="border-b-2 border-[#ffab2e] pb-1 text-base font-bold text-[#05529a] sm:text-lg">{section.title}</h2>
+              <div className="mt-3 space-y-3">
+                {section.blocks.map((b, i) => {
+                  if (b.k === 'h3') return <h3 key={i} className="pt-2 text-sm font-bold uppercase tracking-wide text-gray-600">{b.x}</h3>
+                  if (b.k === 'p') return <p key={i} className="text-sm leading-relaxed text-gray-700">{fill(b.x)}</p>
+                  if (b.k === 'clause')
+                    return (
+                      <p key={i} className="flex gap-3 text-sm leading-relaxed text-gray-700">
+                        <span className="w-9 shrink-0 font-semibold text-gray-500">{b.n}</span>
+                        <span className="whitespace-pre-line">{fill(b.x)}</span>
+                      </p>
+                    )
+                  if (b.k === 'ul')
+                    return (
+                      <ul key={i} className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-gray-700">
+                        {b.items.map((it, j) => (
+                          <li key={j}>{fill(it)}</li>
+                        ))}
+                      </ul>
+                    )
+                  return (
+                    <dl key={i} className="divide-y divide-gray-100 rounded-lg border border-gray-100">
+                      {b.items.map((it) => (
+                        <div key={it.field} className="grid grid-cols-1 gap-0.5 px-3 py-2 sm:grid-cols-[14rem_1fr] sm:gap-4">
+                          <dt className="text-sm text-gray-500">{it.label}</dt>
+                          <dd className="whitespace-pre-line break-words text-sm font-medium text-gray-900">{f[it.field] ?? ''}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )
+                })}
+              </div>
+            </section>
+          ))}
 
-        <section className="mt-6">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">Terms</h2>
-          <ol className="mt-2 space-y-3">
-            {agreement.terms.map((t, i) => (
-              <li key={t.heading} className="text-sm leading-relaxed text-gray-700">
-                <span className="font-semibold text-gray-900">
-                  {i + 1}. {t.heading}.
-                </span>{' '}
-                {t.text}
-              </li>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2">
+            {[
+              { title: 'Employer Acceptance', name: f['employer.name'], sig: f['employer.signature'], at: f['employer.signedAt'] },
+              { title: 'Crew Member Acceptance', name: f['crew.name'], sig: f['crew.signature'], at: f['crew.signedAt'] },
+            ].map((a) => (
+              <section key={a.title} className="break-inside-avoid rounded-xl border border-gray-200 p-4">
+                <h2 className="text-sm font-bold text-[#05529a]">{a.title}</h2>
+                <dl className="mt-2 space-y-2 text-sm">
+                  <div>
+                    <dt className="text-gray-500">Name</dt>
+                    <dd className="font-medium text-gray-900">{a.name}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">Digital Signature</dt>
+                    <dd className="font-medium italic text-gray-900">{a.sig}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">Date and Time</dt>
+                    <dd className="font-medium text-gray-900">{dateTime(a.at)}</dd>
+                  </div>
+                </dl>
+              </section>
             ))}
-          </ol>
-        </section>
-
-        <section className="mt-8 grid gap-4 border-t border-gray-200 pt-6 sm:grid-cols-2">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Producer</p>
-            <p className="mt-1 font-semibold text-gray-900">{agreement.producer.name}</p>
-            <p className="text-sm text-gray-600">Sent the agreement: {dateTime(agreement.offeredAt)}</p>
           </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Crew member</p>
-            <p className="mt-1 font-semibold text-gray-900">{agreement.crew.name}</p>
-            <p className="text-sm text-gray-600">Accepted and signed: {dateTime(agreement.signedAt)}</p>
-          </div>
-        </section>
 
-        <p className="mt-6 text-xs text-gray-400">
-          Version {agreement.version}. Created on MissingCrew when the crew member accepted. Keep a copy for your records.
-        </p>
+          <p className="mt-6 text-sm">
+            <span className="font-bold">AGREEMENT STATUS:</span> <span className="font-semibold text-emerald-700">{f['agreement.status']}</span>
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-gray-500">
+            <span className="font-semibold">Agreement Record:</span> This document is stored with a unique Agreement ID and a record of the version accepted by both parties.
+            Version {agreement.version}.
+          </p>
+        </div>
+
+        <footer className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 bg-[#05529a] px-4 py-3 text-xs text-white">
+          <a href={`tel:${f['site.supportPhone']}`} className="inline-flex items-center gap-1.5">
+            <Phone className="h-3.5 w-3.5" aria-hidden="true" /> {f['site.supportPhone']}
+          </a>
+          <a href={`mailto:${f['site.supportEmail']}`} className="inline-flex items-center gap-1.5">
+            <Mail className="h-3.5 w-3.5" aria-hidden="true" /> {f['site.supportEmail']}
+          </a>
+          <span className="inline-flex items-center gap-1.5">
+            <MapPin className="h-3.5 w-3.5" aria-hidden="true" /> {f['site.location']}
+          </span>
+        </footer>
       </article>
     </div>
   )

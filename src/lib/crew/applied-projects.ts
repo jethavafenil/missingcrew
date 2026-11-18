@@ -72,6 +72,17 @@ export function markProjectAppliedLocally(projectId: string, userId?: string) {
   notifyListeners()
 }
 
+export function markProjectRetractedLocally(projectId: string, userId?: string) {
+  if (!projectId) return
+  // the in-memory copy may not be loaded yet: read the stored one first so the project is removed from it too
+  const uId = userId || currentActiveUserId
+  if (uId) loadFromStorage(uId)
+  if (!cachedAppliedIds) return
+  cachedAppliedIds.delete(projectId)
+  saveToStorage(uId || undefined)
+  notifyListeners()
+}
+
 export function toggleProjectWishlistLocally(projectId: string, isWishlisted: boolean, userId?: string) {
   if (!projectId) return
   if (!cachedWishlistIds) {

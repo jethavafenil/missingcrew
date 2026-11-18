@@ -54,3 +54,10 @@ describe('premade tag list', () => {
     expect(pickPremade(['sci-fi', '#SCIFI', 'night shoot', 'nope', 5])).toEqual(['SciFi', 'NightShoot'])
   })
 })
+
+describe('client hashtag library', () => {
+  it('contains the master library and keeps the earlier tags valid', () => {
+    expect(pickPremade(['director', '#FirstAC', 'Actress', 'DronePilot', 'Thriller', 'NightShoot'])).toEqual(['Director', 'FirstAC', 'Actress', 'DronePilot', 'Thriller', 'NightShoot'])
+    expect(PREMADE_TAGS.length).toBeGreaterThan(380)
+  })
+})

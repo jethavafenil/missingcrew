@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
+import { useSession } from '@/lib/auth/session-context'
 import { 
   Briefcase, 
   Users, 
@@ -182,6 +183,8 @@ const FALLBACK_CREW: HomeCrewMember[] = [
 export function HomeDualFeed({ projects, crew }: HomeDualFeedProps) {
   // Mobile tab state: 'projects' | 'crew' (on desktop both are rendered side-by-side in balanced pairs)
   const [mobileTab, setMobileTab] = useState<'projects' | 'crew'>('projects')
+  const { data: session } = useSession()
+  const role = session?.user?.role
 
   const displayProjects = projects && projects.length > 0 ? projects.slice(0, 4) : FALLBACK_PROJECTS
   const displayCrew = crew && crew.length > 0 ? crew.slice(0, 4) : FALLBACK_CREW
@@ -555,29 +558,52 @@ export function HomeDualFeed({ projects, crew }: HomeDualFeedProps) {
             </div>
             <div>
               <h4 className="text-base sm:text-lg font-bold text-gray-900">
-                Ready to find work or hire film talent?
+                {role === 'CREW' ? 'Ready to find your next project?' : role === 'EMPLOYER' ? 'Ready to hire film talent?' : 'Ready to find work or hire film talent?'}
               </h4>
-              <p className="text-xs sm:text-sm text-gray-600">
-                Create a free account in 2 minutes. No hidden fees to post a project or join as crew.
-              </p>
+              {!role && (
+                <p className="text-xs sm:text-sm text-gray-600">
+                  Create a free account in 2 minutes. No hidden fees to post a project or join as crew.
+                </p>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
-            <Link href="/accounts?tab=signup&role=employer" className="w-full sm:w-auto">
-              <Button 
-                variant="outline" 
-                className="w-full sm:w-auto border-indigo-600 text-indigo-700 hover:bg-indigo-50 font-semibold rounded-xl text-xs sm:text-sm"
-              >
-                Post a Project
-              </Button>
-            </Link>
-            <Link href="/accounts?tab=signup&role=crew" className="w-full sm:w-auto">
-              <Button 
-                className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
-              >
-                Join as Crew Member
-              </Button>
-            </Link>
+            {/* Signed-in members get links for their own role, never a sign-up button */}
+            {role !== 'CREW' && (
+              <Link href={role === 'EMPLOYER' ? '/employer/post-requirement' : '/accounts?tab=signup&role=employer'} className="w-full sm:w-auto">
+                <Button 
+                  variant="outline" 
+                  className="w-full sm:w-auto border-indigo-600 text-indigo-700 hover:bg-indigo-50 font-semibold rounded-xl text-xs sm:text-sm"
+                >
+                  Post a Project
+                </Button>
+              </Link>
+            )}
+            {role === 'CREW' ? (
+              <Link href="/find-work" className="w-full sm:w-auto">
+                <Button 
+                  className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
+                >
+                  Find Work
+                </Button>
+              </Link>
+            ) : role === 'EMPLOYER' ? (
+              <Link href="/browse-crew" className="w-full sm:w-auto">
+                <Button 
+                  className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
+                >
+                  Browse Crew
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/accounts?tab=signup&role=crew" className="w-full sm:w-auto">
+                <Button 
+                  className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl text-xs sm:text-sm shadow-sm"
+                >
+                  Join as Crew Member
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 

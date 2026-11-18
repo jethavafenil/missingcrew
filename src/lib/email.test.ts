@@ -21,3 +21,26 @@ describe('email templates', () => {
     expect(subject).toContain('5 crew members')
   })
 })
+
+describe('application email contact details', () => {
+  it('lists the crew member contact details and escapes them', () => {
+    const { html } = createApplicationEmail('e@x.com', 'Ravi', 'Neon', 'r@x.com', {
+      phone: '9876543210',
+      whatsapp: '+919123456789',
+      city: 'Pune <b>',
+      roles: ['Actor', 'Editor'],
+      profileUrl: 'https://missingcrew.example/crew/ravi',
+    })
+    expect(html).toContain('+91 98765 43210')
+    expect(html).toContain('+91 91234 56789')
+    expect(html).toContain('Actor, Editor')
+    expect(html).toContain('Pune &lt;b&gt;')
+    expect(html).toContain('https://missingcrew.example/crew/ravi')
+    expect(html).toContain('mailto:r@x.com')
+  })
+  it('still works with only an email', () => {
+    const { html } = createApplicationEmail('e@x.com', 'Ravi', 'Neon', 'r@x.com')
+    expect(html).toContain('r@x.com')
+    expect(html).not.toContain('Phone:')
+  })
+})

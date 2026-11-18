@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
     // Check if user is trying to connect with themselves
     if (receiverId === session.user.id) {
-      return NextResponse.json({ error: 'Cannot send connection request to yourself' }, { status: 400 })
+      return NextResponse.json({ error: 'You cannot send a network request to yourself' }, { status: 400 })
     }
 
     const requester = requesterFromSession(session)
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Already connected' }, { status: 400 })
       }
       if (existingConnection.status === 'PENDING') {
-        return NextResponse.json({ error: 'Connection request already sent' }, { status: 400 })
+        return NextResponse.json({ error: 'Network request already sent' }, { status: 400 })
       }
       if (existingConnection.status === 'REJECTED') {
         // Update the rejected connection to pending
@@ -62,8 +62,8 @@ export async function POST(req: NextRequest) {
         await notificationRepo.create({
           userId: receiverId,
           type: 'CONNECTION_REQUEST',
-          title: 'New Connection Request',
-          message: `${session.user.name || session.user.email} wants to connect with you`,
+          title: 'New Network Request',
+          message: `${session.user.name || session.user.email} wants to network with you. Accept to connect with crew & get hired as a team.`,
           data: {
             requesterId: session.user.id,
             connectionId: updatedConnection.id
@@ -88,8 +88,8 @@ export async function POST(req: NextRequest) {
     await notificationRepo.create({
       userId: receiverId,
       type: 'CONNECTION_REQUEST',
-      title: 'New Connection Request',
-      message: `${session.user.name || session.user.email} wants to connect with you`,
+      title: 'New Network Request',
+      message: `${session.user.name || session.user.email} wants to network with you. Accept to connect with crew & get hired as a team.`,
       data: {
         requesterId: session.user.id,
         connectionId: connectionWithUsers.id

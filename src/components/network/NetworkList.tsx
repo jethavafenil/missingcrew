@@ -58,10 +58,10 @@ export function NetworkList({ connections }: NetworkListProps) {
           />
         </svg>
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-          No connections yet
+          No one in your network yet
         </h3>
         <p className="text-gray-500 dark:text-gray-400 mb-4">
-          Start building your network by connecting with other crew members.
+          Start building your network: open a crew profile and press Network with crew.
         </p>
         <Link
           href="/browse-crew"
@@ -124,7 +124,8 @@ export function NetworkList({ connections }: NetworkListProps) {
 
                     {connection.user.crewProfile?.primaryRoles &&
                       connection.user.crewProfile.primaryRoles.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
+                        <div className="flex flex-wrap items-center gap-1 mt-1">
+                          <span className="text-xs font-medium text-gray-500">Profession:</span>
                           {connection.user.crewProfile.primaryRoles
                             .slice(0, 3)
                             .map((role, index) => (
@@ -197,7 +198,7 @@ export function NetworkList({ connections }: NetworkListProps) {
                 </div>
 
                 <p className="text-xs text-gray-400 mt-3">
-                  Connected since{' '}
+                  In your network since{' '}
                   {new Date(connection.connectedAt).toLocaleDateString()}
                 </p>
               </div>

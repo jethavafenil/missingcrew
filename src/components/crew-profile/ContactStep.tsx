@@ -174,10 +174,10 @@ export function ContactStep({ data, onChange }: ContactStepProps) {
         <label htmlFor="acceptTerms" className="text-sm text-gray-700">
           I agree to the{' '}
           <a href="/terms" target="_blank" className="text-indigo-600 hover:text-indigo-500">
-            Terms of Service
+            Terms and Conditions
           </a>{' '}
           and{' '}
-          <a href="/terms" target="_blank" className="text-indigo-600 hover:text-indigo-500">
+          <a href="/privacy" target="_blank" className="text-indigo-600 hover:text-indigo-500">
             Privacy Policy
           </a>
           . I confirm that all information provided is accurate and I&apos;m available for freelance work in the film industry. *

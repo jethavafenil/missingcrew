@@ -19,9 +19,17 @@ export async function ensureAgreement(hire: HireRequestWithRelations): Promise<A
     project: hire.project,
     producerName: hire.employer.user?.name || hire.employer.companyName || 'Producer',
     producerCompany: hire.employer.companyName || null,
+    producerEmail: hire.employer.user?.email ?? null,
+    producerPhone: hire.employer.user?.phone ?? null,
     crewName: hire.crew.user?.name || 'Crew member',
     crewMainRole: hire.crew.primaryRoles?.[0] ?? null,
+    crewEmail: hire.crew.user?.email ?? null,
+    crewPhone: hire.crew.user?.phone ?? null,
+    crewAddress: hire.crew.location || hire.crew.city || null,
   })
+
+  // An agreement saved in an older layout is shown in the current one (it is not re-saved).
+  if (hire.agreement) return snapshot
 
   const saved = await hireRequestRepo.saveAgreement(hire.id, snapshot)
   if (saved) return snapshot

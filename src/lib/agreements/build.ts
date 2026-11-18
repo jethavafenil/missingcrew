@@ -1,9 +1,15 @@
 // Builds the agreement that is stored when a crew member accepts a hire request.
 // Pure (no database), so the content and the numbering are unit-tested.
+//
+// The wording is the client's (clauses.ts); {{key}} markers in it are filled from `fields`, the
+// values listed in the client's FIELD-MAPPING.md. Both the wording and the values are copied into
+// the stored agreement, so it never changes afterwards.
 
 import { formatProductionStatus, formatShootDuration } from '@/lib/projects/details'
 import { formatBudget } from '@/lib/projects/format'
-import { AGREEMENT_TERMS, AGREEMENT_TITLE, AGREEMENT_VERSION } from '@/lib/agreements/template'
+import { slugifyName } from '@/lib/utils'
+import { AGREEMENT_SECTIONS, type AgreementSection } from '@/lib/agreements/clauses'
+import { AGREEMENT_TITLE, AGREEMENT_VERSION, NATURE_OF_ENGAGEMENT, NOT_PROVIDED, SITE, TO_BE_AGREED } from '@/lib/agreements/template'
 
 export interface AgreementSnapshot {
   version: string
@@ -11,24 +17,9 @@ export interface AgreementSnapshot {
   number: string
   offeredAt: string
   signedAt: string
-  project: {
-    id: string
-    code: string
-    name: string
-    type: string
-    location: string
-    productionHouse: string | null
-    startDate: string | null
-    endDate: string | null
-    duration: string | null
-    status: string | null
-    budget: string | null
-  }
-  producer: { name: string; company: string | null }
-  crew: { name: string }
-  role: string
   message: string
-  terms: Array<{ heading: string; text: string }>
+  fields: Record<string, string>
+  sections: AgreementSection[]
 }
 
 export interface AgreementInput {
@@ -44,6 +35,7 @@ export interface AgreementInput {
     projectType: string
     location: string
     productionHouse: string | null
+    description?: string | null
     shootStartDate: Date | null
     shootEndDate: Date | null
     shootDuration: string | null
@@ -55,8 +47,13 @@ export interface AgreementInput {
   }
   producerName: string
   producerCompany: string | null
+  producerEmail?: string | null
+  producerPhone?: string | null
   crewName: string
   crewMainRole: string | null
+  crewEmail?: string | null
+  crewPhone?: string | null
+  crewAddress?: string | null
 }
 
 // "AGR-MC-000123-9F3A": project ID plus the first four characters of the hire request ID.
@@ -65,39 +62,101 @@ export function agreementNumber(projectCode: string | null | undefined, hireId: 
   return `AGR-${projectCode || 'MC'}-${tail}`
 }
 
-export function buildAgreement(input: AgreementInput): AgreementSnapshot {
+const text = (v: string | null | undefined, fallback: string) => (v && v.trim() ? v.trim() : fallback)
+
+// Phones are stored as 10 digits (older ones as +91...): shown as "+91 98765 43210".
+export function displayPhone(phone: string | null | undefined): string {
+  const digits = (phone || '').replace(/\D/g, '')
+  const national = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits
+  return national.length === 10 ? `+91 ${national.slice(0, 5)} ${national.slice(5)}` : text(phone, NOT_PROVIDED)
+}
+
+const day = (d: Date | null) => (d ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }) : null)
+
+export function buildFields(input: AgreementInput, number: string): Record<string, string> {
   const p = input.project
+  const role = (input.role && input.role.trim()) || input.crewMainRole || 'Crew'
+  const budget = formatBudget({ budgetMin: p.budgetMin, budgetMax: p.budgetMax, budgetFixed: p.budgetFixed })
+  const duration = formatShootDuration(p.shootDuration, p.shootDurationCustom)
+  const company = input.producerCompany && input.producerCompany !== input.producerName ? input.producerCompany : NOT_PROVIDED
+  const signedAt = input.signedAt.toISOString()
   return {
-    version: AGREEMENT_VERSION,
-    title: AGREEMENT_TITLE,
-    number: agreementNumber(p.projectCode, input.hireId),
-    offeredAt: input.offeredAt.toISOString(),
-    signedAt: input.signedAt.toISOString(),
-    project: {
-      id: p.id,
-      code: p.projectCode ?? '',
-      name: p.projectName,
-      type: p.projectType,
-      location: p.location,
-      productionHouse: p.productionHouse,
-      startDate: p.shootStartDate ? p.shootStartDate.toISOString() : null,
-      endDate: p.shootEndDate ? p.shootEndDate.toISOString() : null,
-      duration: formatShootDuration(p.shootDuration, p.shootDurationCustom),
-      status: formatProductionStatus(p.productionStatus),
-      budget: formatBudget({ budgetMin: p.budgetMin, budgetMax: p.budgetMax, budgetFixed: p.budgetFixed }),
-    },
-    producer: { name: input.producerName, company: input.producerCompany },
-    crew: { name: input.crewName },
-    role: (input.role && input.role.trim()) || input.crewMainRole || 'Crew',
-    message: input.message,
-    terms: AGREEMENT_TERMS.map((t) => ({ ...t })),
+    'agreement.id': number,
+    'agreement.date': signedAt,
+    'agreement.status': 'Confirmed',
+    'site.name': SITE.name,
+    'site.domain': SITE.domain,
+    'site.governingLaw': SITE.governingLaw,
+    'site.supportPhone': SITE.supportPhone,
+    'site.supportEmail': SITE.supportEmail,
+    'site.location': SITE.location,
+    'employer.name': input.producerName,
+    'employer.company': company,
+    'employer.email': text(input.producerEmail, NOT_PROVIDED),
+    'employer.phone': displayPhone(input.producerPhone),
+    'employer.address': NOT_PROVIDED,
+    'employer.username': slugifyName(input.producerName) || NOT_PROVIDED,
+    'employer.signature': `Accepted electronically by ${input.producerName}`,
+    'employer.signedAt': input.offeredAt.toISOString(),
+    'crew.name': input.crewName,
+    'crew.primaryRole': role,
+    'crew.email': text(input.crewEmail, NOT_PROVIDED),
+    'crew.phone': displayPhone(input.crewPhone),
+    'crew.address': text(input.crewAddress, NOT_PROVIDED),
+    'crew.username': slugifyName(input.crewName) || NOT_PROVIDED,
+    'crew.signature': `Accepted electronically by ${input.crewName}`,
+    'crew.signedAt': signedAt,
+    'project.name': p.projectName,
+    'project.type': p.projectType,
+    'project.productionHouse': text(p.productionHouse, NOT_PROVIDED),
+    'project.description': text(p.description, NOT_PROVIDED),
+    'project.location': p.location,
+    'project.status': text(formatProductionStatus(p.productionStatus), TO_BE_AGREED),
+    'offer.position': role,
+    'offer.responsibilities': TO_BE_AGREED,
+    'offer.startDate': day(p.shootStartDate) ?? TO_BE_AGREED,
+    'offer.endDate': day(p.shootEndDate) ?? (duration ? `Shoot duration: ${duration}` : TO_BE_AGREED),
+    'offer.schedule': TO_BE_AGREED,
+    'offer.engagementType': TO_BE_AGREED,
+    'offer.workArrangement': TO_BE_AGREED,
+    'offer.totalFee': budget ? `${budget} (budget shown on the project; the final fee is as agreed between the parties)` : TO_BE_AGREED,
+    'offer.paymentBasis': TO_BE_AGREED,
+    'offer.advancePayment': TO_BE_AGREED,
+    'offer.remainingPayment': TO_BE_AGREED,
+    'offer.paymentSchedule': TO_BE_AGREED,
+    'offer.paymentMethod': TO_BE_AGREED,
+    'offer.ownershipTerms': TO_BE_AGREED,
+    'offer.screenCredit': TO_BE_AGREED,
+    'offer.creditName': input.crewName,
+    'offer.natureOfEngagement': NATURE_OF_ENGAGEMENT,
   }
 }
 
-// Stored JSON -> snapshot (or null when it is missing or not an agreement we wrote).
+export function buildAgreement(input: AgreementInput): AgreementSnapshot {
+  const number = agreementNumber(input.project.projectCode, input.hireId)
+  return {
+    version: AGREEMENT_VERSION,
+    title: AGREEMENT_TITLE,
+    number,
+    offeredAt: input.offeredAt.toISOString(),
+    signedAt: input.signedAt.toISOString(),
+    message: input.message,
+    fields: buildFields(input, number),
+    // deep copy: later edits to the wording cannot change this agreement
+    sections: JSON.parse(JSON.stringify(AGREEMENT_SECTIONS)) as AgreementSection[],
+  }
+}
+
+// Fills the {{key}} markers of a clause. Unknown keys show the bracketed key so a gap is visible.
+export function fillFields(textWithMarkers: string, fields: Record<string, string>): string {
+  return textWithMarkers.replace(/\{\{([\w.]+)\}\}/g, (_m, key: string) => fields[key] ?? `[${key}]`)
+}
+
+// Stored JSON -> snapshot (or null when it is missing or not a current agreement).
 export function parseAgreement(value: unknown): AgreementSnapshot | null {
   if (!value || typeof value !== 'object') return null
   const v = value as Partial<AgreementSnapshot>
-  if (typeof v.number !== 'string' || typeof v.signedAt !== 'string' || !v.project || !v.producer || !v.crew || !Array.isArray(v.terms)) return null
+  if (typeof v.number !== 'string' || typeof v.signedAt !== 'string' || typeof v.offeredAt !== 'string') return null
+  if (!v.fields || typeof v.fields !== 'object' || !Array.isArray(v.sections)) return null
   return v as AgreementSnapshot
 }

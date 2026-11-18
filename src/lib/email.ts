@@ -101,20 +101,51 @@ function layout(title: string, bodyHtml: string, cta?: { label: string; href: st
   `
 }
 
-export function createApplicationEmail(employerEmail: string, crewName: string, projectName: string, crewEmail: string) {
+export interface ApplicantContact {
+  phone?: string | null
+  whatsapp?: string | null
+  city?: string | null
+  roles?: string[] | null
+  profileUrl?: string | null
+}
+
+// "9876543210" / "+919876543210" -> "+91 98765 43210"; anything else is shown as typed.
+function phoneForEmail(value: string): string {
+  const digits = value.replace(/\D/g, '')
+  const national = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits
+  return national.length === 10 ? `+91 ${national.slice(0, 5)} ${national.slice(5)}` : value
+}
+
+export function createApplicationEmail(employerEmail: string, crewName: string, projectName: string, crewEmail: string, contact: ApplicantContact = {}) {
   const subject = `New Application: ${crewName} applied to your project ${projectName}`;
   const name = escapeHtml(crewName)
   const project = escapeHtml(projectName)
+  const phone = contact.phone && contact.phone.trim() ? escapeHtml(phoneForEmail(contact.phone.trim())) : ''
+  const whatsapp = contact.whatsapp && contact.whatsapp.trim() ? escapeHtml(phoneForEmail(contact.whatsapp.trim())) : ''
+  const roles = (contact.roles ?? []).filter(Boolean).slice(0, 3).map(escapeHtml).join(', ')
+  const city = contact.city && contact.city.trim() ? escapeHtml(contact.city.trim()) : ''
+  const profile = contact.profileUrl && /^https?:\/\//.test(contact.profileUrl) ? contact.profileUrl : ''
+  const contactRows = [
+    `<p><strong>Email:</strong> <a href="mailto:${escapeHtml(crewEmail)}">${escapeHtml(crewEmail)}</a></p>`,
+    phone ? `<p><strong>Phone:</strong> <a href="tel:${phone.replace(/\s/g, '')}">${phone}</a></p>` : '',
+    whatsapp ? `<p><strong>WhatsApp:</strong> ${whatsapp}</p>` : '',
+    roles ? `<p><strong>Profession:</strong> ${roles}</p>` : '',
+    city ? `<p><strong>City:</strong> ${city}</p>` : '',
+    profile ? `<p><strong>Profile:</strong> <a href="${escapeHtml(profile)}">View ${name}'s profile</a></p>` : '',
+  ].filter(Boolean).join('')
   const html = layout('New Application Received', `
       <p>Hello,</p>
       <p>${name} (${escapeHtml(crewEmail)}) has applied to your project: <strong>${project}</strong>.</p>
       <div style="margin: 20px 0; padding: 15px; background-color: #f3f4f6; border-radius: 6px;">
         <h3 style="margin-top: 0;">Application Details</h3>
         <p><strong>Applicant:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${escapeHtml(crewEmail)}</p>
         <p><strong>Project:</strong> ${project}</p>
       </div>
-      <p>You can review the application and contact the crew member through the MissingCrew platform.</p>`,
+      <div style="margin: 20px 0; padding: 15px; background-color: #eef2ff; border-radius: 6px;">
+        <h3 style="margin-top: 0;">Contact details</h3>
+        ${contactRows}
+      </div>
+      <p>You can review the application, the bid letter and the links they chose to share on the MissingCrew dashboard.</p>`,
     { label: 'Go to Dashboard', href: `${siteUrl()}/employer/dashboard` })
   return { subject, html };
 }

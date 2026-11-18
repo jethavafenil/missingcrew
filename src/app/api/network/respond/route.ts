@@ -51,8 +51,8 @@ export async function POST(req: NextRequest) {
       await notificationRepo.create({
         userId: connection.requesterId,
         type: 'CONNECTION_ACCEPTED',
-        title: 'Connection Request Accepted',
-        message: `${session.user.name || session.user.email} accepted your connection request`,
+        title: 'Network Request Accepted',
+        message: `${session.user.name || session.user.email} accepted your network request. You are now in each other's network.`,
         data: {
           receiverId: session.user.id,
           connectionId: connection.id

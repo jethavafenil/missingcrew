@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { agreementNumber, buildAgreement, parseAgreement, type AgreementInput } from './build'
+import { agreementNumber, buildAgreement, fillFields, parseAgreement, type AgreementInput } from './build'
 
 const input: AgreementInput = {
   hireId: '9f3a1c2e-0000-4000-8000-000000000000',
@@ -23,34 +23,68 @@ describe('agreementNumber', () => {
 })
 
 describe('buildAgreement', () => {
-  it('freezes the project details, parties, dates and terms', () => {
-    const a = buildAgreement(input)
+  it('freezes the parties, project, dates and wording', () => {
+    const a = buildAgreement({ ...input, producerEmail: 'asha@x.com', producerPhone: '9876543210', crewEmail: 'ravi@x.com', crewPhone: '+919123456789', crewAddress: 'Pune' })
     expect(a.number).toBe('AGR-MC-000123-9F3A')
+    expect(a.version).toBe('2.0')
     expect(a.offeredAt).toBe('2026-11-10T09:00:00.000Z')
     expect(a.signedAt).toBe('2026-11-11T10:30:00.000Z')
-    expect(a.project).toMatchObject({ code: 'MC-000123', name: 'Night Shift', duration: '4–7 days', status: 'Funding secured', budget: '₹10,000 - ₹15,000 per day' })
-    expect(a.producer).toEqual({ name: 'Asha', company: 'ABC Studios' })
-    expect(a.crew.name).toBe('Ravi Menon')
-    expect(a.role).toBe('1st AD')
-    expect(a.terms.length).toBeGreaterThanOrEqual(5)
+    expect(a.fields).toMatchObject({
+      'agreement.id': 'AGR-MC-000123-9F3A',
+      'employer.name': 'Asha',
+      'employer.company': 'ABC Studios',
+      'employer.email': 'asha@x.com',
+      'employer.phone': '+91 98765 43210',
+      'crew.name': 'Ravi Menon',
+      'crew.phone': '+91 91234 56789',
+      'crew.address': 'Pune',
+      'crew.primaryRole': '1st AD',
+      'project.name': 'Night Shift',
+      'project.status': 'Funding secured',
+      'offer.startDate': '1 December 2026',
+      'offer.endDate': '5 December 2026',
+      'site.governingLaw': 'Govt of India',
+    })
+    expect(a.fields['offer.totalFee']).toContain('₹10,000 - ₹15,000 per day')
+    expect(a.sections.length).toBe(18)
   })
-  it('falls back to the crew main role and leaves unset details empty', () => {
-    const a = buildAgreement({ ...input, role: '  ', project: { ...input.project, shootDuration: null, productionStatus: null, budgetMin: null, budgetMax: null } })
-    expect(a.role).toBe('Editor')
-    expect(a.project.duration).toBeNull()
-    expect(a.project.status).toBeNull()
-    expect(a.project.budget).toBeNull()
+  it('falls back to the crew main role and says so where a detail is not held', () => {
+    const a = buildAgreement({ ...input, role: '  ', project: { ...input.project, productionStatus: null, shootEndDate: null, budgetMin: null, budgetMax: null } })
+    expect(a.fields['crew.primaryRole']).toBe('Editor')
+    expect(a.fields['employer.phone']).toBe('Not provided')
+    expect(a.fields['project.status']).toBe('To be agreed in writing between the parties')
+    expect(a.fields['offer.endDate']).toBe('Shoot duration: 4–7 days')
+    expect(a.fields['offer.totalFee']).toBe('To be agreed in writing between the parties')
   })
-  it('copies the terms so later edits to the template cannot change it', () => {
+  it('does not repeat the company when it is the producer name', () => {
+    expect(buildAgreement({ ...input, producerCompany: 'Asha' }).fields['employer.company']).toBe('Not provided')
+  })
+  it('copies the wording so later edits to the template cannot change it', () => {
     const a = buildAgreement(input)
-    a.terms[0].text = 'changed'
-    expect(buildAgreement(input).terms[0].text).not.toBe('changed')
+    const first = a.sections[0].title
+    a.sections[0].title = 'changed'
+    expect(buildAgreement(input).sections[0].title).toBe(first)
+  })
+  it('every marker in the wording has a value', () => {
+    const a = buildAgreement(input)
+    const keys: string[] = []
+    for (const s of a.sections) for (const b of s.blocks) {
+      const texts = b.k === 'ul' ? b.items : b.k === 'kv' ? b.items.map((i) => `{{${i.field}}}`) : [b.x]
+      for (const t of texts) (t.match(/\{\{([\w.]+)\}\}/g) ?? []).forEach((m) => keys.push(m.slice(2, -2)))
+    }
+    expect(keys.filter((k) => !(k in a.fields))).toEqual([])
+  })
+})
+
+describe('fillFields', () => {
+  it('replaces markers and shows the key when a value is missing', () => {
+    expect(fillFields('{{a}} and {{b}}', { a: 'X' })).toBe('X and [b]')
   })
 })
 
 describe('parseAgreement', () => {
   it('accepts what buildAgreement wrote and rejects anything else', () => {
     expect(parseAgreement(JSON.parse(JSON.stringify(buildAgreement(input))))?.number).toBe('AGR-MC-000123-9F3A')
-    for (const bad of [null, 'x', {}, { number: 'A' }]) expect(parseAgreement(bad)).toBeNull()
+    for (const bad of [null, 'x', {}, { number: 'A' }, { number: 'A', signedAt: 'x', offeredAt: 'y', terms: [] }]) expect(parseAgreement(bad)).toBeNull()
   })
 })

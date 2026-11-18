@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { TAG_GROUPS, premadeValue } from '@/lib/projectTags'
+import { useMemo, useState } from 'react'
+import { PREMADE_TAGS, premadeValue } from '@/lib/projectTags'
 
 interface TagPickerProps {
   value: string[]
@@ -10,18 +10,37 @@ interface TagPickerProps {
   label?: string
 }
 
-// Hashtags are picked from the premade list only: tap to select, tap again to remove.
+const MAX_RESULTS = 30
+
+// Hashtags come from the premade library only. Nothing is listed until the member starts typing,
+// then matching tags appear (those that start with the text first). Tap a tag to add it; the
+// chosen ones are shown above the box and can be removed with a tap.
 export function TagPicker({ value, onChange, max, label = 'Hashtags' }: TagPickerProps) {
   const [query, setQuery] = useState('')
-  const selected = new Set(value.map((v) => v.toLowerCase()))
+  const selected = useMemo(() => new Set(value.map((v) => v.toLowerCase())), [value])
   const full = value.length >= max
-  const q = query.trim().toLowerCase()
+  const q = query.trim().replace(/^#+/, '').toLowerCase()
 
-  const toggle = (tagLabel: string) => {
-    const tag = premadeValue(tagLabel)
-    if (selected.has(tag.toLowerCase())) onChange(value.filter((v) => v.toLowerCase() !== tag.toLowerCase()))
-    else if (!full) onChange([...value, tag])
+  const results = useMemo(() => {
+    if (!q) return []
+    const starts: string[] = []
+    const contains: string[] = []
+    for (const l of PREMADE_TAGS) {
+      const v = premadeValue(l)
+      if (selected.has(v.toLowerCase())) continue
+      const lower = v.toLowerCase()
+      if (lower.startsWith(q)) starts.push(v)
+      else if (lower.includes(q)) contains.push(v)
+    }
+    return [...starts, ...contains].slice(0, MAX_RESULTS)
+  }, [q, selected])
+
+  const add = (tag: string) => {
+    if (full || selected.has(tag.toLowerCase())) return
+    onChange([...value, tag])
+    setQuery('')
   }
+  const remove = (tag: string) => onChange(value.filter((v) => v.toLowerCase() !== tag.toLowerCase()))
 
   return (
     <div>
@@ -29,44 +48,62 @@ export function TagPicker({ value, onChange, max, label = 'Hashtags' }: TagPicke
         <span className="text-sm font-semibold text-gray-700">{label}</span>
         <span className="text-xs text-gray-500">{value.length}/{max} selected</span>
       </div>
+
+      {value.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {value.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => remove(tag)}
+              aria-label={`Remove #${tag}`}
+              className="inline-flex items-center gap-1 rounded-full border border-indigo-600 bg-indigo-600 px-3 py-1 text-sm font-medium text-white"
+            >
+              #{tag}
+              <span aria-hidden="true" className="text-indigo-200">×</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <input
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search tags..."
-        className="mb-3 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
-        aria-label="Search tags"
+        onKeyDown={(e) => {
+          // Enter must not submit the whole form; it adds the top match instead
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            if (results[0]) add(results[0])
+          }
+        }}
+        disabled={full}
+        placeholder={full ? `You can pick up to ${max}. Remove one to add another.` : 'Start typing, e.g. Director, Editor, Actor...'}
+        className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm disabled:bg-gray-50"
+        aria-label="Search hashtags"
+        autoComplete="off"
       />
-      <div className="space-y-3">
-        {TAG_GROUPS.map((g) => {
-          const labels = g.labels.filter((l) => !q || l.toLowerCase().includes(q))
-          if (labels.length === 0) return null
-          return (
-            <div key={g.group}>
-              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">{g.group}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {labels.map((l) => {
-                  const on = selected.has(premadeValue(l).toLowerCase())
-                  return (
-                    <button
-                      key={l}
-                      type="button"
-                      onClick={() => toggle(l)}
-                      aria-pressed={on}
-                      disabled={!on && full}
-                      className={`rounded-full border px-3 py-1 text-sm font-medium transition ${
-                        on ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-gray-300 bg-white text-gray-700 hover:border-indigo-400 disabled:opacity-40'
-                      }`}
-                    >
-                      #{premadeValue(l)}
-                    </button>
-                  )
-                })}
-              </div>
+
+      {q && !full && (
+        <div className="mt-2" aria-live="polite">
+          {results.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {results.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => add(tag)}
+                  className="rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-700 transition hover:border-indigo-400"
+                >
+                  #{tag}
+                </button>
+              ))}
             </div>
-          )
-        })}
-      </div>
+          ) : (
+            <p className="text-sm text-gray-500">No hashtag matches &ldquo;{query.trim()}&rdquo;. Try a shorter word.</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }

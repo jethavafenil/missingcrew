@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/server'
 import { applicationRepo, crewProfileRepo, notificationRepo, projectRepo, requesterFromSession } from '@/lib/repo'
-import { sendEmail, createApplicationEmail, createApplicationsMilestoneEmail } from '@/lib/email'
+import { sendEmail, siteUrl, createApplicationEmail, createApplicationsMilestoneEmail } from '@/lib/email'
+import { slugifyName } from '@/lib/utils'
 import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimiter'
 import { z } from 'zod'
 import { parseBody } from '@/lib/api/body'
@@ -166,7 +167,14 @@ export async function POST(
         application.project!.employer!.user!.email,
         application.crew!.user!.name || application.crew!.user!.email,
         application.project!.projectName,
-        application.crew!.user!.email
+        application.crew!.user!.email,
+        {
+          phone: crewProfile.user?.phone ?? null,
+          whatsapp: crewProfile.contactWhatsApp ?? null,
+          city: crewProfile.city ?? null,
+          roles: crewProfile.primaryRoles ?? [],
+          profileUrl: `${siteUrl()}/crew/${slugifyName(application.crew!.user!.name || '')}`,
+        }
       );
 
       await sendEmail({
@@ -244,12 +252,53 @@ export async function GET(
     // Check if the crew has already applied to this project
     const existingApplication = await applicationRepo.findUniqueByProjectAndCrew(projectId, crewProfile.id)
 
-    return NextResponse.json({ hasApplied: !!existingApplication }, { status: 200 })
+    return NextResponse.json({ hasApplied: !!existingApplication, status: existingApplication?.status ?? null }, { status: 200 })
   } catch (error) {
     console.error('Error checking application status:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
+  }
+}
+
+// A crew member takes back an application the producer has not acted on yet.
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  try {
+    const session = await getSession()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const limited = await rateLimitMiddleware(request, 'application-retract', { userId: session.user.id, policy: RATE_LIMITS.applicationApply })
+    if (limited) return limited
+
+    const { id } = await context.params
+    if (!SAFE_ID_RE.test(id)) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+    }
+    const projectId = await resolveProjectId(id)
+
+    const crewProfile = await crewProfileRepo.findByUserId(session.user.id, requesterFromSession(session))
+    if (!crewProfile) {
+      return NextResponse.json({ error: 'Only crew members can retract an application' }, { status: 403 })
+    }
+
+    const existing = await applicationRepo.findUniqueByProjectAndCrew(projectId, crewProfile.id)
+    if (!existing) {
+      return NextResponse.json({ error: 'You have not applied to this project' }, { status: 404 })
+    }
+    if (existing.status !== 'PENDING') {
+      const what = existing.status === 'HIRED' ? 'You are already hired for this project' : 'The producer has already responded to your application'
+      return NextResponse.json({ error: `${what}, so it can no longer be retracted.` }, { status: 409 })
+    }
+
+    const removed = await applicationRepo.removePending(projectId, crewProfile.id)
+    if (!removed) {
+      return NextResponse.json({ error: 'The producer has just responded to your application, so it can no longer be retracted.' }, { status: 409 })
+    }
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error retracting application:', error)
+    return NextResponse.json({ error: 'Failed to retract the application' }, { status: 500 })
   }
 }

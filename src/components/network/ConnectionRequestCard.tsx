@@ -71,7 +71,7 @@ export function ConnectionRequestCard({ request, onRespond }: ConnectionRequestC
   return (
     <Card>
       <CardContent className="pt-6">
-        <div className="flex items-start gap-4">
+        <div className="flex flex-col items-start gap-4 sm:flex-row">
           <Link href={`/crew/${slugifyName(request.requester.name)}`}>
             <Avatar className="h-16 w-16">
               <AvatarImage src={request.requester.crewProfile?.photo || ''} alt={request.requester.name} />
@@ -87,7 +87,8 @@ export function ConnectionRequestCard({ request, onRespond }: ConnectionRequestC
             </Link>
             
             {request.requester.crewProfile?.primaryRoles && request.requester.crewProfile.primaryRoles.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
+              <div className="flex flex-wrap items-center gap-1 mt-1">
+                <span className="text-xs font-medium text-gray-500">Profession:</span>
                 {request.requester.crewProfile.primaryRoles.slice(0, 2).map((role, index) => (
                   <Badge key={index} variant="secondary" className="text-xs">
                     {role}
@@ -108,6 +109,9 @@ export function ConnectionRequestCard({ request, onRespond }: ConnectionRequestC
               </p>
             )}
 
+            <p className="mt-3 rounded-md bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-800">
+              Accept to connect with crew &amp; get hired as a team.
+            </p>
             <p className="text-xs text-gray-400 mt-2">
               Sent {new Date(request.createdAt).toLocaleDateString()}
             </p>

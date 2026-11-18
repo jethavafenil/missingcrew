@@ -14,6 +14,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Calendar, MapPin, Briefcase, DollarSign, Users, Clock, CheckCircle, AlertTriangle, FileText, Phone, Heart, RefreshCw, UserPlus } from 'lucide-react'
 import { ConnectionRequestCard } from '@/components/network/ConnectionRequestCard'
 import { NetworkList } from '@/components/network/NetworkList'
+import { RetractApplicationButton } from '@/components/applications/RetractApplicationButton'
+import { markProjectRetractedLocally } from '@/lib/crew/applied-projects'
+import { profileCompletion, type CompletionInput } from '@/lib/crew/completion'
 import { CrewSubscriptionCard } from '@/components/subscription/CrewSubscriptionCard'
 import { ReferralCard } from '@/components/dashboard/ReferralCard'
 import { usePaidPlansEnabled } from '@/lib/useSiteSettings'
@@ -250,29 +253,7 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
   }
 
   // Calculate profile completion percentage
-  const calculateProfileCompletion = () => {
-    if (!userData?.crewProfile) return 0
-
-    const profile = userData.crewProfile
-    const totalFields = 12 // Total number of fields we're checking
-    let completedFields = 0
-
-    // Check each field
-    if (profile.photo) completedFields++
-    if (profile.city) completedFields++
-    if (profile.primaryRoles && profile.primaryRoles.length > 0) completedFields++
-    if (profile.yearsExperience) completedFields++
-    if (profile.availability !== undefined) completedFields++
-    if (profile.availableToTravel !== undefined) completedFields++
-    if (profile.availabilityStart) completedFields++
-    if (profile.availabilityEnd) completedFields++
-    if (profile.contactWhatsApp) completedFields++
-    if (profile.imdbLink) completedFields++
-    if (profile.portfolioLinks && profile.portfolioLinks.length > 0) completedFields++
-    if (profile.projectTypes && profile.projectTypes.length > 0) completedFields++
-
-    return Math.round((completedFields / totalFields) * 100)
-  }
+  const calculateProfileCompletion = () => profileCompletion(userData?.crewProfile as CompletionInput | undefined).percent
 
   // State for projects and applications
   // Deep-linkable tab: /dashboard?tab=applications opens that tab.
@@ -465,10 +446,10 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
               calculateProfileCompletion() < 80 ? 'bg-blue-500' : 'bg-green-500'
             }
           />
-          {!isProfileComplete && (
+          {(!isProfileComplete || calculateProfileCompletion() < 100) && (
             <div className="mt-2 text-right">
               <Link
-                href="/crew/profile-setup"
+                href="/crew/profile-setup?missing=1"
                 className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center justify-end"
               >
                 Complete Your Profile
@@ -1059,7 +1040,7 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
                                     Applied on: {formatDate(app.applicationDate)}
                                   </p>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                   <Badge
                                     variant="success"
                                     className={
@@ -1077,6 +1058,21 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
 >
   View Details
 </Link>
+                                  {app.status === 'PENDING' && (
+                                    <RetractApplicationButton
+                                      projectId={app.project.id}
+                                      projectName={app.project.projectName}
+                                      onRetracted={() => {
+                                        markProjectRetractedLocally(app.project.id)
+                                        // the row goes at once; the lists then refresh from the server
+                                        mutateApplications(
+                                          (current) => current && { ...current, applications: current.applications.filter((x) => x.project.id !== app.project.id) },
+                                          { revalidate: true },
+                                        )
+                                        mutateProjects()
+                                      }}
+                                    />
+                                  )}
                                 </div>
                               </div>
                             </CardContent>
@@ -1189,7 +1185,7 @@ export function CrewDashboard({ user, userData }: CrewDashboardProps) {
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center">
                         <UserPlus className="h-5 w-5 mr-2 text-indigo-600" />
-                        Connection Requests ({receivedRequests.length})
+                        Network Requests ({receivedRequests.length})
                       </CardTitle>
                     </CardHeader>
                     <CardContent>

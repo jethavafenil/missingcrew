@@ -1,4 +1,5 @@
 import { canonicalProjectType } from '@/lib/projectTypes'
+import { HASHTAG_LIBRARY } from '@/lib/hashtagLibrary'
 
 // Custom project hashtags: producers may add up to MAX_PROJECT_TAGS free-text tags
 // on top of the hashtag derived from the project type. Suggestions are only hints.
@@ -9,9 +10,10 @@ export const MAX_TAG_LENGTH = 30
 // RegExp constructor: the tsconfig target predates the /u regex-literal flag.
 const NON_ALNUM = new RegExp(String.raw`[^\p{L}\p{N}]`, 'gu')
 
-// The only hashtags anyone can use (projects and crew). Edit this list when the client sends
-// the final one: each label becomes a CamelCase tag ("Night Shoot" -> #NightShoot).
-export const TAG_GROUPS: ReadonlyArray<{ group: string; labels: readonly string[] }> = [
+// The only hashtags anyone can use (projects and crew): the client's master library first, then the
+// earlier genre / style / content / shoot tags, kept so profiles and projects that already use them
+// keep them. Each label becomes a CamelCase tag ("Night Shoot" -> #NightShoot).
+const EARLIER_TAG_GROUPS: ReadonlyArray<{ group: string; labels: readonly string[] }> = [
   {
     group: 'Genre',
     labels: ['Thriller', 'Comedy', 'Drama', 'Romance', 'Action', 'Horror', 'Fantasy', 'Sci-Fi', 'Crime', 'Mystery', 'Family', 'Biopic', 'Historical', 'Musical', 'Animation', 'Mythology', 'Social Issue'],
@@ -29,6 +31,20 @@ export const TAG_GROUPS: ReadonlyArray<{ group: string; labels: readonly string[
     labels: ['Night Shoot', 'Outdoor', 'Studio', 'Travel Shoot', 'Low Budget', 'Paid', 'Urgent'],
   },
 ]
+
+const seenLabels = new Set<string>()
+export const TAG_GROUPS: ReadonlyArray<{ group: string; labels: readonly string[] }> = [...HASHTAG_LIBRARY, ...EARLIER_TAG_GROUPS]
+  .map((g) => ({
+    group: g.group,
+    // a tag that is in two groups is kept once
+    labels: g.labels.filter((l) => {
+      const key = l.replace(NON_ALNUM, '').toLowerCase()
+      if (seenLabels.has(key)) return false
+      seenLabels.add(key)
+      return true
+    }),
+  }))
+  .filter((g) => g.labels.length > 0)
 
 export const PREMADE_TAGS: string[] = TAG_GROUPS.flatMap((g) => [...g.labels])
 

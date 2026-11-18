@@ -10,6 +10,18 @@ together with `docs/HANDOFF.md` (architecture) and
 
 ---
 
+## 2026-11-18 — Client documents, hashtags, network and profile fixes — built, NOT yet committed
+
+- **Hashtags**: the client's master library (395 unique tags, `src/lib/hashtagLibrary.ts`) replaces the old default list in the picker. Nothing is listed until the member starts typing (tags that start with the text come first); chosen tags show above the box. The earlier genre / style / content / shoot tags stay valid so existing profiles and projects keep theirs. Used for crew (5) and for producers posting a project (3).
+- **Terms and Privacy**: the client's two documents are now `/terms` (Terms and Conditions) and `/privacy` (Privacy Policy), with a contents list. Text lives in `src/lib/legal/terms.ts` and `privacy.ts`. Links in sign-up, the profile form and the footer now point to the right one.
+- **Agreement**: the client's HTML is now the agreement (`src/lib/agreements/clauses.ts` wording, values from FIELD-MAPPING.md). It includes both parties' contact details. Details the platform does not collect yet (responsibilities, schedule, engagement type, payment terms, ownership, credit) read "To be agreed in writing between the parties". **Support phone `123-456-7890` is the client's placeholder.** Collecting those offer terms in the Hire popup is the natural next step.
+- **Network**: "Connect" is now "Network with crew"; the request shows "Accept to connect with crew & get hired as a team."; requests and network lists show the profession from the profile. Both people see each other once accepted (checked for both sides).
+- **Retract application**: a crew member can retract a bid while it is still pending (project page and Applications tab). Once shortlisted, rejected or hired it cannot be retracted.
+- **Complete your profile**: from the dashboard the link opens a short screen with only the items still missing (plus the terms checkbox if never accepted). It stays available while the profile is below 100%.
+- **Applicant email to the producer** now includes the crew member's phone, WhatsApp, profession, city and profile link.
+- **Crew who already have an account** no longer see "Create Crew Profile" / "Join as Crew" buttons (crew home and home page banner).
+- Tests: 235 unit tests; e2e now 124 checks (new `e2e-round2`).
+
 ## 2026-11-16 — Project details, agreements, required crew profile — built, NOT yet committed
 
 - **Job post**: new department **Acting** (Actor, Actress) for roles needed and crew primary roles; **Shoot duration** (1-3 days / 4-7 days / 1-2 weeks / 3-4 weeks / Custom number + days/weeks/months); **Project status** (Confirmed / Funding secured / In development / Awaiting approval). Both are optional on the server. Shown on project cards, project page, dashboards.

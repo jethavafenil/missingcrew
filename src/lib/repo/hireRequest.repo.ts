@@ -13,9 +13,9 @@ export const HIRE_COLS = 'id,employer_id,crew_id,project_id,role,message,status,
 
 const WITH_RELATIONS =
   `${HIRE_COLS},agreement,` +
-  'project:projects(id,project_name,project_type,location,shoot_start_date,shoot_end_date,production_house,project_code,shoot_duration,shoot_duration_custom,production_status,budget_min,budget_max,budget_fixed),' +
-  'employer:employer_profiles(id,"userId",company_name,user:users(id,name,email)),' +
-  'crew:crew_profiles(id,"userId",photo,primary_roles,user:users(id,name,email))'
+  'project:projects(id,project_name,project_type,location,shoot_start_date,shoot_end_date,production_house,project_code,shoot_duration,shoot_duration_custom,production_status,budget_min,budget_max,budget_fixed,description),' +
+  'employer:employer_profiles(id,"userId",company_name,user:users(id,name,email,phone)),' +
+  'crew:crew_profiles(id,"userId",photo,primary_roles,city,location,user:users(id,name,email,phone))'
 
 type Raw = Record<string, unknown>
 
@@ -26,7 +26,7 @@ function toWithRelations(raw: Raw): HireRequestWithRelations {
   const c = raw.crew as Raw | null | undefined
   const user = (u: unknown) => {
     const x = u as Raw | null | undefined
-    return x ? { id: x.id as string, name: (x.name as string | null) ?? null, email: x.email as string } : undefined
+    return x ? { id: x.id as string, name: (x.name as string | null) ?? null, email: x.email as string, phone: (x.phone as string | null) ?? null } : undefined
   }
   return {
     ...base,
@@ -46,6 +46,7 @@ function toWithRelations(raw: Raw): HireRequestWithRelations {
           budgetMin: p.budget_min == null ? null : Number(p.budget_min),
           budgetMax: p.budget_max == null ? null : Number(p.budget_max),
           budgetFixed: p.budget_fixed == null ? null : p.budget_fixed === true,
+          description: (p.description as string | null) ?? null,
         }
       : undefined,
     employer: e
@@ -57,6 +58,8 @@ function toWithRelations(raw: Raw): HireRequestWithRelations {
           userId: c.userId as string,
           photo: (c.photo as string | null) ?? null,
           primaryRoles: asStringList(c.primary_roles),
+          city: (c.city as string | null) ?? null,
+          location: (c.location as string | null) ?? null,
           user: user(c.user),
         }
       : undefined,

@@ -515,9 +515,10 @@ export interface HireRequestWithRelations extends HireRequestRow {
     budgetMin: number | null
     budgetMax: number | null
     budgetFixed: boolean | null
+    description: string | null
   }
-  employer?: { id: string; userId: string; companyName: string; user?: { id: string; name: string | null; email: string } }
-  crew?: { id: string; userId: string; photo: string | null; primaryRoles: string[]; user?: { id: string; name: string | null; email: string } }
+  employer?: { id: string; userId: string; companyName: string; user?: { id: string; name: string | null; email: string; phone: string | null } }
+  crew?: { id: string; userId: string; photo: string | null; primaryRoles: string[]; city: string | null; location: string | null; user?: { id: string; name: string | null; email: string; phone: string | null } }
 }
 
 export function mapHireRequest(r: RawRow): HireRequestRow {

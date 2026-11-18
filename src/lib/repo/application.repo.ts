@@ -153,6 +153,20 @@ export async function update(id: string, input: UpdateApplicationInput, _req: Re
   return data ? mapApplication(data as Record<string, unknown>) : null
 }
 
+// Takes back an application that has not been acted on yet. Returns false when there is nothing
+// to retract (no application, or the producer already shortlisted / rejected / hired).
+export async function removePending(projectId: string, crewId: string): Promise<boolean> {
+  const { data, error } = await getServiceClient()
+    .from('applications')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('crew_id', crewId)
+    .eq('status', 'PENDING')
+    .select('id')
+  throwOnError('application.removePending', error)
+  return (data ?? []).length > 0
+}
+
 export async function findById(id: string): Promise<ApplicationWithProjectAndCrewRow | null> {
   const { data, error } = await getServiceClient().from('applications').select(APP_WITH_PROJECT_CREW).eq('id', id).maybeSingle()
   throwOnError('application.findById', error)

@@ -399,9 +399,10 @@ export default async function CrewHome() {
             <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 md:mb-4 px-2">Ready to Elevate Your Career?</h3>
             <p className="text-indigo-100 text-base md:text-lg mb-6 md:mb-8 px-4">Join thousands of film professionals connecting with premium opportunities on MissingCrew.</p>
             <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center px-4">
-              <Link href="/accounts?tab=signup&role=crew" className="w-full sm:w-auto">
+              {/* Someone who already has a crew account is not asked to create a profile again */}
+              <Link href={isCrew ? '/dashboard' : '/accounts?tab=signup&role=crew'} className="w-full sm:w-auto">
                 <Button size="lg" className="bg-white text-indigo-700 hover:bg-indigo-50 font-semibold px-6 md:px-8 w-full sm:w-auto">
-                  Create Crew Profile
+                  {isCrew ? 'Go to My Dashboard' : 'Create Crew Profile'}
                 </Button>
               </Link>
               <Link href="/find-work" className="w-full sm:w-auto">

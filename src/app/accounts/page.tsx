@@ -425,11 +425,11 @@ function AccountsContent() {
 
                     <div className="mt-4 text-center text-xs text-gray-500">
                       By continuing, you agree to our{' '}
-                      <Link href="/terms" className="text-indigo-600 hover:text-indigo-700">
-                        Terms of Service
+                      <Link href="/terms" target="_blank" className="text-indigo-600 hover:text-indigo-700">
+                        Terms and Conditions
                       </Link>{' '}
                       and{' '}
-                      <Link href="/terms" className="text-indigo-600 hover:text-indigo-700">
+                      <Link href="/privacy" target="_blank" className="text-indigo-600 hover:text-indigo-700">
                         Privacy Policy
                       </Link>
                     </div>
