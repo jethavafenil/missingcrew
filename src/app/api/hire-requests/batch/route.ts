@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     for (const crewId of Array.from(new Set(input.crewIds))) {
       const crew = await crewProfileRepo.findByIdWithUser(crewId)
       try {
-        await sendHireRequest({ employer, project, producerUserId: session.user.id, producerName, requester, crewId, role: input.role, message: input.message })
+        await sendHireRequest({ employer, project, producerUserId: session.user.id, producerName, requester, crewId, role: input.role, message: input.message, offer: input.offer })
         results.push({ crewId, name: crew?.user?.name ?? null, ok: true })
       } catch (err) {
         results.push({ crewId, name: crew?.user?.name ?? null, ok: false, error: normalizeApiError(err).message })

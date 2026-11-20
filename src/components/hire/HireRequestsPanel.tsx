@@ -10,6 +10,7 @@ import { formatShootRange } from '@/lib/projects/format'
 import { slugifyName } from '@/lib/utils'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ProfileGate, useCrewReadiness } from '@/components/crew/ProfileGate'
+import { OfferSummary } from '@/components/hire/OfferTermsFields'
 import { FileText } from 'lucide-react'
 
 type Status = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED'
@@ -19,6 +20,7 @@ interface CrewViewRequest {
   status: Status
   role: string | null
   message: string
+  offer?: Record<string, string> | null
   createdAt: string
   producerName: string
   project?: { id: string; projectName: string; location: string; shootStartDate: string | null; shootEndDate: string | null; productionHouse: string | null; projectCode?: string | null }
@@ -29,6 +31,7 @@ interface EmployerViewRequest {
   status: Status
   role: string | null
   message: string
+  offer?: Record<string, string> | null
   createdAt: string
   crew?: { id: string; name: string; primaryRoles: string[] }
   project?: { id: string; projectName: string; projectCode?: string | null }
@@ -121,6 +124,11 @@ export function HireRequestsPanel({ viewer }: { viewer: 'CREW' | 'EMPLOYER' }) {
                 <Badge className={STATUS_STYLE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
               </div>
               <p className="mt-3 whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">{c.message}</p>
+              {c.offer && (
+                <div className="mt-3">
+                  <OfferSummary offer={c.offer} />
+                </div>
+              )}
               {c.status === 'ACCEPTED' && (
                 <Link href={`/agreements/${c.id}`} className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-700 hover:underline">
                   <FileText className="h-4 w-4" aria-hidden="true" /> View agreement
@@ -160,6 +168,11 @@ export function HireRequestsPanel({ viewer }: { viewer: 'CREW' | 'EMPLOYER' }) {
               <Badge className={STATUS_STYLE[e.status]}>{STATUS_LABEL[e.status]}</Badge>
             </div>
             <p className="mt-3 whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">{e.message}</p>
+            {e.offer && (
+              <div className="mt-3">
+                <OfferSummary offer={e.offer} />
+              </div>
+            )}
             {e.status === 'ACCEPTED' && (
               <Link href={`/agreements/${e.id}`} className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-700 hover:underline">
                 <FileText className="h-4 w-4" aria-hidden="true" /> View agreement
@@ -197,9 +210,16 @@ export function HireRequestsPanel({ viewer }: { viewer: 'CREW' | 'EMPLOYER' }) {
               text="Before you accept, your profile needs to be complete so the producer sees who they are hiring."
             />
           ) : (
-            <p className="rounded-lg bg-emerald-50 p-4 text-sm font-medium text-emerald-900">
-              This will officially start the project and sign an agreement.
-            </p>
+            <div className="space-y-3">
+              <p className="rounded-lg bg-emerald-50 p-4 text-sm font-medium text-emerald-900">
+                This will officially start the project and sign an agreement.
+              </p>
+              {accepting?.offer && (
+                <div className="max-h-56 overflow-y-auto">
+                  <OfferSummary offer={accepting.offer} />
+                </div>
+              )}
+            </div>
           )}
 
           <DialogFooter className="gap-2 sm:gap-0">

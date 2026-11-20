@@ -497,6 +497,8 @@ export interface HireRequestRow {
   respondedAt: Date | null
   // frozen agreement written when the crew member accepts (see src/lib/agreements)
   agreement: unknown | null
+  // offer terms the producer filled in (fee, schedule, ...), or null
+  offer: Record<string, string> | null
 }
 
 export interface HireRequestWithRelations extends HireRequestRow {
@@ -533,5 +535,6 @@ export function mapHireRequest(r: RawRow): HireRequestRow {
     createdAt: asDate(r.created_at)!,
     respondedAt: asDate(r.responded_at),
     agreement: r.agreement ?? null,
+    offer: r.offer && typeof r.offer === 'object' ? (r.offer as Record<string, string>) : null,
   }
 }

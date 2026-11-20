@@ -21,6 +21,7 @@ function toCrewView(r: HireRequestWithRelations) {
     status: r.status,
     role: r.role,
     message: r.message,
+    offer: r.offer,
     createdAt: r.createdAt,
     respondedAt: r.respondedAt,
     producerName: r.employer?.companyName || r.employer?.user?.name || 'A producer',
@@ -43,6 +44,7 @@ function toEmployerView(r: HireRequestWithRelations) {
     status: r.status,
     role: r.role,
     message: r.message,
+    offer: r.offer,
     createdAt: r.createdAt,
     respondedAt: r.respondedAt,
     crew: r.crew && { id: r.crew.id, name: r.crew.user?.name ?? 'Crew member', photo: r.crew.photo, primaryRoles: r.crew.primaryRoles },
@@ -96,6 +98,7 @@ export async function POST(request: NextRequest) {
       crewId: input.crewId,
       role: input.role,
       message: input.message,
+      offer: input.offer,
     })
 
     return NextResponse.json({ request: { id: created.id, status: created.status } }, { status: 201 })

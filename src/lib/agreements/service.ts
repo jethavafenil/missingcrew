@@ -16,6 +16,7 @@ export async function ensureAgreement(hire: HireRequestWithRelations): Promise<A
     signedAt: hire.respondedAt ?? new Date(),
     role: hire.role,
     message: hire.message,
+    offer: hire.offer,
     project: hire.project,
     producerName: hire.employer.user?.name || hire.employer.companyName || 'Producer',
     producerCompany: hire.employer.companyName || null,

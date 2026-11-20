@@ -10,6 +10,8 @@ import { swrFetcher } from '@/lib/swr'
 import { buildHireMessage } from '@/lib/shareMessages'
 import { formatShootRange } from '@/lib/projects/format'
 import { MAX_HIRE_MESSAGE } from '@/lib/hire/schema'
+import { cleanOffer, offerError, type OfferTerms } from '@/lib/hire/offer'
+import { OfferTermsFields, OfferSummary } from '@/components/hire/OfferTermsFields'
 
 interface ProjectOption {
   id: string
@@ -51,6 +53,7 @@ export function HireNowModal({ open, onOpenChange, crewId, crewName, crewRoles, 
   const [sent, setSent] = useState(false)
   // second step: "This will send an agreement to the crew member" - confirm before anything is sent
   const [confirming, setConfirming] = useState(false)
+  const [offer, setOffer] = useState<OfferTerms>({})
   const initialised = useRef(false)
 
   const project = projects.find((p) => p.id === projectId)
@@ -96,6 +99,7 @@ export function HireNowModal({ open, onOpenChange, crewId, crewName, crewRoles, 
     setSent(false)
     setConfirming(false)
     setEdited(false)
+    setOffer({})
     initialised.current = false
     setProjectId('')
   }
@@ -105,6 +109,11 @@ export function HireNowModal({ open, onOpenChange, crewId, crewName, crewRoles, 
     e.preventDefault()
     if (!project) {
       setError('Please choose a project first')
+      return
+    }
+    const problem = offerError(offer)
+    if (problem) {
+      setError(problem)
       return
     }
     setError('')
@@ -120,7 +129,7 @@ export function HireNowModal({ open, onOpenChange, crewId, crewName, crewRoles, 
       const res = await fetch('/api/hire-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ crewId, projectId: project.id, role: role || undefined, message }),
+        body: JSON.stringify({ crewId, projectId: project.id, role: role || undefined, message, offer: cleanOffer(offer) ?? undefined }),
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body.error || 'Could not send the request. Please try again.')
@@ -181,6 +190,9 @@ export function HireNowModal({ open, onOpenChange, crewId, crewName, crewRoles, 
               <dt className="text-gray-500">Role</dt>
               <dd className="font-medium text-gray-900">{role || 'To be agreed'}</dd>
             </dl>
+            <div className="max-h-56 overflow-y-auto">
+              <OfferSummary offer={offer} />
+            </div>
             {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <Button type="button" variant="outline" disabled={sending} onClick={() => setConfirming(false)}>
@@ -229,6 +241,8 @@ export function HireNowModal({ open, onOpenChange, crewId, crewName, crewRoles, 
               />
               <p className="mt-1 text-right text-xs text-gray-400">{message.length}/{MAX_HIRE_MESSAGE}</p>
             </div>
+
+            <OfferTermsFields value={offer} onChange={setOffer} idPrefix="hire-offer" />
 
             {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 

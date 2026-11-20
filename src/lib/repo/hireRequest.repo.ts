@@ -9,7 +9,7 @@ import {
   type HireRequestWithRelations,
 } from '@/lib/repo/types'
 
-export const HIRE_COLS = 'id,employer_id,crew_id,project_id,role,message,status,created_at,responded_at'
+export const HIRE_COLS = 'id,employer_id,crew_id,project_id,role,message,status,created_at,responded_at,offer'
 
 const WITH_RELATIONS =
   `${HIRE_COLS},agreement,` +
@@ -72,6 +72,7 @@ export interface CreateHireRequestInput {
   projectId: string
   role?: string | null
   message: string
+  offer?: Record<string, string> | null
 }
 
 export async function create(input: CreateHireRequestInput): Promise<HireRequestRow> {
@@ -83,6 +84,7 @@ export async function create(input: CreateHireRequestInput): Promise<HireRequest
       project_id: input.projectId,
       role: input.role ?? null,
       message: input.message,
+      offer: input.offer ?? null,
       status: 'PENDING',
       created_at: now().toISOString(),
     })
@@ -141,10 +143,10 @@ export async function respond(id: string, status: Exclude<HireRequestStatus, 'PE
 }
 
 // A producer may re-send a request they previously cancelled (declines stay final).
-export async function reopenCancelled(id: string, input: { role?: string | null; message: string }): Promise<HireRequestRow | null> {
+export async function reopenCancelled(id: string, input: { role?: string | null; message: string; offer?: Record<string, string> | null }): Promise<HireRequestRow | null> {
   const { data, error } = await getServiceClient()
     .from('hire_requests')
-    .update({ status: 'PENDING', role: input.role ?? null, message: input.message, responded_at: null, created_at: now().toISOString() })
+    .update({ status: 'PENDING', role: input.role ?? null, message: input.message, offer: input.offer ?? null, responded_at: null, created_at: now().toISOString() })
     .eq('id', id)
     .eq('status', 'CANCELLED')
     .select(HIRE_COLS)

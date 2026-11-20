@@ -76,6 +76,30 @@ describe('buildAgreement', () => {
   })
 })
 
+describe('offer terms in the agreement', () => {
+  it('uses what the producer entered and falls back for the rest', () => {
+    const a = buildAgreement({
+      ...input,
+      offer: { responsibilities: 'Direct units A and B', startDate: '2026-12-02', totalFee: '₹60,000', paymentBasis: 'Per Day', paymentMethod: 'UPI', creditName: 'R. Menon' },
+    })
+    expect(a.fields).toMatchObject({
+      'offer.responsibilities': 'Direct units A and B',
+      'offer.startDate': '2 December 2026',
+      'offer.endDate': '5 December 2026', // from the project
+      'offer.totalFee': '₹60,000',
+      'offer.paymentBasis': 'Per Day',
+      'offer.paymentMethod': 'UPI',
+      'offer.creditName': 'R. Menon',
+      'offer.schedule': 'To be agreed in writing between the parties',
+    })
+  })
+  it('ignores an invalid offer instead of printing it', () => {
+    const a = buildAgreement({ ...input, offer: { engagementType: 'Forever', evil: '<b>x</b>' } as never })
+    expect(a.fields['offer.engagementType']).toBe('To be agreed in writing between the parties')
+    expect(JSON.stringify(a.fields)).not.toContain('<b>x</b>')
+  })
+})
+
 describe('fillFields', () => {
   it('replaces markers and shows the key when a value is missing', () => {
     expect(fillFields('{{a}} and {{b}}', { a: 'X' })).toBe('X and [b]')

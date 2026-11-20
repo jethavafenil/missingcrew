@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { offerSchema } from '@/lib/hire/offer'
 
 // Ids are TEXT (legacy cuids + uuids).
 const id = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/, 'Invalid id')
@@ -10,6 +11,8 @@ export const createHireRequestSchema = z.object({
   projectId: id,
   role: z.preprocess((v) => (v === '' ? undefined : v), z.string().trim().max(100).optional()),
   message: z.string().trim().min(1, 'Please write a message').max(MAX_HIRE_MESSAGE, `Message must be ${MAX_HIRE_MESSAGE} characters or fewer`),
+  // optional offer terms (fee, schedule, ...): they go into the agreement
+  offer: offerSchema.optional(),
 })
 
 export const respondHireRequestSchema = z.object({
@@ -24,6 +27,7 @@ export const hireAllSchema = z.object({
   crewIds: z.array(id).min(1, 'Pick at least one crew member').max(MAX_HIRE_ALL, `You can hire up to ${MAX_HIRE_ALL} people at once`),
   role: z.preprocess((v) => (v === '' ? undefined : v), z.string().trim().max(100).optional()),
   message: z.string().trim().min(1, 'Please write a message').max(MAX_HIRE_MESSAGE, `Message must be ${MAX_HIRE_MESSAGE} characters or fewer`),
+  offer: offerSchema.optional(),
 })
 
 export function personalise(message: string, fullName: string | null | undefined): string {

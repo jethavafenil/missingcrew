@@ -21,6 +21,7 @@ interface SendInput {
   crewId: string
   role?: string
   message: string
+  offer?: Record<string, string> | null
 }
 
 // Creates (or re-opens a cancelled) hire request, notifies the crew member in-app and,
@@ -39,7 +40,7 @@ export async function sendHireRequest(input: SendInput) {
   let created
   if (existing) {
     if (existing.status === 'CANCELLED') {
-      created = await hireRequestRepo.reopenCancelled(existing.id, { role: input.role, message })
+      created = await hireRequestRepo.reopenCancelled(existing.id, { role: input.role, message, offer: input.offer })
     }
     if (!created) {
       const why =
@@ -50,7 +51,7 @@ export async function sendHireRequest(input: SendInput) {
     }
   } else {
     try {
-      created = await hireRequestRepo.create({ employerId: employer.id, crewId: crew.id, projectId: project.id, role: input.role, message })
+      created = await hireRequestRepo.create({ employerId: employer.id, crewId: crew.id, projectId: project.id, role: input.role, message, offer: input.offer })
     } catch (err) {
       // Unique (project, crew) lost a race with a parallel request.
       if (err instanceof Error && /duplicate key|23505/i.test(err.message)) {

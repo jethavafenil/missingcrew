@@ -10,6 +10,12 @@ together with `docs/HANDOFF.md` (architecture) and
 
 ---
 
+## 2026-11-18 (later) — Offer terms in the Hire popup — built, NOT yet committed
+
+- The Hire popup (single and HIRE ALL) has an optional, collapsed **Offer details for the agreement** section: responsibilities, start/end date, schedule, engagement type, work arrangement, total fee, payment basis, advance, remaining payment, payment schedule, payment method, ownership/licence terms, screen credit, credit name (`src/lib/hire/offer.ts` is the single list; checked on the client and the server).
+- Stored on `hire_requests.offer` (migration `0022`, applied). The crew member sees the terms on the request and in the Accept popup before signing; they are copied into the agreement (anything empty still reads "To be agreed in writing between the parties"; dates and fee fall back to the project's own).
+- Tests: 247 unit, 138 e2e (new `e2e-round3`, 14 checks).
+
 ## 2026-11-18 — Client documents, hashtags, network and profile fixes — built, NOT yet committed
 
 - **Hashtags**: the client's master library (395 unique tags, `src/lib/hashtagLibrary.ts`) replaces the old default list in the picker. Nothing is listed until the member starts typing (tags that start with the text come first); chosen tags show above the box. The earlier genre / style / content / shoot tags stay valid so existing profiles and projects keep theirs. Used for crew (5) and for producers posting a project (3).

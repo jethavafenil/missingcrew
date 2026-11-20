@@ -8,6 +8,7 @@
 import { formatProductionStatus, formatShootDuration } from '@/lib/projects/details'
 import { formatBudget } from '@/lib/projects/format'
 import { slugifyName } from '@/lib/utils'
+import { cleanOffer, type OfferTerms } from '@/lib/hire/offer'
 import { AGREEMENT_SECTIONS, type AgreementSection } from '@/lib/agreements/clauses'
 import { AGREEMENT_TITLE, AGREEMENT_VERSION, NATURE_OF_ENGAGEMENT, NOT_PROVIDED, SITE, TO_BE_AGREED } from '@/lib/agreements/template'
 
@@ -28,6 +29,8 @@ export interface AgreementInput {
   signedAt: Date
   role: string | null
   message: string
+  // terms the producer filled in when hiring (all optional)
+  offer?: OfferTerms | null
   project: {
     id: string
     projectCode: string | null
@@ -80,6 +83,8 @@ export function buildFields(input: AgreementInput, number: string): Record<strin
   const duration = formatShootDuration(p.shootDuration, p.shootDurationCustom)
   const company = input.producerCompany && input.producerCompany !== input.producerName ? input.producerCompany : NOT_PROVIDED
   const signedAt = input.signedAt.toISOString()
+  const offer = cleanOffer(input.offer) ?? {}
+  const offerDay = (v: string | undefined) => (v ? day(new Date(v + 'T00:00:00Z')) : null)
   return {
     'agreement.id': number,
     'agreement.date': signedAt,
@@ -113,21 +118,22 @@ export function buildFields(input: AgreementInput, number: string): Record<strin
     'project.location': p.location,
     'project.status': text(formatProductionStatus(p.productionStatus), TO_BE_AGREED),
     'offer.position': role,
-    'offer.responsibilities': TO_BE_AGREED,
-    'offer.startDate': day(p.shootStartDate) ?? TO_BE_AGREED,
-    'offer.endDate': day(p.shootEndDate) ?? (duration ? `Shoot duration: ${duration}` : TO_BE_AGREED),
-    'offer.schedule': TO_BE_AGREED,
-    'offer.engagementType': TO_BE_AGREED,
-    'offer.workArrangement': TO_BE_AGREED,
-    'offer.totalFee': budget ? `${budget} (budget shown on the project; the final fee is as agreed between the parties)` : TO_BE_AGREED,
-    'offer.paymentBasis': TO_BE_AGREED,
-    'offer.advancePayment': TO_BE_AGREED,
-    'offer.remainingPayment': TO_BE_AGREED,
-    'offer.paymentSchedule': TO_BE_AGREED,
-    'offer.paymentMethod': TO_BE_AGREED,
-    'offer.ownershipTerms': TO_BE_AGREED,
-    'offer.screenCredit': TO_BE_AGREED,
-    'offer.creditName': input.crewName,
+    // what the producer entered wins; otherwise the project's own details; otherwise "to be agreed"
+    'offer.responsibilities': offer.responsibilities ?? TO_BE_AGREED,
+    'offer.startDate': offerDay(offer.startDate) ?? day(p.shootStartDate) ?? TO_BE_AGREED,
+    'offer.endDate': offerDay(offer.endDate) ?? day(p.shootEndDate) ?? (duration ? `Shoot duration: ${duration}` : TO_BE_AGREED),
+    'offer.schedule': offer.schedule ?? TO_BE_AGREED,
+    'offer.engagementType': offer.engagementType ?? TO_BE_AGREED,
+    'offer.workArrangement': offer.workArrangement ?? TO_BE_AGREED,
+    'offer.totalFee': offer.totalFee ?? (budget ? `${budget} (budget shown on the project; the final fee is as agreed between the parties)` : TO_BE_AGREED),
+    'offer.paymentBasis': offer.paymentBasis ?? TO_BE_AGREED,
+    'offer.advancePayment': offer.advancePayment ?? TO_BE_AGREED,
+    'offer.remainingPayment': offer.remainingPayment ?? TO_BE_AGREED,
+    'offer.paymentSchedule': offer.paymentSchedule ?? TO_BE_AGREED,
+    'offer.paymentMethod': offer.paymentMethod ?? TO_BE_AGREED,
+    'offer.ownershipTerms': offer.ownershipTerms ?? TO_BE_AGREED,
+    'offer.screenCredit': offer.screenCredit ?? TO_BE_AGREED,
+    'offer.creditName': offer.creditName ?? input.crewName,
     'offer.natureOfEngagement': NATURE_OF_ENGAGEMENT,
   }
 }

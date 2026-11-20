@@ -10,6 +10,8 @@ import { swrFetcher } from '@/lib/swr'
 import { buildHireMessage } from '@/lib/shareMessages'
 import { formatShootRange } from '@/lib/projects/format'
 import { MAX_HIRE_ALL, MAX_HIRE_MESSAGE } from '@/lib/hire/schema'
+import { cleanOffer, offerError, type OfferTerms } from '@/lib/hire/offer'
+import { OfferTermsFields, OfferSummary } from '@/components/hire/OfferTermsFields'
 
 interface ProjectOption {
   id: string
@@ -51,6 +53,7 @@ export function HireAllModal({ open, onOpenChange, crew, onDone }: Props) {
   const [error, setError] = useState('')
   const [results, setResults] = useState<Result[] | null>(null)
   const [confirming, setConfirming] = useState(false)
+  const [offer, setOffer] = useState<OfferTerms>({})
   const initialised = useRef(false)
 
   useEffect(() => {
@@ -82,6 +85,7 @@ export function HireAllModal({ open, onOpenChange, crew, onDone }: Props) {
     setResults(null)
     setConfirming(false)
     setEdited(false)
+    setOffer({})
     initialised.current = false
     setProjectId('')
   }
@@ -89,6 +93,8 @@ export function HireAllModal({ open, onOpenChange, crew, onDone }: Props) {
   const review = (e: React.FormEvent) => {
     e.preventDefault()
     if (!project) return setError('Please choose a project first')
+    const problem = offerError(offer)
+    if (problem) return setError(problem)
     setError('')
     setConfirming(true)
   }
@@ -101,7 +107,7 @@ export function HireAllModal({ open, onOpenChange, crew, onDone }: Props) {
       const res = await fetch('/api/hire-requests/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: project.id, crewIds: crew.map((c) => c.id), message }),
+        body: JSON.stringify({ projectId: project.id, crewIds: crew.map((c) => c.id), message, offer: cleanOffer(offer) ?? undefined }),
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body.error || 'Could not send the requests. Please try again.')
@@ -171,6 +177,9 @@ export function HireAllModal({ open, onOpenChange, crew, onDone }: Props) {
               <span className="font-medium">{project.projectName}</span>
               {project.projectCode ? ` (${project.projectCode})` : ''}: {crew.map((c) => c.name).join(', ')}
             </p>
+            <div className="max-h-56 overflow-y-auto">
+              <OfferSummary offer={offer} />
+            </div>
             {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <Button type="button" variant="outline" disabled={sending} onClick={() => setConfirming(false)}>
@@ -210,6 +219,7 @@ export function HireAllModal({ open, onOpenChange, crew, onDone }: Props) {
               />
               <p className="mt-1 text-right text-xs text-gray-400">{message.length}/{MAX_HIRE_MESSAGE}</p>
             </div>
+            <OfferTermsFields value={offer} onChange={setOffer} idPrefix="hall-offer" forEveryone={crew.length > 1} />
             {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
             <Button type="submit" disabled={!message.trim()} className="h-12 w-full bg-emerald-600 text-base hover:bg-emerald-700">
               Continue
